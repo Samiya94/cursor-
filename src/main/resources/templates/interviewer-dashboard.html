@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Interviewer | Interview Platform</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" th:href="@{/css/interviewer-dashboard.css}">
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <a href="#" class="logo"><i class="fa-solid fa-microphone-lines"></i> Interviewer</a>
+  <ul class="nav-links">
+    <div class="nav-section-label">Interview</div>
+    <li><a onclick="showView('live')"     id="link-live"    class="active"><i class="fa-solid fa-video"></i>      Live Session</a></li>
+    <li><a onclick="showView('schedule')" id="link-schedule"             ><i class="fa-solid fa-calendar-alt"></i> Schedule</a></li>
+    <li><a onclick="showView('history')"  id="link-history"              ><i class="fa-solid fa-history"></i>      History</a></li>
+    <div class="nav-section-label">Account</div>
+    <li><a onclick="showView('profile')"  id="link-profile"              ><i class="fa-solid fa-user-circle"></i>  Profile</a></li>
+  </ul>
+  <div class="sidebar-footer">
+    <a onclick="openOverlay('logoutOverlay')"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<header>
+  <div class="header-left">
+    <button class="hamburger" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+    <div class="page-title-wrap">
+      <h2 id="page-title">Live Interview</h2>
+      <div class="breadcrumb">Interviewer / <span id="breadcrumb-sub">Live Session</span></div>
+    </div>
+  </div>
+  <div class="header-right">
+    <!-- BELL -->
+    <div class="notif-wrap" id="notifWrap">
+      <div class="notif-btn" onclick="toggleNotif()">
+        <i class="fa-regular fa-bell"></i>
+        <div class="notif-dot" id="notifDot"></div>
+      </div>
+      <div class="notif-panel" id="notifPanel">
+        <div class="notif-hd"><b>Notifications</b><span onclick="markAllRead()">Mark all read</span></div>
+        <div id="notifList"></div>
+        <div class="notif-footer"><span id="notifFooterText">No new notifications</span></div>
+      </div>
+    </div>
+    <!-- USER CHIP -->
+    <div class="user-menu-wrap" id="userMenuWrap">
+      <div class="user-chip" onclick="toggleUserMenu()">
+        <div class="avatar" id="headerAvatar"><span id="headerAvatarText">JA</span></div>
+        <div class="user-name-text">
+          <strong id="headerName">Interviewer</strong>
+          <span id="headerSub">—</span>
+        </div>
+        <i class="fa-solid fa-chevron-down chevron"></i>
+      </div>
+      <div class="user-dropdown" id="userDropdown">
+        <div class="user-dropdown-hd">
+          <p id="userMenuName">Interviewer</p>
+          <span id="userMenuEmail"></span>
+        </div>
+        <!-- FIX: "My Profile" navigates to profile tab -->
+        <a onclick="showView('profile');closeUserMenu();"><i class="fa-solid fa-user-circle"></i> My Profile</a>
+        <a onclick="showView('profile');closeUserMenu();scrollToSection('passwordSection')"><i class="fa-solid fa-lock"></i> Change Password</a>
+        <a class="danger" onclick="closeUserMenu();openOverlay('logoutOverlay')"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ LIVE SESSION ═══ -->
+<section id="view-live" class="content-body active">
+  <div class="step-bar">
+    <div class="step active" id="step1"><div class="step-num">1</div><div class="step-label">Student Info</div></div>
+    <div class="step-divider" id="div1"></div>
+    <div class="step" id="step2"><div class="step-num">2</div><div class="step-label">Live Interview</div></div>
+    <div class="step-divider" id="div2"></div>
+    <div class="step" id="step3"><div class="step-num">3</div><div class="step-label">Evaluation</div></div>
+  </div>
+
+  <!-- Phase 1 -->
+  <div class="phase-panel active" id="phase-info">
+    <div class="student-header">
+      <div class="student-info">
+        <div class="student-avatar" id="live-avatar">AR</div>
+        <div class="student-meta">
+          <h2 id="live-name">No student assigned</h2>
+          <p><i class="fa-solid fa-graduation-cap"></i> <span id="live-degree">—</span></p>
+          <div class="domain-tags" id="live-domains"></div>
+        </div>
+      </div>
+      <button class="btn btn-s" id="proceedBtn" onclick="goToPhase2()" disabled><i class="fa-solid fa-arrow-right"></i> Proceed to Interview</button>
+    </div>
+    <div class="layout-grid">
+      <div class="data-card">
+        <div class="card-header"><h4>Student Information</h4></div>
+        <div class="info-grid">
+          <div class="info-item"><span>Full Name</span><b id="info-name">—</b></div>
+          <div class="info-item"><span>Student ID</span><b id="info-studentId">—</b></div>
+          <div class="info-item"><span>Institute</span><b id="info-institute">—</b></div>
+          <div class="info-item"><span>Program</span><b id="info-program">—</b></div>
+          <div class="info-item"><span>Year</span><b id="info-year">—</b></div>
+          <div class="info-item"><span>CGPA</span><b id="info-cgpa">—</b></div>
+        </div>
+        <div class="divider"></div>
+        <div class="card-header" style="margin-bottom:10px;"><h4 style="font-size:13.5px;">Interview Domains</h4></div>
+        <div class="domain-tags" style="margin-bottom:14px;" id="info-domains"></div>
+        <div class="card-header" style="margin-bottom:10px;"><h4 style="font-size:13.5px;">Projects</h4></div>
+        <div id="info-projects" style="display:flex;flex-direction:column;gap:8px;color:var(--muted);font-size:13px;">
+          No project data available.
+        </div>
+      </div>
+      <div class="data-card">
+        <div class="card-header"><h4>Candidate Resume</h4></div>
+        <div class="resume-preview">
+          <i class="fa-solid fa-file-pdf" style="font-size:3rem;color:#ef4444;"></i>
+          <p style="font-size:13.5px;" id="live-resume-name">No resume uploaded</p>
+          <button class="btn btn-s btn-sm" id="live-resume-btn" onclick="viewStudentResume()" disabled><i class="fa-solid fa-eye"></i> View Full Document</button>
+        </div>
+        <div class="divider"></div>
+        <div class="card-header" style="margin-bottom:10px;"><h4 style="font-size:13.5px;">Preparation Notes</h4></div>
+        <textarea rows="4" placeholder="Add pre-interview notes about this student..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 2 -->
+  <div class="phase-panel" id="phase-live">
+    <div class="student-header">
+      <div class="student-info">
+        <div class="student-avatar" id="live-avatar2">AR</div>
+        <div class="student-meta">
+          <h2 id="live-name2">Alex Rivera</h2>
+          <p><i class="fa-solid fa-graduation-cap"></i> B.Tech Computer Science (Final Year)</p>
+          <div class="domain-tags" id="live-domains2"></div>
+        </div>
+      </div>
+      <div class="timer-container">
+        <div class="timer active" id="liveClock">00:00:00</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-success" id="startBtn" onclick="startSession()"><i class="fa-solid fa-play"></i> Start Session</button>
+          <button class="btn btn-danger"  id="endBtn"   onclick="openOverlay('endConfirmModal')" disabled><i class="fa-solid fa-stop"></i> End Session</button>
+        </div>
+      </div>
+    </div>
+    <div class="layout-grid">
+      <div class="data-card">
+        <div class="card-header"><h4>Candidate Resume</h4></div>
+        <div class="resume-preview"><i class="fa-solid fa-file-pdf" style="font-size:3rem;color:#ef4444;"></i><p id="live-resume-name2">No resume uploaded</p><button class="btn btn-s btn-sm" id="live-resume-btn2" onclick="viewStudentResume()" disabled><i class="fa-solid fa-eye"></i> View Full Document</button></div>
+      </div>
+      <div class="data-card">
+        <div class="card-header"><h4>Quick Notes</h4></div>
+        <textarea rows="8" placeholder="Take notes during the interview..."></textarea>
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <button class="btn btn-outline" style="flex:1;justify-content:center;"><i class="fa-solid fa-flag"></i> Flag Moment</button>
+          <button class="btn btn-p"       style="flex:1;justify-content:center;"><i class="fa-solid fa-save"></i> Save Notes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 3 -->
+  <div class="phase-panel" id="phase-eval">
+    <div class="student-header" style="border-top-color:var(--success);">
+      <div class="student-info">
+        <div class="student-avatar" id="eval-avatar">AR</div>
+        <div class="student-meta">
+          <h2 id="eval-name">Alex Rivera</h2>
+          <p>Session Ended · Duration: <span id="evalDuration" style="font-weight:700;color:var(--dark);">00:00:00</span></p>
+          <span class="badge bg-success">Interview Completed</span>
+        </div>
+      </div>
+    </div>
+    <div class="layout-grid">
+      <div class="data-card">
+        <div class="card-header"><h4>Evaluation Rubric</h4></div>
+        <div class="range-row"><label>Technical Problem Solving <span class="range-val" id="v1">5</span>/10</label><input type="range" min="1" max="10" value="5" oninput="document.getElementById('v1').innerText=this.value"></div>
+        <div class="range-row"><label>Communication Clarity <span class="range-val" id="v2">5</span>/10</label><input type="range" min="1" max="10" value="5" oninput="document.getElementById('v2').innerText=this.value"></div>
+        <div class="range-row"><label>Domain Knowledge <span class="range-val" id="v3">5</span>/10</label><input type="range" min="1" max="10" value="5" oninput="document.getElementById('v3').innerText=this.value"></div>
+        <div class="range-row"><label>Problem Approach &amp; Logic <span class="range-val" id="v4">5</span>/10</label><input type="range" min="1" max="10" value="5" oninput="document.getElementById('v4').innerText=this.value"></div>
+        <div class="range-row"><label>Confidence &amp; Presentation <span class="range-val" id="v5">5</span>/10</label><input type="range" min="1" max="10" value="5" oninput="document.getElementById('v5').innerText=this.value"></div>
+        <div class="divider"></div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Overall Performance</label>
+          <select id="overallPerformance" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13.5px;">
+            <option value="">— Select —</option>
+            <option>🏆 Excellent</option><option>⭐ Very Good</option><option>👍 Good</option>
+            <option>🆗 Average</option><option>📈 Needs Improvement</option><option>⚠️ Poor</option>
+          </select>
+        </div>
+      </div>
+      <div class="data-card">
+        <div class="card-header"><h4>Detailed Feedback</h4></div>
+        <div class="form-group"><label>Strengths Observed</label><textarea rows="3" id="strengthsField" placeholder="What did the candidate do well?"></textarea></div>
+        <div class="form-group"><label>Areas for Improvement</label><textarea rows="3" id="improvField" placeholder="What needs to be improved?"></textarea></div>
+        <div class="form-group" style="margin-bottom:14px;"><label>General Remarks</label><textarea rows="3" id="remarksField" placeholder="Any additional observations..."></textarea></div>
+        <button class="btn btn-p" style="width:100%;justify-content:center;" onclick="submitEvalAndNext()">
+          <i class="fa-solid fa-paper-plane"></i> Submit Evaluation &amp; Load Next Student
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SCHEDULE ═══ -->
+<section id="view-schedule" class="content-body">
+  <div class="data-card">
+    <div class="card-header"><h4>Today's Assigned Students</h4><span class="badge bg-info" style="font-size:12px;padding:5px 12px;" id="scheduleTodayBadge">—</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Student</th><th>Domain</th><th>Institute</th><th>Scheduled Time</th><th>Inst. Confirmed</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="scheduleTodayBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="data-card">
+    <div class="card-header"><h4>Upcoming This Week</h4></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Student</th><th>Domain</th><th>Institute</th><th>Time</th><th>Inst. Confirmed</th></tr></thead>
+        <tbody id="scheduleWeekBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ HISTORY — institute filter only, status tabs removed ═══ -->
+<section id="view-history" class="content-body">
+  <div class="data-card" style="padding:13px 18px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <i class="fa-solid fa-filter" style="color:var(--muted);font-size:13px;"></i>
+      <span style="font-size:13px;font-weight:700;color:var(--dark);">Filter by Institute</span>
+      <select id="histInstFilter" onchange="applyHistFilters()"
+        style="padding:7px 11px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;background:#fff;min-width:190px;cursor:pointer;">
+        <option value="">All Institutes</option>
+      </select>
+      <button class="btn btn-outline btn-sm" onclick="clearHistFilters()"><i class="fa-solid fa-xmark"></i> Clear</button>
+      <span id="histCount" style="margin-left:auto;font-size:12.5px;color:var(--muted);font-weight:600;background:#F3F4F6;padding:4px 10px;border-radius:20px;"></span>
+    </div>
+  </div>
+
+  <div id="historyList"></div>
+
+  <div id="historyEmpty" style="display:none;text-align:center;padding:36px;color:var(--muted);font-size:14px;background:var(--card);border-radius:var(--rm);box-shadow:var(--shadow);">
+    <i class="fa-solid fa-inbox" style="font-size:2.5rem;margin-bottom:12px;display:block;opacity:.4;"></i>
+    No records match the selected filters.
+  </div>
+</section>
+
+<!-- ═══ PROFILE ═══ -->
+<section id="view-profile" class="content-body">
+  <!-- Banner -->
+  <div class="profile-banner">
+    <div class="profile-pic-wrap">
+      <div class="profile-pic-lg" id="profilePicLg" onclick="document.getElementById('profilePicInput').click()">
+        <span id="profilePicText">JA</span>
+      </div>
+      <div class="profile-pic-edit" onclick="document.getElementById('profilePicInput').click()"><i class="fa-solid fa-camera"></i></div>
+      <input type="file" id="profilePicInput" accept="image/*" style="display:none;" onchange="handleProfilePic(this)">
+    </div>
+    <div class="profile-banner-info">
+      <h2 id="profileName">Interviewer</h2>
+      <p id="profileHeadline">—</p>
+      <p style="margin-top:5px;opacity:.7;font-size:12.5px;"><i class="fa-solid fa-id-badge"></i> ID: <span id="profileId">—</span> &nbsp;&nbsp;<i class="fa-solid fa-envelope"></i> <span id="profileEmail"></span></p>
+      <p style="margin-top:3px;font-size:11.5px;opacity:.6;"><i class="fa-solid fa-camera"></i> Click photo to update</p>
+    </div>
+    <div style="margin-left:auto;text-align:right;position:relative;z-index:1;">
+      <div style="font-size:2rem;font-weight:800;" id="profileRating">—</div>
+      <div style="color:#FCD34D;font-size:14px;" id="profileStars">—</div>
+      <div style="opacity:.7;font-size:12px;margin-top:3px;" id="profileRatingLabel">Overall Rating</div>
+    </div>
+  </div>
+
+  <!-- Performance stats — uniform card height via same padding -->
+  <div class="perf-grid">
+    <div class="perf-card"><div class="perf-num" id="profTotalInterviews">—</div><p>Total Interviews</p></div>
+    <div class="perf-card"><div class="perf-num" style="color:var(--success);" id="profCompleted">—</div><p>Completed</p></div>
+    <div class="perf-card"><div class="perf-num" style="color:var(--warning);" id="profAvgDuration">—</div><p>Avg. Session Time</p></div>
+    <div class="perf-card"><div class="perf-num" style="color:var(--secondary);" id="profOntime">—</div><p>On-time Rate</p></div>
+  </div>
+
+  <!-- Two-column profile grid -->
+  <div class="profile-grid">
+
+    <!-- LEFT: flex column so gaps are even and no margin-bottom stacking -->
+    <div class="profile-left-col">
+
+      <!-- Personal Info -->
+      <div class="data-card" style="border-left:4px solid var(--secondary);margin-bottom:0;">
+        <div class="card-header">
+          <h4>Personal Information</h4>
+          <span class="badge bg-info"><i class="fa-solid fa-lock" style="margin-right:4px;"></i>Partial Read-only</span>
+        </div>
+        <div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:var(--r);padding:10px 13px;margin-bottom:14px;font-size:12.5px;color:#0369A1;display:flex;align-items:center;gap:8px;">
+          <i class="fa-solid fa-circle-info"></i>
+          Name, email &amp; phone are managed by the platform. Contact admin to change them.
+        </div>
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-group"><label>First Name</label><div class="readonly-info"><i class="fa-solid fa-lock"></i><span id="pfFirstName">—</span></div></div>
+          <div class="form-group"><label>Last Name</label><div class="readonly-info"><i class="fa-solid fa-lock"></i><span id="pfLastName">—</span></div></div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-group"><label>Email</label><div class="readonly-info"><i class="fa-solid fa-lock"></i><span id="pfEmail">—</span></div></div>
+          <div class="form-group"><label>Phone</label><div class="readonly-info"><i class="fa-solid fa-lock"></i><span id="pfPhone">—</span></div></div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-group">
+            <label>Job Title <span style="color:var(--success);font-size:10px;font-weight:600;">(editable)</span></label>
+            <input type="text" id="jobTitle" value="Senior Software Engineer" placeholder="Your job title">
+          </div>
+          <div class="form-group"><label>Interviewer ID</label><div class="readonly-info"><i class="fa-solid fa-lock"></i><span id="pfInterviewerId">—</span></div></div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-group"><label>LinkedIn Profile</label><input type="url" id="pfLinkedin" value="" placeholder="LinkedIn URL"></div>
+          <div class="form-group"><label>Years of Experience</label><input type="number" id="pfExperienceYears" value="" min="0" max="50"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Professional Bio</label>
+          <textarea rows="3" id="pfBio"></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:16px;">
+          <label>Expertise / Skills</label>
+          <div class="tag-input-area" id="skillTagArea">
+            <input type="text" id="skillInput" placeholder="Add skill…" style="border:none;outline:none;font-size:13px;min-width:90px;flex:1;padding:2px 4px;" onkeydown="addSkill(event)">
+          </div>
+        </div>
+        <button class="btn btn-s" onclick="saveProfile()"><i class="fa-solid fa-save"></i> Save Changes</button>
+      </div>
+
+      <!-- Password -->
+      <div class="side-by-side">
+        <div class="data-card" id="passwordSection">
+          <div class="card-header"><h4><i class="fa-solid fa-lock" style="color:var(--primary);margin-right:5px;"></i>Change Password</h4></div>
+          <div class="form-group" style="margin-bottom:11px;"><label>Current Password</label><input type="password" placeholder="Current password"></div>
+          <div class="form-group" style="margin-bottom:11px;"><label>New Password</label><input type="password" id="newPass" placeholder="Min 8 characters" oninput="checkPassStrength()"></div>
+          <div class="form-group" style="margin-bottom:11px;"><label>Confirm New Password</label><input type="password" id="confirmPass" placeholder="Repeat password"></div>
+          <div id="passStrength"></div>
+          <button class="btn btn-p" style="width:100%;justify-content:center;" onclick="changePassword()">
+            <i class="fa-solid fa-key"></i> Update Password
+          </button>
+        </div>
+      </div>
+    </div><!-- /profile-left-col -->
+
+    <!-- RIGHT: Reviews — sticky so it stays visible while scrolling left col -->
+    <div>
+      <div class="data-card" style="margin-bottom:14px;">
+        <div class="card-header"><h4>Resume / CV</h4></div>
+        <div style="display:flex;align-items:center;gap:10px;background:#111827;padding:11px 14px;border-radius:var(--r);margin-bottom:13px;">
+          <i class="fa-solid fa-file-pdf" style="color:#ef4444;font-size:1.5rem;flex-shrink:0;"></i>
+          <div style="flex:1;min-width:0;">
+            <b style="color:#fff;font-size:13px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="cvName">No CV uploaded</b>
+            <div style="font-size:11.5px;color:rgba(255,255,255,.5);margin-top:2px;" id="cvDate">—</div>
+          </div>
+          <button class="btn btn-s btn-sm" style="flex-shrink:0;" id="cvViewBtn" disabled><i class="fa-solid fa-eye"></i></button>
+        </div>
+        <div class="cv-upload-area" onclick="document.getElementById('cvFileInput').click()">
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size:2rem;color:var(--muted);display:block;margin-bottom:8px;"></i>
+          <p style="font-size:13px;font-weight:600;color:var(--dark);">Upload New CV</p>
+          <p style="font-size:12px;color:var(--muted);margin-top:4px;">PDF, DOCX · Max 10 MB</p>
+          <input type="file" id="cvFileInput" accept=".pdf,.doc,.docx" style="display:none;" onchange="handleCvUpload(this)">
+        </div>
+        <div id="cvFileName" style="display:none;margin-top:9px;background:#F0FDF4;border-radius:var(--r);padding:8px 12px;font-size:13px;color:var(--success);align-items:center;gap:8px;">
+          <i class="fa-solid fa-circle-check"></i><span id="cvFileNameText"></span>
+        </div>
+      </div>
+
+      <div class="data-card" style="position:sticky;top:calc(var(--header-h) + 16px);margin-bottom:0;">
+        <div class="card-header"><h4>Student Reviews</h4><span class="badge bg-success" id="reviewsAvgBadge">—</span></div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;">
+          <div style="flex:1;text-align:center;background:#F8FAFC;border-radius:var(--r);padding:12px;">
+            <div style="font-size:1.6rem;font-weight:800;color:var(--primary);" id="reviewsPositivePct">—</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">Positive</div>
+          </div>
+          <div style="flex:1;text-align:center;background:#F8FAFC;border-radius:var(--r);padding:12px;">
+            <div style="font-size:1.6rem;font-weight:800;color:var(--secondary);" id="reviewsCount">—</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">Reviews</div>
+          </div>
+          <div style="flex:1;text-align:center;background:#F8FAFC;border-radius:var(--r);padding:12px;">
+            <div style="font-size:1.6rem;font-weight:800;color:var(--warning);" id="reviewsRating">—</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">Rating</div>
+          </div>
+        </div>
+        <div id="reviewList" style="display:flex;flex-direction:column;gap:10px;color:var(--muted);font-size:13px;">
+          No reviews yet.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /profile-grid -->
+</section>
+</main>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="studentModal">
+  <div class="modal">
+    <div class="modal-header"><h3>Student Details</h3><div class="modal-close" onclick="closeOverlay('studentModal')"><i class="fa-solid fa-xmark"></i></div></div>
+    <div id="studentModalContent"></div>
+    <button class="btn btn-p" style="width:100%;justify-content:center;margin-top:14px;" onclick="closeOverlay('studentModal')">Close</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="videoModal">
+  <div class="modal" style="width:600px;">
+    <div class="modal-header"><h3 id="videoModalTitle">Interview Recording</h3><div class="modal-close" onclick="closeOverlay('videoModal')"><i class="fa-solid fa-xmark"></i></div></div>
+    <div class="video-modal-player"><i class="fa-solid fa-video" style="font-size:3rem;"></i><p style="font-size:13.5px;">Recording Preview</p><p style="font-size:12px;">Video playback integration required</p></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+      <div style="background:#F8FAFC;padding:10px;border-radius:var(--r);text-align:center;"><div style="font-size:11px;color:var(--muted);">Student</div><b id="vm-student" style="font-size:13px;"></b></div>
+      <div style="background:#F8FAFC;padding:10px;border-radius:var(--r);text-align:center;"><div style="font-size:11px;color:var(--muted);">Date</div><b id="vm-date" style="font-size:13px;"></b></div>
+      <div style="background:#F8FAFC;padding:10px;border-radius:var(--r);text-align:center;"><div style="font-size:11px;color:var(--muted);">Duration</div><b style="font-size:13px;">48 min</b></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-p" style="flex:1;justify-content:center;"><i class="fa-solid fa-download"></i> Download</button>
+      <button class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeOverlay('videoModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="endConfirmModal">
+  <div class="end-confirm-modal">
+    <div style="width:54px;height:54px;background:#FEE2E2;border-radius:50%;display:grid;place-items:center;margin:0 auto 14px;"><i class="fa-solid fa-stop" style="color:var(--danger);font-size:22px;"></i></div>
+    <h3 style="margin-bottom:8px;font-size:17px;">End Interview Session?</h3>
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:22px;">The session will be stopped and you'll be taken to the evaluation form.</p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" style="flex:1;justify-content:center;background:#F3F4F6;color:var(--dark);border:1px solid var(--border);" onclick="closeOverlay('endConfirmModal')">Cancel</button>
+      <button class="btn btn-danger" style="flex:1;justify-content:center;" onclick="confirmEndSession()"><i class="fa-solid fa-check"></i> Yes, End Session</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="logoutOverlay" onclick="if(event.target===this)closeOverlay('logoutOverlay')">
+  <div class="logout-modal">
+    <div style="width:54px;height:54px;background:#FEF3C7;border-radius:50%;display:grid;place-items:center;margin:0 auto 16px;"><i class="fa-solid fa-right-from-bracket" style="color:#92400E;font-size:20px;"></i></div>
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to leave EvalMatrix?</p>
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:20px;">
+      <input type="checkbox" id="dontAskLogout" style="width:15px;height:15px;accent-color:var(--primary);">
+      <label for="dontAskLogout" style="font-size:13px;cursor:pointer;">Don't ask me again</label>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" style="flex:1;justify-content:center;background:#F3F4F6;color:#374151;" onclick="closeOverlay('logoutOverlay')">Cancel</button>
+      <button class="btn btn-danger" style="flex:1;justify-content:center;" onclick="confirmLogout()">Logout</button>
+    </div>
+  </div>
+</div>
+<script th:src="@{/js/auth.js}"></script>
+<script th:src="@{/js/interviewer-dashboard.js}"></script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mentor Registration | Interview Platform</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/mentor-registration.css">
+</head>
+<body>
+
+<!-- ── NAVBAR ── -->
+<nav>
+  <div class="nav-logo">
+    <i class="fa-solid fa-microphone-lines"></i> Interview Platform
+  </div>
+  <a href="/login" class="nav-back">
+    <i class="fa-solid fa-arrow-left"></i> Back to Login
+  </a>
+</nav>
+
+<div class="page-wrapper">
+  <div class="reg-card">
+
+    <!-- Header -->
+    <div class="card-header">
+      <div class="header-inner">
+        <div class="header-badge"><i class="fa-solid fa-link"></i> Invite Registration</div>
+        <h1>Mentor Registration</h1>
+        <p>You've been invited by your institute to register as a Department Mentor (TPO Coordinator).</p>
+      </div>
+    </div>
+
+    <!-- Form Body -->
+    <div class="form-body">
+
+      <!-- Error Alert -->
+      <div class="error-alert" id="errorAlert">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span id="errorText">Please fix the errors above.</span>
+      </div>
+
+      <!-- Already Registered Warning -->
+      <div class="warn-banner" id="alreadyRegBanner">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span id="alreadyRegText">This department already has a registered coordinator.</span>
+      </div>
+
+      <!-- Form View -->
+      <div class="form-view" id="formView">
+
+        <!-- Institute Banner -->
+        <div class="inst-banner">
+          <div class="inst-icon" id="instInitials">?</div>
+          <div class="inst-info">
+            <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Registered Institute</div>
+            <div class="inst-name" id="instName">Loading…</div>
+            <div class="inst-id" id="instFullName" style="font-size:11.5px;color:var(--muted);margin-top:2px;"></div>
+          </div>
+        </div>
+
+        <form id="regForm" novalidate onsubmit="handleSubmit(event)">
+
+          <!-- Personal Info -->
+          <div class="form-section-title">
+            <i class="fa-solid fa-user"></i> Personal Information
+          </div>
+          <div class="field-grid">
+            <div class="field full">
+              <label>Institute</label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-building-columns"></i>
+                <input type="text" id="instReadonly" placeholder="Loading…" readonly
+                  style="padding-left:35px;background:#F3F4F6;color:var(--muted);cursor:not-allowed;">
+              </div>
+              <div class="field-hint"><i class="fa-solid fa-lock" style="font-size:10px;"></i> Auto-filled from your invite link — cannot be changed.</div>
+            </div>
+            <div class="field">
+              <label>First Name <span class="req">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" id="firstName" placeholder="e.g. Rahul" required>
+              </div>
+            </div>
+            <div class="field">
+              <label>Last Name <span class="req">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" id="lastName" placeholder="e.g. Patil" required>
+              </div>
+            </div>
+            <div class="field">
+              <label>Email Address <span class="req">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-envelope"></i>
+                <input type="email" id="regEmail" placeholder="coordinator@institute.edu" required>
+              </div>
+            </div>
+            <div class="field">
+              <label>Phone Number <span class="req">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-phone"></i>
+                <input type="tel" id="phone" placeholder="10-digit mobile number" maxlength="10" required>
+              </div>
+            </div>
+          </div>
+
+          <!-- Department & Role -->
+          <div class="form-section-title" style="margin-top:22px;">
+            <i class="fa-solid fa-sitemap"></i> Department & Role
+          </div>
+          <div class="field-grid">
+            <div class="field full">
+              <label>Select Department <span class="req">*</span></label>
+              <select id="deptSelect" required onchange="onDeptChange()">
+                <option value="">Loading departments…</option>
+              </select>
+              <div class="no-dept-notice" id="noDeptNotice">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                No departments available yet. Please contact your institute admin.
+              </div>
+              <div class="dept-badge" id="deptBadge">
+                <i class="fa-solid fa-sitemap"></i>
+                <span id="deptBadgeText"></span>
+              </div>
+              <div class="field-hint">Select the department you are responsible for coordinating.</div>
+            </div>
+            <div class="field full">
+              <label>Designation <span class="req">*</span></label>
+              <select id="designation" required>
+                <option value="">Select Designation</option>
+                <option value="TPO Coordinator">TPO Coordinator</option>
+                <option value="HOD">Head of Department (HOD)</option>
+                <option value="Placement In-charge">Placement In-charge</option>
+                <option value="Faculty Coordinator">Faculty Coordinator</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Account Credentials -->
+          <div class="form-section-title" style="margin-top:22px;">
+            <i class="fa-solid fa-lock"></i> Account Credentials
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label>Password <span class="req">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="regPassword" placeholder="Min. 8 characters" required
+                  oninput="checkStrength()">
+                <button type="button" class="pw-toggle" onclick="togglePw('regPassword','eyePw1')">
+                  <i class="fa-solid fa-eye" id="eyePw1"></i>
+                </button>
+              </div>
+              <div class="pass-strength-bar"><div class="pass-strength-fill" id="strengthFill"></div></div>
+              <div class="pass-strength-text" id="strengthText"></div>
+            </div>
+            <div class="field">
+              <label>Confirm Password <span class="req">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="regConfirm" placeholder="Re-enter password" required>
+                <button type="button" class="pw-toggle" onclick="togglePw('regConfirm','eyePw2')">
+                  <i class="fa-solid fa-eye" id="eyePw2"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Terms -->
+          <div class="terms-row">
+            <input type="checkbox" id="terms" required>
+            <label for="terms">I confirm that the information provided is accurate and I agree to the
+              <a href="#">Terms &amp; Conditions</a> and <a href="#">Privacy Policy</a> of Interview Platform.</label>
+          </div>
+
+          <button type="submit" class="btn-submit" id="submitBtn">
+            <i class="fa-solid fa-user-plus"></i> Complete Registration
+          </button>
+
+        </form>
+      </div><!-- /formView -->
+
+      <!-- Success View -->
+      <div class="success-view" id="successView">
+        <div class="success-icon"><i class="fa-solid fa-circle-check"></i></div>
+        <h2>Registration Successful!</h2>
+        <p>You've been registered as a Mentor / TPO Coordinator for</p>
+        <div class="success-dept-tag">
+          <i class="fa-solid fa-sitemap"></i>
+          <span id="successDeptName"></span>
+        </div>
+        <p>Your details are now visible to the Institute Admin in the Departments dashboard. You can now log in using your credentials.</p>
+        <br>
+        <button class="btn-go-login" onclick="window.location.href='/login'">
+          <i class="fa-solid fa-right-to-bracket"></i> Go to Login
+        </button>
+      </div>
+
+    </div><!-- /form-body -->
+
+    <!-- Card Footer -->
+    <div class="card-footer" id="cardFooter">
+      Already registered? <a href="/login">Login as Mentor</a>
+    </div>
+
+  </div><!-- /reg-card -->
+</div><!-- /page-wrapper -->
+<script src="/js/mentor-registration.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+package com.interviewPlatform.entities;
+
+import java.time.LocalDateTime;
+
+import com.interviewPlatform.enums.Status;
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "student_applications",
+       uniqueConstraints = @UniqueConstraint(
+           columnNames = {"student_id", "interview_request_id"},
+           name = "uq_student_interview"
+       ))
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+public class StudentApplication {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "student_id", nullable = false)
+    private Student student;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "interview_request_id", nullable = false)
+    private InterviewRequest interviewRequest;
+
+    @Enumerated(EnumType.STRING)
+    private Status status;  // PENDING, APPROVED, REJECTED
+
+    private LocalDateTime appliedAt;
+
+    @PrePersist
+    public void onCreate() {
+        this.appliedAt = LocalDateTime.now();
+        if (this.status == null) {
+            this.status = Status.PENDING;
+        }
+    }
+}

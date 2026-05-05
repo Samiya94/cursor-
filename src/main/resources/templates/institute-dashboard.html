@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Institute Admin | Interview Platform</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/institute-dashboard.css}">
+</head>
+<body>
+
+<!-- ══════ SETUP MODAL ══════ -->
+<div class="modal-overlay" id="setupModal">
+  <div class="modal wide">
+    <div class="dept-setup-header">
+      <div class="dept-setup-icon"><i class="fa-solid fa-sitemap"></i></div>
+      <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:6px;">Welcome! Set Up Departments</h2>
+      <p style="font-size:13px;color:var(--muted);">Add departments before getting started. You can manage them later in <strong>Settings</strong>.</p>
+    </div>
+    <div class="dept-add-row">
+      <input type="text" id="setupDeptInput" placeholder="e.g. Computer Science, Mechanical Engineering…"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();addSetupDept();}">
+      <button onclick="addSetupDept()"><i class="fa-solid fa-plus"></i> Add</button>
+    </div>
+    <p style="font-size:11.5px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:5px;">
+      <i class="fa-solid fa-lightbulb" style="color:var(--secondary);"></i> Press Enter or click Add after each name
+    </p>
+    <div id="setupDeptTags" class="dept-tags-box">
+      <span style="color:var(--muted);font-size:12px;align-self:center;">No departments added yet…</span>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;"><span id="setupCount">0</span> department(s) added</p>
+    <div class="setup-footer">
+      <button class="btn-setup-skip" onclick="skipSetup()">Skip for now</button>
+      <button class="btn-setup-primary" onclick="saveSetup()"><i class="fa-solid fa-check"></i> Save & Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ DELETE DEPT MODAL ══════ -->
+<div class="modal-overlay" id="deleteDeptModal">
+  <div class="modal narrow" style="text-align:center;">
+    <div class="modal-icon danger"><i class="fa-solid fa-trash"></i></div>
+    <h3 style="margin-bottom:8px;font-size:16px;">Remove Department?</h3>
+    <p id="deleteDeptText" style="color:var(--muted);font-size:13.5px;margin-bottom:22px;"></p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-danger" style="flex:1;justify-content:center;" onclick="confirmDeleteDept()"><i class="fa-solid fa-trash"></i> Remove</button>
+      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="closeOverlay('deleteDeptModal')"><i class="fa-solid fa-xmark"></i> Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ STATUS CONFIRM ══════ -->
+<div class="modal-overlay" id="statusModal">
+  <div class="modal narrow" style="text-align:center;">
+    <div class="modal-icon warn"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <h3 id="statusModalTitle" style="margin-bottom:8px;font-size:16px;">Confirm Action</h3>
+    <p id="statusModalText" style="color:var(--muted);font-size:13.5px;margin-bottom:22px;"></p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-p" style="flex:1;justify-content:center;" onclick="confirmStatus()"><i class="fa-solid fa-check"></i> Confirm</button>
+      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="cancelStatus()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ LOGOUT MODAL ══════ -->
+<div class="modal-overlay" id="logoutModal" onclick="if(event.target===this)closeOverlay('logoutModal')">
+  <div class="logout-modal">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to leave the platform?</p>
+    <label style="display:flex;align-items:center;gap:7px;justify-content:center;font-size:13px;color:var(--muted);cursor:pointer;margin-bottom:20px;">
+      <input type="checkbox" id="skipLogout" style="width:14px;height:14px;accent-color:var(--primary);"> Don't ask me again
+    </label>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="closeOverlay('logoutModal')">Cancel</button>
+      <button class="btn btn-danger" style="flex:1;justify-content:center;" onclick="confirmLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ SCHEDULE SUCCESS MODAL ══════ -->
+<div class="modal-overlay" id="schedSuccessModal">
+  <div class="modal narrow" style="text-align:center;">
+    <div class="modal-icon success"><i class="fa-solid fa-circle-check"></i></div>
+    <h3 style="margin-bottom:8px;">Interview Scheduled!</h3>
+    <p style="color:var(--muted);font-size:13.5px;margin-bottom:20px;">The interview slot has been assigned to the selected department(s).</p>
+    <button class="btn btn-p" style="width:100%;justify-content:center;" onclick="closeOverlay('schedSuccessModal');showView('requests');">
+      <i class="fa-solid fa-paper-plane"></i> View Requests
+    </button>
+  </div>
+</div>
+
+<!-- ══════ COPY LINK MODAL ══════ -->
+<div class="modal-overlay" id="copyLinkModal">
+  <div class="modal narrow" style="text-align:center;">
+    <div class="modal-icon success"><i class="fa-solid fa-copy"></i></div>
+    <h3 style="margin-bottom:6px;">Link Copied!</h3>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:10px;">Registration link copied to clipboard.</p>
+    <div id="copyLinkPreview" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;font-size:12px;color:var(--dark);word-break:break-all;margin-bottom:18px;text-align:left;"></div>
+    <button class="btn btn-p" style="width:100%;justify-content:center;" onclick="closeOverlay('copyLinkModal')"><i class="fa-solid fa-check"></i> Done</button>
+  </div>
+</div>
+
+<!-- ══════ DEPT DETAIL MODAL ══════ -->
+<div class="modal-overlay" id="deptDetailModal">
+  <div class="modal wide">
+    <div class="modal-header">
+      <h3 id="deptDetailTitle"><i class="fa-solid fa-sitemap"></i> Department</h3>
+      <div class="modal-close" onclick="closeOverlay('deptDetailModal')"><i class="fa-solid fa-xmark"></i></div>
+    </div>
+    <div id="deptDetailBody"></div>
+  </div>
+</div>
+
+<!-- ══════ SIDEBAR OVERLAY ══════ -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- ══════ SIDEBAR ══════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="logo"><i class="fa-solid fa-building-columns"></i> Institute</div>
+  <ul class="nav-links">
+    <div class="nav-section-label">Dashboard</div>
+    <li><a onclick="showView('overview')"   id="link-overview"   class="active"><i class="fa-solid fa-house"></i> Overview</a></li>
+    <div class="nav-section-label">Management</div>
+    <li><a onclick="showView('departments')" id="link-departments"><i class="fa-solid fa-sitemap"></i> Departments</a></li>
+    <li><a onclick="showView('requests')"   id="link-requests"  ><i class="fa-solid fa-paper-plane"></i> Interview Requests</a></li>
+    <li><a onclick="showView('schedule')"   id="link-schedule"  ><i class="fa-solid fa-calendar-plus"></i> Schedule Interview</a></li>
+    <div class="nav-section-label">Account</div>
+    <li><a onclick="showView('settings')"   id="link-settings"  ><i class="fa-solid fa-gear"></i> Settings</a></li>
+  </ul>
+  <div class="sidebar-footer">
+    <a onclick="openLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+  </div>
+</aside>
+
+<!-- ══════ MAIN ══════ -->
+<main class="main">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-left">
+      <button class="hamburger" id="hamburger" onclick="toggleSidebar()">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="page-title-wrap">
+        <h2 id="page-title">Institute Overview</h2>
+        <div class="breadcrumb">Institute / <span id="breadcrumb-cur">Overview</span></div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="user-menu-wrap">
+        <div class="user-chip" onclick="toggleUserMenu()">
+          <div class="avatar" id="headerAvatar">AI</div>
+          <div style="text-align:left;display:flex;flex-direction:column;">
+            <span style="font-weight:700;font-size:13px;line-height:1.2;" id="headerInstName">ABC Institute</span>
+            <span style="font-size:11px;color:var(--muted);">Institute Admin</span>
+          </div>
+          <i class="fa-solid fa-chevron-down chevron"></i>
+        </div>
+        <div class="user-dropdown" id="userDropdown">
+          <div class="user-dropdown-header">
+            <p id="dropInstName">ABC Institute of Technology</p>
+            <span id="dropInstEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f796939a9e99b7969594d9929382">[email&#160;protected]</a></span>
+          </div>
+          <a onclick="showView('settings');closeUserMenu()"><i class="fa-solid fa-gear" style="color:var(--muted);width:16px;"></i> Settings</a>
+          <a class="danger" onclick="openLogout();closeUserMenu()"><i class="fa-solid fa-right-from-bracket" style="width:16px;"></i> Logout</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════ OVERVIEW ══════════════ -->
+  <section id="view-overview" class="content-body active">
+    <!-- Quick Actions -->
+    <div class="data-card">
+      <div class="card-header">
+        <h4><i class="fa-solid fa-bolt" style="color:var(--warning);"></i> Quick Actions</h4>
+        <button class="btn btn-s" onclick="genRegLink()"><i class="fa-solid fa-link"></i> Generate Registration Link</button>
+      </div>
+      <div id="genLinkBox" style="display:none;">
+        <div class="cred-box">
+          <span id="genLinkText"></span>
+          <button class="btn btn-outline btn-sm" onclick="copyGenLink()"><i class="fa-solid fa-copy"></i> Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stat-grid-4" id="ovStatGrid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#EFF6FF;color:var(--primary);"><i class="fa-solid fa-sitemap"></i></div>
+        <p>Total Departments</p><h3 id="ovDepts" style="color:var(--primary);">—</h3>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#FEF3C7;color:#D97706;"><i class="fa-solid fa-paper-plane"></i></div>
+        <p>Total Requests</p><h3 id="ovReqs" style="color:var(--warning);">—</h3>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#DCFCE7;color:var(--success);"><i class="fa-solid fa-circle-check"></i></div>
+        <p>Confirmed</p><h3 id="ovConfirmed" style="color:var(--success);">—</h3>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#FEE2E2;color:var(--danger);"><i class="fa-solid fa-clock"></i></div>
+        <p>Pending</p><h3 id="ovPending" style="color:var(--danger);">—</h3>
+      </div>
+    </div>
+
+    <!-- Status summary -->
+    <div class="data-card">
+      <div class="card-header"><h4>Request Status Summary</h4></div>
+      <div id="ovStatusSummary"></div>
+    </div>
+
+    <!-- Depts at a glance -->
+    <div class="data-card">
+      <div class="card-header">
+        <h4>Departments at a Glance</h4>
+        <button class="btn btn-ghost btn-sm" onclick="showView('departments')"><i class="fa-solid fa-arrow-right"></i> View All</button>
+      </div>
+      <div class="ov-dept-grid" id="ovDeptGrid"></div>
+    </div>
+
+    <!-- Bar chart -->
+    <div class="data-card">
+      <div class="card-header"><h4>Department Distribution</h4></div>
+      <div class="chart-wrap" id="deptChart" style="padding-bottom:28px;">  </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ DEPARTMENTS ══════════════ -->
+  <section id="view-departments" class="content-body">
+    <div class="dept-grid" id="deptCardsGrid"></div>
+
+    <!-- Dept detail (shown below cards when clicked) -->
+    <div id="deptDetailInline" style="display:none;margin-top:24px;">
+      <div class="data-card">
+        <div class="card-header">
+          <h4 id="det-title">Department</h4>
+          <button class="btn btn-ghost btn-sm" onclick="hideDeptDetail()"><i class="fa-solid fa-xmark"></i> Close</button>
+        </div>
+        <div class="coord-banner">
+          <div class="coord-avatar" id="det-icon">N/A</div>
+          <div class="coord-info">
+            <p style="font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px;">TPO Coordinator</p>
+            <h3 id="det-coord-name">—</h3>
+            <p id="det-coord-desg"></p>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;">
+              <span id="det-coord-email" style="font-size:12.5px;color:var(--muted);"></span>
+              <span id="det-coord-phone" style="font-size:12.5px;color:var(--muted);"></span>
+            </div>
+          </div>
+        </div>
+        <div class="dept-stat-grid">
+          <div class="dept-stat-box dsb-blue"><span class="dsb-num" id="det-total">—</span><div class="dsb-lbl">Total Students</div></div>
+          <div class="dept-stat-box dsb-green"><span class="dsb-num" id="det-comp">—</span><div class="dsb-lbl">Completed</div></div>
+          <div class="dept-stat-box dsb-yellow"><span class="dsb-num" id="det-sched">—</span><div class="dsb-lbl">Scheduled</div></div>
+          <div class="dept-stat-box dsb-gray"><span class="dsb-num" id="det-pend">—</span><div class="dsb-lbl">Pending</div></div>
+        </div>
+        <div style="margin-top:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-bottom:7px;">
+            <span>Overall Progress</span><span id="det-perc-text" style="color:var(--primary);">0%</span>
+          </div>
+          <div class="prog-bar-wrap">
+            <div class="prog-bar-fill" id="det-perc-bar" style="width:0%;background:var(--primary);"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ REQUESTS ══════════════ -->
+  <section id="view-requests" class="content-body">
+    <div class="req-stat-grid">
+      <div class="req-stat-card c-total"><div class="rsc-icon"><i class="fa-solid fa-layer-group"></i></div><div class="rsc-label">Total</div><div class="rsc-value" id="rscTotal">—</div></div>
+      <div class="req-stat-card c-pending"><div class="rsc-icon"><i class="fa-solid fa-clock"></i></div><div class="rsc-label">Pending</div><div class="rsc-value" id="rscPending">—</div></div>
+      <div class="req-stat-card c-confirmed"><div class="rsc-icon"><i class="fa-solid fa-circle-check"></i></div><div class="rsc-label">Confirmed</div><div class="rsc-value" id="rscConfirmed">—</div></div>
+      <div class="req-stat-card c-cancel"><div class="rsc-icon"><i class="fa-solid fa-ban"></i></div><div class="rsc-label">Cancelled</div><div class="rsc-value" id="rscCanceled">—</div></div>
+      <div class="req-stat-card c-sched"><div class="rsc-icon"><i class="fa-solid fa-calendar-day"></i></div><div class="rsc-label">Today</div><div class="rsc-value" id="rscToday">—</div></div>
+      <div class="req-stat-card c-rate"><div class="rsc-icon"><i class="fa-solid fa-chart-pie"></i></div><div class="rsc-label">Completion %</div><div class="rsc-value" id="rscRate">—</div></div>
+    </div>
+
+    <div class="data-card">
+      <div class="card-header">
+        <h4>Interview Requests</h4>
+        <button class="btn btn-p btn-sm" onclick="showView('schedule')"><i class="fa-solid fa-calendar-plus"></i> Schedule</button>
+      </div>
+      <div class="info-note"><i class="fa-solid fa-circle-info"></i> When admin schedules or reschedules a slot, use <strong>Confirm Slot</strong> to acknowledge it.</div>
+      <div class="filter-bar">
+        <div class="fg"><label>Status</label>
+          <select id="fStatus" onchange="applyFilters()">
+            <option value="">All Statuses</option>
+            <option>Pending</option><option>Confirmed</option><option>Rescheduled</option><option>Cancelled</option>
+          </select></div>
+        <div class="fg"><label>Department</label>
+          <select id="fDept" onchange="applyFilters()"><option value="">All Departments</option></select></div>
+        <div class="fg"><label>Date</label>
+          <input type="date" id="fDate" onchange="applyFilters()"></div>
+        <div class="fg"><label>Search</label>
+          <input type="text" id="fSearch" placeholder="Dept or coordinator…" oninput="applyFilters()"></div>
+        <button class="btn btn-ghost btn-sm" style="align-self:flex-end;" onclick="resetFilters()"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+      </div>
+      <div class="chip-row" id="activeChips"></div>
+      <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:10px;" id="reqCount"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Department</th><th>TPO Coordinator</th><th>Expertise</th><th>Time Slot</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="reqTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ SCHEDULE ══════════════ -->
+  <section id="view-schedule" class="content-body">
+    <div class="data-card">
+      <div class="card-header"><h4><i class="fa-solid fa-calendar-plus" style="color:var(--secondary);"></i> Schedule Interview</h4></div>
+      <form id="schedForm" onsubmit="handleSchedSubmit(event)" novalidate>
+
+        <div class="form-group">
+          <label>Select Department(s) <span style="color:var(--danger);">*</span></label>
+          <div class="cb-grid" id="deptCbGrid"></div>
+          <div class="tag-row" id="deptCbTags"></div>
+        </div>
+
+        <div class="form-group" style="margin-top:18px;">
+          <label>Expertise / Domain <span style="color:var(--danger);">*</span></label>
+          <div class="cb-grid" id="expertiseCbGrid">
+            <div class="cb-item" onclick="toggleCb(this)"><input type="checkbox" value="Java &amp; Spring Boot" onchange="syncExpTags()"><label>Java &amp; Spring Boot</label></div>
+            <div class="cb-item" onclick="toggleCb(this)"><input type="checkbox" value="Data Structures &amp; Algorithms" onchange="syncExpTags()"><label>Data Structures &amp; Algorithms</label></div>
+            <div class="cb-item" onclick="toggleCb(this)"><input type="checkbox" value="System Design" onchange="syncExpTags()"><label>System Design</label></div>
+            <div class="cb-item" onclick="toggleCb(this)"><input type="checkbox" value="Frontend Development" onchange="syncExpTags()"><label>Frontend Development</label></div>
+            <div class="cb-item" onclick="toggleCb(this)"><input type="checkbox" value="Cloud &amp; DevOps" onchange="syncExpTags()"><label>Cloud &amp; DevOps</label></div>
+            <div class="cb-item" onclick="toggleCb(this)"><input type="checkbox" value="Machine Learning &amp; AI" onchange="syncExpTags()"><label>Machine Learning &amp; AI</label></div>
+          </div>
+          <!-- custom domain add -->
+          <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="text" id="customDomainInput" placeholder="Add custom domain…"
+              style="padding:7px 11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;outline:none;flex:1;min-width:180px;"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomDomain();}"
+              onfocus="this.style.borderColor='var(--secondary)'" onblur="this.style.borderColor='var(--border)'">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="addCustomDomain()"><i class="fa-solid fa-plus"></i> Add Domain</button>
+          </div>
+          <div class="tag-row" id="expTags"></div>
+        </div>
+
+        <div class="form-row" style="margin-top:18px;">
+          <div class="form-group"><label>Start Date &amp; Time <span style="color:var(--danger);">*</span></label>
+            <input type="datetime-local" id="startDT" required></div>
+          <div class="form-group"><label>End Date &amp; Time <span style="color:var(--danger);">*</span></label>
+            <input type="datetime-local" id="endDT" required></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Contact Person <span style="color:var(--danger);">*</span></label>
+            <input type="text" id="contactPerson" placeholder="Placement Officer Name" required></div>
+          <div class="form-group"><label>Contact Email <span style="color:var(--danger);">*</span></label>
+            <input type="email" id="contactEmail" placeholder="placement@college.edu" required></div>
+        </div>
+        <div class="form-group"><label>Remarks (Optional)</label>
+          <textarea id="schedRemarks" placeholder="Any instructions for the platform admin…"></textarea></div>
+        <button type="submit" class="btn btn-p" style="margin-top:6px;"><i class="fa-solid fa-calendar-check"></i> Schedule Interview</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ══════════════ SETTINGS ══════════════ -->
+  <section id="view-settings" class="content-body">
+
+    <!-- Institute Branding -->
+    <div class="data-card">
+      <div class="card-header"><h4>Institute Branding</h4></div>
+
+      <!-- Current logo preview -->
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:20px;">
+        <div id="logoPreviewWrap" style="width:88px;height:88px;border-radius:var(--radius);
+          border:2px solid var(--border);background:var(--bg);display:grid;place-items:center;overflow:hidden;flex-shrink:0;">
+          <img id="logoPreviewImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:contain;">
+          <i class="fa-solid fa-graduation-cap" id="logoPlaceholderIcon" style="font-size:2rem;color:var(--muted);"></i>
+        </div>
+        <div>
+          <p style="font-size:13.5px;font-weight:700;color:var(--dark);margin-bottom:4px;" id="logoInstNameDisplay">ABC Institute of Technology</p>
+          <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">Upload your institute logo to display it on the dashboard and reports.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <label for="logoFileInput" style="display:inline-flex;align-items:center;gap:6px;
+              padding:7px 14px;background:var(--bg);border:1.5px solid var(--border);
+              border-radius:var(--radius-sm);font-size:13px;font-weight:700;color:var(--primary);
+              cursor:pointer;transition:var(--transition);"
+              onmouseover="this.style.background='#EFF6FF';this.style.borderColor='var(--primary)'"
+              onmouseout="this.style.background='var(--bg)';this.style.borderColor='var(--border)'">
+              <i class="fa-solid fa-upload"></i> Upload Logo
+            </label>
+            <input type="file" id="logoFileInput" accept="image/*" style="display:none;" onchange="handleLogoUpload(event)">
+            <button type="button" class="btn btn-danger-outline btn-sm" id="removeLogoBtn"
+              style="display:none;" onclick="removeLogo()">
+              <i class="fa-solid fa-trash"></i> Remove
+            </button>
+          </div>
+          <p style="font-size:11.5px;color:var(--muted);margin-top:8px;">
+            <i class="fa-solid fa-circle-info" style="color:var(--secondary);"></i>
+            PNG, JPG, SVG · Recommended 200×200 px · Max 2 MB
+          </p>
+        </div>
+      </div>
+
+      <!-- Institute display name (editable) -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Institute Display Name</label>
+          <input type="text" id="instDisplayName" placeholder="e.g. ABC Institute of Technology">
+        </div>
+        <div class="form-group">
+          <label>Official Website</label>
+          <input type="url" id="instWebsite" placeholder="https://institute.edu">
+        </div>
+      </div>
+      <button class="btn btn-s" onclick="saveBranding()"><i class="fa-solid fa-floppy-disk"></i> Save Branding</button>
+    </div>
+
+    <!-- Password -->
+    <div class="data-card">
+      <div class="card-header"><h4>Change Password</h4></div>
+      <div class="form-row">
+        <div class="form-group"><label>Current Password</label><input type="password" id="curPass" placeholder="Current password"></div>
+        <div></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>New Password</label><input type="password" id="newPass" placeholder="Min. 8 characters"></div>
+        <div class="form-group"><label>Confirm New Password</label><input type="password" id="confirmPass" placeholder="Re-enter password"></div>
+      </div>
+      <button class="btn btn-s" onclick="changePassword()"><i class="fa-solid fa-lock"></i> Update Password</button>
+    </div>
+
+    <!-- Manage Departments -->
+    <div class="data-card">
+      <div class="card-header"><h4>Manage Departments</h4></div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <input type="text" id="newDeptInput" placeholder="New department name"
+          style="flex:1;padding:9px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13.5px;outline:none;min-width:180px;"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addDept();}"
+          onfocus="this.style.borderColor='var(--secondary)'" onblur="this.style.borderColor='var(--border)'">
+        <button class="btn btn-p" onclick="addDept()"><i class="fa-solid fa-plus"></i> Add</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Department Name</th><th>Coordinator</th><th style="width:100px;">Action</th></tr></thead>
+          <tbody id="deptTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script> -->
+<script th:src="@{/js/auth.js}"></script>
+<script th:src="@{/js/institute-dashboard.js}"></script>
+</body>
+</html>

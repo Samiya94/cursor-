@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mentor Dashboard | Interview Platform</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/mentor-dashboard.css}">
+</head>
+<body>
+
+<!-- SETUP MODAL -->
+<div class="modal-overlay" id="setupModal">
+    <div class="modal wide">
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="width:52px;height:52px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:14px;display:grid;place-items:center;margin:0 auto 12px;">
+                <i class="fa-solid fa-user-graduate" style="color:#fff;font-size:1.4rem;"></i>
+            </div>
+            <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:6px;">Welcome, Mentor! Quick Setup</h2>
+            <p style="font-size:13px;color:var(--muted);">Generate your department's student registration link.</p>
+        </div>
+        <div class="info-note"><i class="fa-solid fa-circle-info"></i>
+            <span>Make sure your Institute Admin has generated a registration link first from <strong>Institute Dashboard → Quick Actions → Generate Registration Link</strong>.</span>
+        </div>
+        <div id="setupLinkArea" style="margin-bottom:16px;">
+            <div style="background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:18px;text-align:center;color:var(--muted);font-size:13px;">
+                <i class="fa-solid fa-link" style="font-size:1.4rem;margin-bottom:8px;display:block;opacity:.4;"></i>
+                Click <strong>Generate Link</strong> below to create your student registration link.
+            </div>
+        </div>
+        <div class="setup-footer">
+            <button class="btn-setup-skip" onclick="skipSetup()">Skip for now</button>
+            <button class="btn-setup-primary" id="setupPrimaryBtn" onclick="setupGenerateLink()">
+                <i class="fa-solid fa-link"></i> Generate Student Link
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- LOGOUT MODAL -->
+<div class="modal-overlay" id="logoutModal" onclick="if(event.target===this)closeOverlay('logoutModal')">
+    <div class="logout-modal">
+        <h3>Confirm Logout</h3>
+        <p>Are you sure you want to leave the platform?</p>
+        <label style="display:flex;align-items:center;gap:7px;justify-content:center;font-size:13px;color:var(--muted);cursor:pointer;margin-bottom:20px;">
+            <input type="checkbox" id="skipLogout" style="width:14px;height:14px;accent-color:var(--primary);"> Don't ask me again
+        </label>
+        <div style="display:flex;gap:10px;">
+            <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="closeOverlay('logoutModal')">Cancel</button>
+            <button class="btn btn-danger" style="flex:1;justify-content:center;" onclick="confirmLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+        </div>
+    </div>
+</div>
+
+<!-- COPY LINK MODAL -->
+<div class="modal-overlay" id="copyLinkModal" onclick="if(event.target===this)closeOverlay('copyLinkModal')">
+    <div class="modal narrow" style="text-align:center;">
+        <div class="modal-icon success"><i class="fa-solid fa-copy"></i></div>
+        <h3 style="margin-bottom:6px;">Link Copied!</h3>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:10px;">Student registration link copied to clipboard.</p>
+        <div id="copyLinkPreview" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;font-size:12px;color:var(--dark);word-break:break-all;margin-bottom:18px;text-align:left;"></div>
+        <button class="btn btn-p" style="width:100%;justify-content:center;" onclick="closeOverlay('copyLinkModal')"><i class="fa-solid fa-check"></i> Done</button>
+    </div>
+</div>
+
+<!-- STUDENT DETAIL MODAL -->
+<div class="modal-overlay" id="studentDetailModal" onclick="if(event.target===this)closeOverlay('studentDetailModal')">
+    <div class="modal wide">
+        <div class="modal-header">
+            <div>
+                <h3 id="modalStudentName" style="font-size:16px;font-weight:800;"></h3>
+                <div id="modalStudentMeta" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;font-size:12px;color:var(--muted);"></div>
+            </div>
+            <div class="modal-close" onclick="closeOverlay('studentDetailModal')"><i class="fa-solid fa-xmark"></i></div>
+        </div>
+        <div id="modalBanner"></div>
+        <div class="modal-tabs">
+            <div class="modal-tab active" onclick="switchTab(this,'tabOverview')"><i class="fa-solid fa-chart-pie" style="margin-right:4px;font-size:10px;"></i>Overview</div>
+            <div class="modal-tab" onclick="switchTab(this,'tabFeedback')"><i class="fa-solid fa-comment" style="margin-right:4px;font-size:10px;"></i>Feedback</div>
+            <div class="modal-tab" onclick="switchTab(this,'tabRounds')"><i class="fa-solid fa-list-check" style="margin-right:4px;font-size:10px;"></i>Rounds</div>
+            <div class="modal-tab" onclick="switchTab(this,'tabVideo')"><i class="fa-solid fa-video" style="margin-right:4px;font-size:10px;"></i>Recording</div>
+        </div>
+        <div id="tabOverview" class="modal-tab-panel active">
+            <div class="vd-grid">
+                <div class="vd-item"><span>Overall Score</span><b id="modalScore">—</b></div>
+                <div class="vd-item"><span>Interviews Attended</span><b id="modalAttended">0</b></div>
+                <div class="vd-item"><span>Last Interview</span><b id="modalLastDate">—</b></div>
+                <div class="vd-item"><span>Performance</span><div id="modalPerfBadge" style="margin-top:4px;"></div></div>
+            </div>
+            <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;">Skill Scores</p>
+            <div id="tabSkillBars"></div>
+        </div>
+        <div id="tabFeedback" class="modal-tab-panel"><div id="feedbackContent"></div></div>
+        <div id="tabRounds" class="modal-tab-panel"><div class="round-timeline" id="roundsContent"></div></div>
+        <div id="tabVideo" class="modal-tab-panel"><div id="videoContent"></div></div>
+    </div>
+</div>
+
+<!-- SIDEBAR OVERLAY -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+    <div class="logo"><i class="fa-solid fa-chalkboard-user"></i> Mentor</div>
+    <ul class="nav-links">
+        <div class="nav-section-label">Dashboard</div>
+        <li><a onclick="showView('overview')" id="link-overview" class="active"><i class="fa-solid fa-house"></i> Overview</a></li>
+        <div class="nav-section-label">Observation</div>
+        <li><a onclick="showView('students')" id="link-students"><i class="fa-solid fa-users"></i> Students</a></li>
+        <li><a onclick="showView('reports')" id="link-reports"><i class="fa-solid fa-chart-line"></i> Performance Reports</a></li>
+        <div class="nav-section-label">Account</div>
+        <li><a onclick="showView('profile')" id="link-profile"><i class="fa-solid fa-user-circle"></i> My Profile</a></li>
+    </ul>
+    <div class="sidebar-footer">
+        <a onclick="openLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+<header>
+    <div class="header-left">
+        <button class="hamburger" id="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+        <div class="page-title-wrap">
+            <h2 id="page-title">Mentor Overview</h2>
+            <div class="breadcrumb">Mentor / <span id="breadcrumb-cur">Overview</span></div>
+        </div>
+    </div>
+    <div class="header-right">
+        <div class="notif-wrap">
+            <button class="notif-btn" onclick="toggleNotif()"><i class="fa-regular fa-bell"></i><div class="notif-dot" id="notifDot" style="display:none;"></div></button>
+            <div class="notif-panel" id="notifPanel">
+                <div class="notif-panel-hd"><b>Notifications</b><span onclick="markAllRead()">Mark all read</span></div>
+                <div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;">No notifications yet.</div>
+            </div>
+        </div>
+        <div class="user-menu-wrap">
+            <div class="user-chip" onclick="toggleUserMenu()">
+                <div class="avatar" id="headerAvatar">M</div>
+                <div style="text-align:left;display:flex;flex-direction:column;">
+                    <span style="font-weight:700;font-size:13px;line-height:1.2;" id="headerMentorName">Loading...</span>
+                    <span style="font-size:11px;color:var(--muted);" id="headerMentorDept">TPO Coordinator</span>
+                </div>
+                <i class="fa-solid fa-chevron-down chevron"></i>
+            </div>
+            <div class="user-dropdown" id="userDropdown">
+                <div class="user-dropdown-header"><p id="dropMentorName">Loading...</p><span id="dropMentorEmail"></span></div>
+                <a onclick="showView('profile');closeUserMenu()"><i class="fa-solid fa-user-circle" style="color:var(--muted);width:16px;"></i> My Profile</a>
+                <a class="danger" onclick="openLogout();closeUserMenu()"><i class="fa-solid fa-right-from-bracket" style="width:16px;"></i> Logout</a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- OVERVIEW -->
+<section id="view-overview" class="content-body active">
+    <div class="data-card">
+        <div class="card-header">
+            <h4><i class="fa-solid fa-link" style="color:var(--secondary);"></i> Student Registration Link</h4>
+            <button class="btn btn-s" onclick="generateRegLink()"><i class="fa-solid fa-link"></i> Generate Link</button>
+        </div>
+        <div id="regLinkBox" style="display:none;">
+            <div class="cred-box">
+                <span id="regLinkText" style="font-size:12.5px;word-break:break-all;"></span>
+                <button class="btn btn-outline btn-sm" onclick="copyRegLink()"><i class="fa-solid fa-copy"></i> Copy</button>
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);margin-top:8px;">
+                <i class="fa-solid fa-circle-info" style="color:var(--secondary);"></i>
+                Share this link with your department students to register for mock interviews.
+            </p>
+        </div>
+    </div>
+
+    <!-- STATS - IDs for JS to update -->
+    <div class="stat-grid-4">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#EFF6FF;color:var(--primary);"><i class="fa-solid fa-users"></i></div>
+            <p>Dept. Students</p>
+            <h3 id="statTotalStudents" style="color:var(--primary);">—</h3>
+            <div class="trend trend-neu"><i class="fa-solid fa-graduation-cap"></i> Current batch</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#F0FDFA;color:var(--secondary);"><i class="fa-solid fa-calendar-check"></i></div>
+            <p>Scheduled</p>
+            <h3 id="statScheduled" style="color:var(--secondary);">0</h3>
+            <div class="trend trend-neu"><i class="fa-solid fa-clock"></i> Pending</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#DCFCE7;color:var(--success);"><i class="fa-solid fa-circle-check"></i></div>
+            <p>Completed</p>
+            <h3 id="statCompleted" style="color:var(--success);">0</h3>
+            <div class="trend trend-neu"><i class="fa-solid fa-chart-line"></i> Total done</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#FEF3C7;color:#D97706;"><i class="fa-solid fa-star"></i></div>
+            <p>Dept. Avg Score</p>
+            <h3 id="statAvgScore" style="color:#D97706;">—</h3>
+            <div class="trend trend-neu"><i class="fa-solid fa-chart-bar"></i> Overall</div>
+        </div>
+    </div>
+
+    <div class="two-col">
+        <!-- Score Distribution - will update from real data -->
+        <div class="data-card" style="margin-bottom:0;">
+            <div class="card-header">
+                <h4>Score Distribution</h4>
+                <span class="badge bg-blue" id="distBadge">0 students</span>
+            </div>
+            <div id="scoreDistribution">
+                <p style="text-align:center;color:var(--muted);font-size:13px;padding:20px;">No interview data yet.</p>
+            </div>
+        </div>
+        <!-- Recent Activity -->
+        <div class="data-card" style="margin-bottom:0;">
+            <div class="card-header"><h4>Recent Activity</h4></div>
+            <div class="activity-list" id="recentActivity">
+                <p style="text-align:center;color:var(--muted);font-size:13px;padding:20px;">No recent activity.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upcoming Interviews -->
+    <div class="data-card">
+        <div class="card-header">
+            <h4>Upcoming Interviews</h4>
+            <button class="btn btn-ghost btn-sm" onclick="showView('students')"><i class="fa-solid fa-arrow-right"></i> View All</button>
+        </div>
+        <div class="filter-bar">
+            <div class="fg"><label>Search</label><input type="text" id="upcomingSearch" placeholder="Student name…" oninput="filterUpcoming()"></div>
+            <div class="fg"><label>Class</label>
+                <select id="upcomingClass" onchange="filterUpcoming()">
+                    <option value="">All Classes</option>
+                    <option>FY</option><option>SY</option><option>TY</option>
+                </select>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table id="upcomingTable">
+                <thead><tr><th>Student</th><th>Class</th><th>Email</th><th>CGPA</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="upcomingTableBody">
+                    <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);">Loading students...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- STUDENTS -->
+<section id="view-students" class="content-body">
+    <div class="data-card">
+        <div class="card-header"><h4>All Department Students</h4></div>
+        <div class="filter-bar">
+            <div class="fg"><label>Search</label><input type="text" id="allStudentSearch" placeholder="Student name…" oninput="filterAllStudents()"></div>
+            <div class="fg"><label>Class</label>
+                <select id="allClassFilter" onchange="filterAllStudents()">
+                    <option value="">All Classes</option>
+                    <option>FY</option><option>SY</option><option>TY</option>
+                </select>
+            </div>
+            <button class="btn btn-ghost btn-sm" style="align-self:flex-end;"
+                onclick="document.getElementById('allStudentSearch').value='';document.getElementById('allClassFilter').value='';filterAllStudents();">
+                <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+        </div>
+        <div class="table-wrap">
+            <table id="allStudentTable">
+                <thead><tr><th>Student Name</th><th>Class</th><th>Email</th><th>Phone</th><th>CGPA</th><th>Skills</th><th>Action</th></tr></thead>
+                <tbody id="allStudentTableBody">
+                    <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted);">Loading students...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- REPORTS -->
+<section id="view-reports" class="content-body">
+    <div class="stat-grid-4">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#F0FDFA;color:var(--secondary);"><i class="fa-solid fa-chart-bar"></i></div>
+            <p>Dept. Avg Score</p>
+            <h3 id="reportAvgScore" style="color:var(--secondary);">—</h3>
+            <div class="trend trend-neu"><i class="fa-solid fa-arrow-right"></i> Overall</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#DCFCE7;color:var(--success);"><i class="fa-solid fa-trophy"></i></div>
+            <p>Total Students</p>
+            <h3 id="reportTotal" style="color:var(--success);">—</h3>
+            <div class="trend trend-neu"><i class="fa-solid fa-users"></i> In department</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#FEF3C7;color:#D97706;"><i class="fa-solid fa-thumbs-up"></i></div>
+            <p>Interviews Done</p>
+            <h3 id="reportDone" style="color:#D97706;">0</h3>
+            <div class="trend trend-neu"><i class="fa-solid fa-arrow-right"></i> Total completed</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#FEE2E2;color:var(--danger);"><i class="fa-solid fa-circle-exclamation"></i></div>
+            <p>Not Evaluated</p>
+            <h3 id="reportNotEval" style="color:var(--danger);">—</h3>
+            <div class="trend trend-neu"><i class="fa-solid fa-clock"></i> Pending evaluation</div>
+        </div>
+    </div>
+
+    <div class="two-col">
+        <div class="data-card" style="margin-bottom:0;">
+            <div class="card-header"><h4>Interview Activity Summary</h4></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:var(--radius-sm);padding:15px;text-align:center;">
+                    <p style="font-size:.7rem;color:#166534;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Total Students</p>
+                    <h3 id="actTotal" style="font-size:1.8rem;color:var(--success);font-weight:800;">—</h3>
+                </div>
+                <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:var(--radius-sm);padding:15px;text-align:center;">
+                    <p style="font-size:.7rem;color:#92400E;font-weight:700;text-transform:uppercase;margin-bottom:4px;">With Skills</p>
+                    <h3 id="actWithSkills" style="font-size:1.8rem;color:#D97706;font-weight:800;">0</h3>
+                </div>
+                <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--radius-sm);padding:15px;text-align:center;">
+                    <p style="font-size:.7rem;color:#991B1B;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Not Evaluated</p>
+                    <h3 id="actNotEval" style="font-size:1.8rem;color:var(--danger);font-weight:800;">—</h3>
+                </div>
+                <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:var(--radius-sm);padding:15px;text-align:center;">
+                    <p style="font-size:.7rem;color:#1E40AF;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Departments</p>
+                    <h3 id="actDept" style="font-size:1.8rem;color:var(--primary);font-weight:800;">1</h3>
+                </div>
+            </div>
+        </div>
+        <div class="data-card" style="margin-bottom:0;">
+            <div class="card-header"><h4>Performance Distribution</h4></div>
+            <div style="height:200px;"><canvas id="distributionChart"></canvas></div>
+        </div>
+    </div>
+
+    <div class="two-col">
+        <div class="data-card" style="margin-bottom:0;">
+            <div class="card-header"><h4>Avg Score Trend</h4><span class="badge bg-blue">Last 6 Months</span></div>
+            <div style="height:210px;"><canvas id="scoreTrendChart"></canvas></div>
+        </div>
+        <div class="data-card" style="margin-bottom:0;">
+            <div class="card-header"><h4>Interviews per Month</h4></div>
+            <div style="height:210px;"><canvas id="interviewBarChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Student Performance Summary from real backend data -->
+    <div class="data-card">
+        <div class="card-header">
+            <h4>Student Performance Summary</h4>
+            <span style="font-size:12px;color:var(--muted);font-style:italic;">Live data from backend</span>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Student</th><th>Class</th><th>Email</th><th>CGPA</th><th>Skills</th><th>Status</th><th>Detail</th></tr></thead>
+                <tbody id="reportStudentTableBody">
+                    <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted);">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- MY PROFILE -->
+<section id="view-profile" class="content-body">
+    <div class="profile-hero">
+        <div style="position:relative;flex-shrink:0;z-index:1;"
+            onmouseenter="document.getElementById('profilePhotoOverlay').style.display='flex'"
+            onmouseleave="document.getElementById('profilePhotoOverlay').style.display='none'">
+            <div class="ph-avatar" id="profileAvatarBig" onclick="document.getElementById('profilePhotoInput').click()" style="cursor:pointer;">
+                <span id="profileAvatarText">M</span>
+                <img id="profilePhotoImg" src="" alt="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;">
+                <div id="profilePhotoOverlay" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;border-radius:50%;">
+                    <i class="fa-solid fa-camera" style="color:#fff;font-size:1.1rem;"></i>
+                </div>
+            </div>
+            <div onclick="document.getElementById('profilePhotoInput').click()" style="position:absolute;bottom:2px;right:2px;width:24px;height:24px;background:#fff;border-radius:50%;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:2;">
+                <i class="fa-solid fa-camera" style="font-size:10px;color:var(--primary);"></i>
+            </div>
+            <input type="file" id="profilePhotoInput" accept="image/*" style="display:none;" onchange="handleProfilePhoto(this)">
+        </div>
+        <div class="ph-info">
+            <h2 id="profileHeroName">Loading...</h2>
+            <p id="profileHeroSub">TPO Coordinator</p>
+            <div class="ph-badges">
+                <div class="ph-badge"><i class="fa-solid fa-envelope"></i><span id="profileHeroEmail"></span></div>
+                <div class="ph-badge"><i class="fa-solid fa-sitemap"></i><span id="profileHeroDept"></span></div>
+            </div>
+            <p style="font-size:11.5px;opacity:.65;margin-top:7px;"><i class="fa-solid fa-camera"></i> Click photo to update</p>
+        </div>
+        <button class="btn" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);align-self:flex-start;position:relative;z-index:1;" onclick="toggleEditMode()">
+            <i class="fa-solid fa-pen" id="editBtnIcon"></i><span id="editBtnText">Edit Profile</span>
+        </button>
+    </div>
+
+    <div class="profile-grid">
+        <div class="data-card" style="margin-bottom:0;">
+            <div class="card-header" style="margin-bottom:14px;"><h4><i class="fa-solid fa-user" style="color:var(--secondary);margin-right:6px;"></i>Personal Information</h4></div>
+            <div class="form-group"><label>Full Name</label><input class="form-field" id="pf_name" disabled></div>
+            <div class="form-group"><label>Email Address</label><input class="form-field" id="pf_email" type="email" disabled></div>
+            <div class="form-group"><label>Phone Number</label><input class="form-field" id="pf_phone" type="tel" disabled></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Designation</label><input class="form-field" id="pf_designation" disabled></div>
+        </div>
+        <div class="data-card" style="margin-bottom:0;">
+            <div class="card-header" style="margin-bottom:14px;"><h4><i class="fa-solid fa-briefcase" style="color:var(--secondary);margin-right:6px;"></i>Professional Information</h4></div>
+            <div class="form-group"><label>Department</label><input class="form-field" id="pf_dept" disabled></div>
+            <div class="form-group"><label>Institute</label><input class="form-field" id="pf_institute" disabled></div>
+        </div>
+    </div>
+
+    <div id="profileActionBar" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;align-items:center;justify-content:flex-end;gap:10px;">
+        <button class="btn btn-ghost" onclick="cancelEdit()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+        <button class="btn btn-s" onclick="saveProfile()"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+    </div>
+
+    <div class="profile-grid">
+        <div class="data-card" style="margin-bottom:0;">
+            <div class="card-header" style="margin-bottom:14px;"><h4><i class="fa-solid fa-lock" style="color:var(--secondary);margin-right:6px;"></i>Change Password</h4></div>
+            <div class="form-group"><label>Current Password</label>
+                <div style="position:relative;"><input class="form-field" id="pwd_current" type="password" placeholder="Enter current password" style="padding-right:38px;">
+                <i class="fa-solid fa-eye" id="toggleCur" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);cursor:pointer;font-size:13px;" onclick="togglePwd('pwd_current','toggleCur')"></i></div>
+            </div>
+            <div class="form-group"><label>New Password</label>
+                <div style="position:relative;"><input class="form-field" id="pwd_new" type="password" placeholder="Min. 8 characters" oninput="checkPwdStrength()" style="padding-right:38px;">
+                <i class="fa-solid fa-eye" id="toggleNew" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);cursor:pointer;font-size:13px;" onclick="togglePwd('pwd_new','toggleNew')"></i></div>
+                <div class="pwd-strength"><div class="pwd-bar" id="pbar1"></div><div class="pwd-bar" id="pbar2"></div><div class="pwd-bar" id="pbar3"></div></div>
+                <div class="pwd-hint" id="pwdHint">Enter a new password</div>
+            </div>
+            <div class="form-group" style="margin-bottom:16px;"><label>Confirm New Password</label>
+                <div style="position:relative;"><input class="form-field" id="pwd_confirm" type="password" placeholder="Re-enter new password" style="padding-right:38px;">
+                <i class="fa-solid fa-eye" id="toggleConf" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);cursor:pointer;font-size:13px;" onclick="togglePwd('pwd_confirm','toggleConf')"></i></div>
+            </div>
+            <button class="btn btn-p" style="width:100%;justify-content:center;" onclick="changePassword()"><i class="fa-solid fa-lock"></i> Update Password</button>
+        </div>
+        <div class="data-card" style="margin-bottom:0;">
+            <div class="card-header" style="margin-bottom:14px;"><h4><i class="fa-solid fa-bell" style="color:var(--secondary);margin-right:6px;"></i>Notification Preferences</h4></div>
+            <div class="notif-pref-item"><div><div style="font-size:13px;font-weight:700;">Critical Performance Alerts</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Notify when a student scores Poor</div></div><label class="toggle-switch"><input type="checkbox" checked onchange="saveNotifPref(this,'critical_alerts')"><span class="toggle-slider"></span></label></div>
+            <div class="notif-pref-item"><div><div style="font-size:13px;font-weight:700;">Interview Scheduled</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Remind 24 hrs before an interview</div></div><label class="toggle-switch"><input type="checkbox" checked onchange="saveNotifPref(this,'interview_reminder')"><span class="toggle-slider"></span></label></div>
+            <div class="notif-pref-item"><div><div style="font-size:13px;font-weight:700;">Weekly Summary Report</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Receive a weekly digest every Monday</div></div><label class="toggle-switch"><input type="checkbox" onchange="saveNotifPref(this,'weekly_report')"><span class="toggle-slider"></span></label></div>
+            <div class="notif-pref-item"><div><div style="font-size:13px;font-weight:700;">Missed Interview Alerts</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Notify when a student misses a session</div></div><label class="toggle-switch"><input type="checkbox" checked onchange="saveNotifPref(this,'missed_alerts')"><span class="toggle-slider"></span></label></div>
+        </div>
+    </div>
+</section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script th:src="@{/js/auth.js}"></script>
+<script th:src="@{/js/mentor-dashboard.js}"></script>
+</body>
+</html>

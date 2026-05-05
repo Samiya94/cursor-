@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <title>Document</title>
+</head>
+<body>
+    <!-- ════════════ NAVBAR ════════════ -->
+<nav id="mainNav">
+  <div class="nav-logo">
+    <i class="fa-solid fa-microphone-lines"></i> Interview Platform
+  </div>
+  <ul class="nav-links">
+    <li><a href="#how-it-works">How It Works</a></li>
+    <li><a href="#interviewers">Interviewers</a></li>
+    <li><a href="#institutes">Institutes</a></li>
+    <li><a href="#about">About</a></li>
+    <li><a th:href="@{/login}" class="btn-nav-login">Login</a></li>
+    <li><a th:href="@{/register}" class="btn-nav-register">Register <i class="fa-solid fa-arrow-right" style="font-size:11px;"></i></a></li>
+  </ul>
+  <button class="hamburger" id="hamburger" onclick="toggleMobile()" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+</nav>
+
+<!-- mobile menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#how-it-works" onclick="closeMobile()">How It Works</a>
+  <a href="#interviewers" onclick="closeMobile()">Interviewers</a>
+  <a href="#institutes" onclick="closeMobile()">Institutes</a>
+  <a href="#about" onclick="closeMobile()">About</a>
+  <a th:href="@{/login}" style="color:var(--primary);font-weight:700;">Login</a>
+  <a th:href="@{/register}" style="background:var(--secondary);color:#fff;padding:12px 14px;border-radius:var(--radius-sm);">Register (Institute / Interviewer)</a>
+</div>
+
+<!-- ════════════ HERO ════════════ -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-content fade-up">
+      <div class="hero-badge"><i class="fa-solid fa-circle-check"></i> Trusted by 24+ Institutes</div>
+      <h1>Bridging <span>Industry</span> &amp; Academia Through Structured Evaluation</h1>
+      <p>Empowering students with real-world interview feedback from industry veterans while providing institutes with data-driven placement metrics.</p>
+      <div class="hero-btns">
+        <a th:href="@{/login}" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+        <a th:href="@{/register}" class="btn btn-secondary"><i class="fa-solid fa-building-columns"></i> Register Institute / Interviewer</a>
+        <a href="#how-it-works" class="btn btn-outline">Learn More</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><span class="num">1,200+</span><span class="lbl">Students</span></div>
+        <div class="hero-stat"><span class="num">14</span><span class="lbl">Expert Interviewers</span></div>
+        <div class="hero-stat"><span class="num">856</span><span class="lbl">Interviews Done</span></div>
+        <div class="hero-stat"><span class="num">4.8★</span><span class="lbl">Avg Rating</span></div>
+      </div>
+    </div>
+
+    <!-- Floating mock card -->
+    <div class="hero-visual fade-up" style="animation-delay:.2s;">
+      <div class="float-chip top-left"><i class="fa-solid fa-circle-check" style="color:var(--success);"></i> Evaluation Submitted</div>
+      <div class="hero-card-mock">
+        <div class="mock-header">
+          <div class="mock-avatar">AR</div>
+          <div>
+            <div class="mock-name">Alex Rivera</div>
+            <div class="mock-sub">B.Tech CS · Final Year</div>
+          </div>
+          <span style="margin-left:auto;background:#DCFCE7;color:#166534;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;">Live</span>
+        </div>
+        <div class="mock-badge-row">
+          <span class="mock-badge mb-blue">Full Stack</span>
+          <span class="mock-badge mb-teal">Machine Learning</span>
+          <span class="mock-badge mb-green">Python</span>
+        </div>
+        <div class="mock-metrics">
+          <div class="mock-metric"><span class="m-val">8.7</span><span class="m-lbl">CGPA</span></div>
+          <div class="mock-metric"><span class="m-val">3</span><span class="m-lbl">Projects</span></div>
+          <div class="mock-metric"><span class="m-val">45m</span><span class="m-lbl">Session</span></div>
+        </div>
+        <div class="mock-progress-label"><span>Technical</span><span style="color:var(--secondary);">8/10</span></div>
+        <div class="mock-bar"><div class="mock-bar-fill" style="width:80%;"></div></div>
+        <div class="mock-progress-label"><span>Communication</span><span style="color:var(--secondary);">7/10</span></div>
+        <div class="mock-bar"><div class="mock-bar-fill" style="width:70%;"></div></div>
+        <div class="mock-progress-label"><span>Domain Knowledge</span><span style="color:var(--secondary);">9/10</span></div>
+        <div class="mock-bar"><div class="mock-bar-fill" style="width:90%;"></div></div>
+        <button class="mock-btn">Submit Evaluation</button>
+      </div>
+      <div class="float-chip bot-right"><i class="fa-solid fa-video" style="color:var(--primary);"></i> Session Recording</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ STATS ════════════ -->
+<section class="section section-dark">
+  <div class="section-title">
+    <div class="tag"><i class="fa-solid fa-chart-line"></i> Platform Performance</div>
+    <h2>Numbers That Speak</h2>
+    <p>Real results from institutes and students who trust our platform.</p>
+  </div>
+  <div class="stats-bar fade-up">
+    <div class="stat-block">
+      <span class="big-num">24</span>
+      <div class="big-lbl">Partner Institutes</div>
+      <div class="big-trend"><i class="fa-solid fa-arrow-up"></i> 3 this month</div>
+    </div>
+    <div class="stat-block">
+      <span class="big-num">1,205</span>
+      <div class="big-lbl">Students Evaluated</div>
+      <div class="big-trend"><i class="fa-solid fa-arrow-up"></i> 48 new this week</div>
+    </div>
+    <div class="stat-block">
+      <span class="big-num">856</span>
+      <div class="big-lbl">Total Interviews</div>
+      <div class="big-trend"><i class="fa-solid fa-arrow-up"></i> 12% vs last month</div>
+    </div>
+    <div class="stat-block">
+      <span class="big-num">94%</span>
+      <div class="big-lbl">On-time Completion</div>
+      <div class="big-trend"><i class="fa-solid fa-arrow-up"></i> Industry leading</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ HOW IT WORKS ════════════ -->
+<section class="section" id="how-it-works">
+  <div class="section-title fade-up">
+    <div class="tag"><i class="fa-solid fa-gears"></i> Process</div>
+    <h2>How the Platform Works</h2>
+    <p>A streamlined process connecting institutes, interviewers, and students in one structured platform.</p>
+  </div>
+  <div class="steps-grid">
+    <div class="step-card fade-up"><div class="step-num-circle">1</div><h4>Institute Registers</h4><p>Institutes submit a request specifying departments, student count, and preferred interview domains and window.</p></div>
+    <div class="step-card fade-up" style="transition-delay:.1s"><div class="step-num-circle">2</div><h4>Admin Assigns Interviewers</h4><p>The admin panel reviews requests, assigns domain-matched expert interviewers and schedules sessions.</p></div>
+    <div class="step-card fade-up" style="transition-delay:.2s"><div class="step-num-circle">3</div><h4>Live Interview Session</h4><p>Interviewers conduct structured sessions with each student, taking notes and reviewing their resume in real-time.</p></div>
+    <div class="step-card fade-up" style="transition-delay:.3s"><div class="step-num-circle">4</div><h4>Structured Evaluation</h4><p>After each session, interviewers complete a detailed rubric covering technical, communication and domain skills.</p></div>
+    <div class="step-card fade-up" style="transition-delay:.4s"><div class="step-num-circle">5</div><h4>Reports & Insights</h4><p>Institutes receive comprehensive student performance reports and interviewers track their session history.</p></div>
+  </div>
+</section>
+
+<!-- ════════════ WHO IT'S FOR ════════════ -->
+<section class="section section-alt" id="about">
+  <div class="section-title fade-up">
+    <div class="tag"><i class="fa-solid fa-users"></i> For Everyone</div>
+    <h2>Built for Every Stakeholder</h2>
+    <p>Whether you're a student looking for honest feedback, an expert sharing your knowledge, or an institute tracking placements.</p>
+  </div>
+  <div class="roles-grid">
+    <div class="role-card student fade-up">
+      <div class="role-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+      <h3>Students</h3>
+      <p>Get evaluated by real industry professionals and receive structured feedback that prepares you for actual job interviews.</p>
+      <div class="role-features">
+        <div class="role-feature"><i class="fa-solid fa-check-circle"></i> Structured mock interviews</div>
+        <div class="role-feature"><i class="fa-solid fa-check-circle"></i> Detailed performance scores</div>
+        <div class="role-feature"><i class="fa-solid fa-check-circle"></i> Resume reviewed by experts</div>
+        <div class="role-feature"><i class="fa-solid fa-check-circle"></i> Session recordings to review</div>
+      </div>
+      <div class="student-access-note">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>
+          <b>Access by Invite Only</b>
+          <p>Students receive a unique registration link from their institute. Contact your placement cell to get started.</p>
+        </div>
+      </div>
+    </div>
+    <div class="role-card interviewer fade-up" style="transition-delay:.1s">
+      <div class="role-icon"><i class="fa-solid fa-user-tie"></i></div>
+      <h3>Interviewers</h3>
+      <p>Share your industry expertise by conducting structured evaluations and help bridge the gap between campus and industry.</p>
+      <div class="role-features">
+        <div class="role-feature"><i class="fa-solid fa-check-circle"></i> Flexible scheduling</div>
+        <div class="role-feature"><i class="fa-solid fa-check-circle"></i> Structured evaluation rubric</div>
+        <div class="role-feature"><i class="fa-solid fa-check-circle"></i> Profile with ratings & reviews</div>
+        <div class="role-feature"><i class="fa-solid fa-check-circle"></i> Session history & recordings</div>
+      </div>
+      <button class="btn-role" onclick="window.location.href='/register'">Apply as Interviewer</button>
+    Apply as Interviewer
+  </button>
+    </div>
+    <div class="role-card institute fade-up" style="transition-delay:.2s">
+      <div class="role-icon"><i class="fa-solid fa-building-columns"></i></div>
+      <h3>Institutes</h3>
+      <p>Submit interview drive requests, track student performance metrics and receive comprehensive placement-readiness data.</p>
+      <div class="role-features">
+        <div class="role-feature"><i class="fa-solid fa-check-circle"></i> Bulk student interview drives</div>
+        <div class="role-feature"><i class="fa-solid fa-check-circle"></i> Department-level analytics</div>
+        <div class="role-feature"><i class="fa-solid fa-check-circle"></i> Expert interviewer matching</div>
+        <div class="role-feature"><i class="fa-solid fa-check-circle"></i> Exportable reports</div>
+      </div>
+      <button class="btn-role" onclick="window.location.href='/register'">Register Institute</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ INTERVIEWERS ════════════ -->
+<section class="section" id="interviewers">
+  <div class="section-title fade-up">
+    <div class="tag"><i class="fa-solid fa-user-tie"></i> Our Experts</div>
+    <h2>Expert Interviewers</h2>
+    <p>Learn from professionals working at top global firms across every domain.</p>
+  </div>
+  <div class="interviewers-grid">
+    <!-- Interviewer 1 -->
+    <div class="interviewer-card fade-up">
+      <div class="int-avatar-wrap">
+        <img src="https://i.pravatar.cc/150?u=john" alt="John Anderson" class="int-avatar">
+        <div class="int-status-dot"></div>
+      </div>
+      <h3>John Anderson</h3>
+      <div class="int-role">Senior Software Engineer</div>
+      <div class="int-exp"><i class="fa-solid fa-briefcase" style="font-size:11px;color:var(--muted);"></i> 8+ Years · TechCorp Solutions</div>
+      <div class="int-tags">
+        <span class="int-tag">Java</span>
+        <span class="int-tag">React</span>
+        <span class="int-tag">Full Stack</span>
+      </div>
+      <div class="int-rating">
+        <span class="stars">★★★★★</span>
+        <span class="score">4.8</span>
+        <span style="font-size:11.5px;color:var(--muted);">(142 reviews)</span>
+      </div>
+      <div class="int-stats">
+        <div class="int-stat-box"><div class="sv">156</div><div class="sl">Interviews</div></div>
+        <div class="int-stat-box"><div class="sv">94%</div><div class="sl">On-time</div></div>
+      </div>
+      <button class="btn-view-profile">View Profile</button>
+    </div>
+    <!-- Interviewer 2 -->
+    <div class="interviewer-card fade-up" style="transition-delay:.1s">
+      <div class="int-avatar-wrap">
+        <img src="https://i.pravatar.cc/150?u=priya" alt="Priya Nair" class="int-avatar">
+        <div class="int-status-dot"></div>
+      </div>
+      <h3>Priya Nair</h3>
+      <div class="int-role">Data Science Lead</div>
+      <div class="int-exp"><i class="fa-solid fa-briefcase" style="font-size:11px;color:var(--muted);"></i> 6+ Years · DataVerse Inc.</div>
+      <div class="int-tags">
+        <span class="int-tag">Python</span>
+        <span class="int-tag">ML</span>
+        <span class="int-tag">Data Science</span>
+      </div>
+      <div class="int-rating">
+        <span class="stars">★★★★★</span>
+        <span class="score">4.6</span>
+        <span style="font-size:11.5px;color:var(--muted);">(98 reviews)</span>
+      </div>
+      <div class="int-stats">
+        <div class="int-stat-box"><div class="sv">112</div><div class="sl">Interviews</div></div>
+        <div class="int-stat-box"><div class="sv">91%</div><div class="sl">On-time</div></div>
+      </div>
+      <button class="btn-view-profile">View Profile</button>
+    </div>
+    <!-- Interviewer 3 -->
+    <div class="interviewer-card fade-up" style="transition-delay:.2s">
+      <div class="int-avatar-wrap">
+        <img src="https://i.pravatar.cc/150?u=ankit" alt="Ankit Sharma" class="int-avatar">
+        <div class="int-status-dot"></div>
+      </div>
+      <h3>Ankit Sharma</h3>
+      <div class="int-role">Full Stack Architect</div>
+      <div class="int-exp"><i class="fa-solid fa-briefcase" style="font-size:11px;color:var(--muted);"></i> 10+ Years · InfoSys</div>
+      <div class="int-tags">
+        <span class="int-tag">Spring Boot</span>
+        <span class="int-tag">Node.js</span>
+        <span class="int-tag">DevOps</span>
+      </div>
+      <div class="int-rating">
+        <span class="stars">★★★★★</span>
+        <span class="score">4.9</span>
+        <span style="font-size:11.5px;color:var(--muted);">(176 reviews)</span>
+      </div>
+      <div class="int-stats">
+        <div class="int-stat-box"><div class="sv">204</div><div class="sl">Interviews</div></div>
+        <div class="int-stat-box"><div class="sv">97%</div><div class="sl">On-time</div></div>
+      </div>
+      <button class="btn-view-profile">View Profile</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ INSTITUTES ════════════ -->
+<section class="section section-alt" id="institutes">
+  <div class="section-title fade-up">
+    <div class="tag"><i class="fa-solid fa-building-columns"></i> Partners</div>
+    <h2>Partner Institutes</h2>
+    <p>Leading universities and colleges streamlining their placement evaluations with our platform.</p>
+  </div>
+  <div class="inst-filters fade-up">
+    <input type="text" placeholder="Search institute or city..." id="instSearch" oninput="filterInstitutes()">
+    <select id="instDeptFilter" onchange="filterInstitutes()">
+      <option value="">All Departments</option>
+      <option>Computer Science</option>
+      <option>Data Science</option>
+      <option>Mechanical</option>
+      <option>Business</option>
+    </select>
+  </div>
+  <div class="institutes-grid" id="institutesGrid">
+    <div class="inst-card fade-up" data-name="global tech university" data-dept="computer science">
+      <div class="inst-logo blue"><i class="fa-solid fa-building-columns"></i></div>
+      <div class="inst-info">
+        <h3>Global Tech University</h3>
+        <p>CS, IT · 280 Students · Mumbai</p>
+        <div class="inst-info-tags"><span class="inst-info-tag">Full Stack</span><span class="inst-info-tag">Java</span><span class="inst-info-tag">ML</span></div>
+      </div>
+      <i class="fa-solid fa-arrow-right inst-arrow"></i>
+    </div>
+    <div class="inst-card fade-up" style="transition-delay:.1s" data-name="apex institute of tech" data-dept="data science">
+      <div class="inst-logo teal"><i class="fa-solid fa-school"></i></div>
+      <div class="inst-info">
+        <h3>Apex Institute of Tech</h3>
+        <p>Science, CS · 190 Students · Pune</p>
+        <div class="inst-info-tags"><span class="inst-info-tag">Data Science</span><span class="inst-info-tag">Python</span></div>
+      </div>
+      <i class="fa-solid fa-arrow-right inst-arrow"></i>
+    </div>
+    <div class="inst-card fade-up" style="transition-delay:.2s" data-name="st. xavier's college" data-dept="computer science">
+      <div class="inst-logo green"><i class="fa-solid fa-landmark"></i></div>
+      <div class="inst-info">
+        <h3>St. Xavier's College</h3>
+        <p>CS · 120 Students · Mumbai</p>
+        <div class="inst-info-tags"><span class="inst-info-tag">Java Backend</span><span class="inst-info-tag">Spring Boot</span></div>
+      </div>
+      <i class="fa-solid fa-arrow-right inst-arrow"></i>
+    </div>
+    <div class="inst-card fade-up" style="transition-delay:.3s" data-name="vjti mumbai" data-dept="mechanical">
+      <div class="inst-logo orange"><i class="fa-solid fa-cogs"></i></div>
+      <div class="inst-info">
+        <h3>VJTI Mumbai</h3>
+        <p>IT, ME · 210 Students · Mumbai</p>
+        <div class="inst-info-tags"><span class="inst-info-tag">DevOps</span><span class="inst-info-tag">React</span></div>
+      </div>
+      <i class="fa-solid fa-arrow-right inst-arrow"></i>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ TESTIMONIALS ════════════ -->
+<section class="section">
+  <div class="section-title fade-up">
+    <div class="tag"><i class="fa-solid fa-quote-left"></i> Reviews</div>
+    <h2>What Students Say</h2>
+    <p>Honest feedback from students who have gone through the interview experience.</p>
+  </div>
+  <div class="testimonials-grid">
+    <div class="testimonial-card fade-up">
+      <div class="t-stars">★★★★★</div>
+      <div class="t-quote">"The structured evaluation gave me clear insight into exactly where I need to improve. The feedback was far more actionable than anything I'd received before."</div>
+      <div class="t-author">
+        <div class="t-avatar" style="background:var(--primary);">AR</div>
+        <div><div class="t-name">Alex Rivera</div><div class="t-role">B.Tech CS · Global Tech University</div></div>
+      </div>
+    </div>
+    <div class="testimonial-card fade-up" style="transition-delay:.1s">
+      <div class="t-stars">★★★★★</div>
+      <div class="t-quote">"Having a real industry professional review my resume and ask domain-specific questions was invaluable. I felt genuinely prepared for placements afterwards."</div>
+      <div class="t-author">
+        <div class="t-avatar" style="background:var(--secondary);">SK</div>
+        <div><div class="t-name">Sneha Kulkarni</div><div class="t-role">B.Tech Data Science · Apex Institute</div></div>
+      </div>
+    </div>
+    <div class="testimonial-card fade-up" style="transition-delay:.2s">
+      <div class="t-stars">★★★★<span style="color:var(--border);">★</span></div>
+      <div class="t-quote">"The interviewer was patient and the timing was well managed. Being able to watch the session recording afterward to review my answers was a fantastic feature."</div>
+      <div class="t-author">
+        <div class="t-avatar" style="background:var(--success);">RK</div>
+        <div><div class="t-name">Rohan Kumar</div><div class="t-role">B.Tech IT · St. Xavier's College</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ CTA ════════════ -->
+<section class="section section-dark">
+  <div class="cta-box fade-up">
+    <div style="width:56px;height:56px;background:#DBEAFE;border-radius:50%;display:grid;place-items:center;margin:0 auto 16px;"><i class="fa-solid fa-rocket" style="font-size:22px;color:var(--primary);"></i></div>
+    <h2>Ready to Get Started?</h2>
+    <p>Join 1,200+ students and 24 institutes already using our platform to bridge the gap between campus and industry.</p>
+    <div class="cta-btns">
+      <a th:href="@{/login}" class="btn btn-primary"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+      <a th:href="@{/register}" class="btn btn-secondary"><i class="fa-solid fa-building-columns"></i> Register Institute / Interviewer</a>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ FOOTER ════════════ -->
+<footer>
+  <div class="footer-grid">
+    <div>
+      <div class="footer-logo"><i class="fa-solid fa-microphone-lines"></i> Interview Platform</div>
+      <p class="footer-desc">Bridging the gap between academic learning and industry expectations through structured, data-driven interview evaluation.</p>
+      <div class="social-links">
+        <button class="social-btn"><i class="fa-brands fa-linkedin-in"></i></button>
+        <button class="social-btn"><i class="fa-brands fa-x-twitter"></i></button>
+        <button class="social-btn"><i class="fa-brands fa-github"></i></button>
+        <button class="social-btn"><i class="fa-solid fa-envelope"></i></button>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h4>Platform</h4>
+      <ul>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#interviewers">Expert Interviewers</a></li>
+        <li><a href="#institutes">Partner Institutes</a></li>
+        <li><a href="#">Pricing</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>For Partners</h4>
+      <ul>
+        <li><a th:href="@{/register}">Register Institute</a></li>
+        <li><a th:href="@{/register}">Join as Interviewer</a></li>
+        <li><a href="#">Mentor Guidelines</a></li>
+        <li><a href="#">Partner Dashboard</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Company</h4>
+      <ul>
+        <li><a href="#">About Us</a></li>
+        <li><a href="#">Contact Support</a></li>
+        <li><a href="#">Privacy Policy</a></li>
+        <li><a href="#">Terms &amp; Conditions</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>&copy; 2026 Interview Platform. All rights reserved.</span>
+    <span>Made with <i class="fa-solid fa-heart" style="color:var(--secondary);font-size:11px;"></i> for student success</span>
+  </div>
+</footer>
+
+    
+    <script th:src="@{/js/main.js}"></script>
+</body>
+</html>

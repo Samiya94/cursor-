@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login | Interview Platform</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/admin-login.css}">
+
+</head>
+<body>
+
+<div class="login-card">
+
+  <!-- Header -->
+  <div class="card-header">
+    <div class="header-inner">
+      <div class="logo-lockup">
+        <i class="fa-solid fa-microphone-lines"></i> Interview Platform
+      </div>
+      <div class="admin-badge-wrap">
+        <div class="admin-shield">
+          <i class="fa-solid fa-user-shield"></i>
+        </div>
+      </div>
+      <h2>Admin Portal</h2>
+      <p>Restricted access — authorised personnel only.</p>
+      <div class="access-badge">
+        <i class="fa-solid fa-circle-dot"></i> Secure Admin Access
+      </div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="card-body">
+
+    <div class="section-label">
+      <i class="fa-solid fa-lock"></i> Admin Credentials
+    </div>
+
+    <!-- Security note -->
+    <div class="security-note">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      This portal is for platform administrators only. Unauthorised access attempts are logged and monitored.
+    </div>
+
+    <!-- Error alert -->
+    <div class="error-alert" id="errorAlert">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span id="errorText">Invalid admin credentials. Please try again.</span>
+    </div>
+
+    <!-- Attempt bar -->
+    <div class="attempt-bar" id="attemptBar">
+      <div class="attempt-label">
+        <i class="fa-solid fa-shield-halved"></i>
+        <span id="attemptLabel">2 attempts remaining</span>
+      </div>
+      <div class="attempt-track">
+        <div class="attempt-fill" id="attemptFill" style="width:33%;"></div>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <form id="adminLoginForm" novalidate onsubmit="handleAdminLogin(event)">
+
+      <div class="field">
+        <label>Admin Username / Email</label>
+        <div class="input-wrap">
+          <i class="fa-solid fa-user-shield ico"></i>
+          <input
+            type="text"
+            id="adminEmail"
+            placeholder="Enter admin username or email"
+            required
+            autocomplete="username"
+          >
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Password</label>
+        <div class="input-wrap">
+          <i class="fa-solid fa-lock ico"></i>
+          <input
+            type="password"
+            id="adminPassword"
+            placeholder="••••••••"
+            required
+            autocomplete="current-password"
+          >
+          <button type="button" class="pw-toggle" onclick="togglePw()" aria-label="Toggle password visibility">
+            <i class="fa-solid fa-eye" id="pwIcon"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="row-between">
+        <label class="remember-row">
+          <input type="checkbox" id="rememberAdmin"> Keep me signed in
+        </label>
+        <a th:href="@{/forgot-password}" class="forgot-link">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="btn-login" id="loginBtn">
+        <i class="fa-solid fa-right-to-bracket"></i> Access Admin Panel
+      </button>
+
+    </form>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="card-footer">
+    <i class="fa-solid fa-shield-halved"></i>
+    All sessions are encrypted and monitored for security.
+  </div>
+
+</div>
+
+<a href="/login" class="back-home">
+  <i class="fa-solid fa-arrow-left"></i> Back to Login
+</a>
+
+<script th:src="@{/js/admin-login.js}"></script>
+</body>
+</html>

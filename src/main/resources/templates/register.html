@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register | Interview Platform</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/register.css}">
+</head>
+<body>
+
+<!-- ══ NAVBAR ══ -->
+<nav>
+  <div class="nav-logo">
+    <i class="fa-solid fa-microphone-lines"></i> Interview Platform
+  </div>
+  <a href="/" class="nav-back">
+    <i class="fa-solid fa-arrow-left"></i> Back to Home
+  </a>
+</nav>
+
+<!-- ══ PAGE ══ -->
+<div class="page-wrapper">
+  <div class="reg-card">
+
+    <!-- Header -->
+    <div class="card-header">
+      <div class="header-inner">
+        <div class="header-badge"><i class="fa-solid fa-shield-halved"></i> Secure Registration</div>
+        <h1>Join Interview Platform</h1>
+        <p>Register as an institute or an expert interviewer to get started with structured evaluations.</p>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-bar">
+      <div class="role-tabs">
+        <button class="tab-btn active" id="tab-institute" onclick="switchTab('institute')">
+          <i class="fa-solid fa-building-columns"></i> Institute
+        </button>
+        <button class="tab-btn" id="tab-interviewer" onclick="switchTab('interviewer')">
+          <i class="fa-solid fa-user-tie"></i> Interviewer
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════ INSTITUTE FORM ══════════ -->
+    <div class="form-body">
+      <div class="form-panel active" id="panel-institute">
+        <form id="form-institute" novalidate onsubmit="handleSubmit(event,'institute')">
+
+          <div class="form-section-title">
+            <i class="fa-solid fa-building-columns"></i> Institute Details
+          </div>
+          <div class="field-grid">
+            <div class="field full">
+              <label>Institute Name <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-building-columns"></i>
+                <input type="text" name="instituteName" placeholder="e.g. K.K. Wagh Institute of Engineering" required>
+              </div>
+            </div>
+            <div class="field">
+              <label>University Affiliation <span class="required">*</span></label>
+              <input type="text" name="university" placeholder="e.g. Savitribai Phule Pune University" required>
+            </div>
+            <div class="field">
+              <label>Institute Code <span class="required">*</span></label>
+              <input type="text" name="instituteCode" placeholder="e.g. KKW2026" required>
+            </div>
+
+            <div class="field full">
+              <label>Campus Address <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-location-dot"></i>
+                <input type="text" name="address" placeholder="Full address including city, district, state, PIN" required>
+              </div>
+            </div>
+            <div class="field">
+              <label>City / District <span class="required">*</span></label>
+              <input type="text" name="city" placeholder="e.g. Nashik" required>
+            </div>
+            <div class="field">
+              <label>State <span class="required">*</span></label>
+              <select name="state" required>
+                <option value="">Select State</option>
+                <option>Maharashtra</option>
+                <option>Karnataka</option>
+                <option>Tamil Nadu</option>
+                <option>Gujarat</option>
+                <option>Delhi</option>
+                <option>Uttar Pradesh</option>
+                <option>Rajasthan</option>
+                <option>West Bengal</option>
+                <option>Telangana</option>
+                <option>Andhra Pradesh</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-section-title" style="margin-top:22px;">
+            <i class="fa-solid fa-users"></i> Contact & Administration
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label>TPO / Admin Name <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" name="adminName" placeholder="Training & Placement Officer name" required>
+              </div>
+            </div>
+            <div class="field">
+              <label>Designation <span class="required">*</span></label>
+              <input type="text" name="designation" placeholder="e.g. Head of Placement Cell" required>
+            </div>
+            <div class="field">
+              <label>Official Email <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-envelope"></i>
+                <input type="email" name="email" placeholder="placement@institute.edu" required>
+              </div>
+            </div>
+            <div class="field">
+              <label>Contact Number <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-phone"></i>
+                <input type="tel" name="contactNumber" placeholder="10-digit number" maxlength="10" required>
+              </div>
+            </div>
+            <div class="field">
+              <label>Institute Website</label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-globe"></i>
+                <input type="url" name="website" placeholder="https://institute.edu">
+              </div>
+            </div>
+            <div class="field">
+              <label>Total Student Strength <span class="required">*</span></label>
+              <input type="number" name="studentStrength" min="1" placeholder="e.g. 1200" required>
+            </div>
+          </div>
+
+          <div class="form-section-title" style="margin-top:22px;">
+            <i class="fa-solid fa-lock"></i> Account Credentials
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label>Password <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" name="password" id="inst-password" placeholder="Min. 8 characters" required oninput="checkStrength('inst-password','inst-strength-fill','inst-strength-text')">
+              </div>
+              <div class="pass-strength-bar"><div class="pass-strength-fill" id="inst-strength-fill"></div></div>
+              <div class="pass-strength-text" id="inst-strength-text"></div>
+            </div>
+            <div class="field">
+              <label>Confirm Password <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" name="confirmPassword" id="inst-confirm-password" placeholder="Re-enter password" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="terms-row">
+            <input type="checkbox" id="inst-terms" required>
+            <label for="inst-terms">I confirm that the information provided is accurate and I agree to the <a href="#">Terms &amp; Conditions</a> and <a href="#">Privacy Policy</a> of Interview Platform.</label>
+          </div>
+
+          <button type="submit" class="btn-submit">
+            <i class="fa-solid fa-building-columns"></i> Register Institute
+          </button>
+        </form>
+      </div>
+
+      <!-- ══════════ INTERVIEWER FORM ══════════ -->
+      <div class="form-panel" id="panel-interviewer">
+        <form id="form-interviewer" enctype="multipart/form-data" novalidate onsubmit="handleSubmit(event,'interviewer')">
+
+          <div class="form-section-title">
+            <i class="fa-solid fa-user"></i> Personal Information
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label>Full Name <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" name="fullName" placeholder="e.g. Rahul Sharma" required>
+              </div>
+            </div>
+            <div class="field">
+              <label>Email Address <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-envelope"></i>
+                <input type="email" name="email" placeholder="rahul.sharma@company.com" required>
+              </div>
+            </div>
+            <div class="field">
+              <label>Phone Number <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-phone"></i>
+                <input type="tel" name="phone" placeholder="10-digit mobile number" maxlength="10" required>
+              </div>
+            </div>
+            <div class="field">
+              <label>City / Location <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-location-dot"></i>
+                <input type="text" name="location" placeholder="e.g. Pune, Maharashtra" required>
+              </div>
+            </div>
+            <div class="field full">
+              <label>Profile Photo <span class="required">*</span></label>
+              <div class="photo-upload-area">
+                <div class="photo-preview-circle" id="photo-circle">
+                  <i class="fa-solid fa-camera"></i>
+                  <img id="photo-preview-img" src="" alt="Preview">
+                </div>
+                <div class="photo-upload-btn">
+                  <label for="photo-upload-input">
+                    <i class="fa-solid fa-upload"></i> Upload Photo
+                  </label>
+                  <input type="file" name="profilePhoto" id="photo-upload-input" accept="image/*" onchange="previewPhoto(this)">
+                  <div class="photo-filename" id="photo-filename">JPG, PNG or WEBP · Max 2 MB</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section-title" style="margin-top:22px;">
+            <i class="fa-solid fa-briefcase"></i> Professional Background
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label>Current Job Title <span class="required">*</span></label>
+              <input type="text" name="jobTitle" placeholder="e.g. Senior Software Engineer" required>
+            </div>
+            <div class="field">
+              <label>Current Company <span class="required">*</span></label>
+              <input type="text" name="company" placeholder="e.g. Infosys, TCS, Startups…" required>
+            </div>
+            <div class="field">
+              <label>Years of Experience <span class="required">*</span></label>
+              <select name="experience" required>
+                <option value="">Select Range</option>
+                <option>1–3 Years</option>
+                <option>3–5 Years</option>
+                <option>5–8 Years</option>
+                <option>8–12 Years</option>
+                <option>12–20 Years</option>
+                <option>20+ Years</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Primary Domain / Expertise <span class="required">*</span></label>
+              <select name="domain" required>
+                <option value="">Select Domain</option>
+                <option>Software Engineering</option>
+                <option>Full Stack Development</option>
+                <option>Frontend Development</option>
+                <option>Backend Development</option>
+                <option>Data Science &amp; ML</option>
+                <option>DevOps &amp; Cloud</option>
+                <option>Cybersecurity</option>
+                <option>Product Management</option>
+                <option>Business Analysis</option>
+                <option>Mechanical Engineering</option>
+                <option>Civil Engineering</option>
+                <option>Finance &amp; Analytics</option>
+                <option>Human Resources</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Highest Qualification <span class="required">*</span></label>
+              <select name="qualification" required>
+                <option value="">Select</option>
+                <option>B.E. / B.Tech</option>
+                <option>M.E. / M.Tech</option>
+                <option>MBA</option>
+                <option>MCA</option>
+                <option>B.Sc / M.Sc</option>
+                <option>Ph.D</option>
+                <option>Diploma</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>LinkedIn Profile <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-brands fa-linkedin"></i>
+                <input type="url" name="linkedin" placeholder="https://linkedin.com/in/yourprofile" required>
+              </div>
+            </div>
+            <div class="field full">
+              <label>Technical Skills / Technologies <span class="required">*</span></label>
+              <div class="tags-input-wrap" id="skills-tags-wrap" onclick="document.getElementById('skills-input').focus()">
+                <input type="text" name="skills" id="skills-input" placeholder="Type a skill &amp; press Enter (e.g. Java, Python, React…)" autocomplete="off" onkeydown="addTag(event,'skills-tags-wrap','skills-input')">
+              </div>
+              <div class="tags-hint"><i class="fa-solid fa-circle-info" style="font-size:10px;"></i> Press <strong>Enter</strong> or <strong>comma</strong> to add each skill</div>
+            </div>
+            <div class="field full">
+              <label>Previous Interviewing / Hiring Experience</label>
+              <select name="interviewExperience">
+                <option value="">Select (Optional)</option>
+                <option>Yes – in-company (panel interviews)</option>
+                <option>Yes – campus drives (college recruitment)</option>
+                <option>Yes – freelance / consulting</option>
+                <option>No – first time, but willing to learn</option>
+              </select>
+              <div class="field-hint">This helps us match you with the right drives.</div>
+            </div>
+            <div class="field full">
+              <label>Professional Bio <span class="required">*</span></label>
+              <textarea name="bio" placeholder="Briefly describe your professional background, areas of expertise, and what you bring to the evaluation process (100–250 words recommended)…" style="min-height:90px;" required></textarea>
+            </div>
+          </div>
+
+          <div class="form-section-title" style="margin-top:22px;">
+            <i class="fa-solid fa-lock"></i> Account Credentials
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label>Password <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" name="password" id="int-password" placeholder="Min. 8 characters" required oninput="checkStrength('int-password','int-strength-fill','int-strength-text')">
+              </div>
+              <div class="pass-strength-bar"><div class="pass-strength-fill" id="int-strength-fill"></div></div>
+              <div class="pass-strength-text" id="int-strength-text"></div>
+            </div>
+            <div class="field">
+              <label>Confirm Password <span class="required">*</span></label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" name="confirmPassword" id="int-confirm-password" placeholder="Re-enter password" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="terms-row">
+            <input type="checkbox" id="int-terms" required>
+            <label for="int-terms">I confirm that the information provided is accurate and I agree to the <a href="#">Terms &amp; Conditions</a>, <a href="#">Privacy Policy</a> and <a href="#">Interviewer Code of Conduct</a> of Interview Platform.</label>
+          </div>
+
+          <button type="submit" class="btn-submit">
+            <i class="fa-solid fa-user-tie"></i> Register as Interviewer
+          </button>
+        </form>
+      </div>
+    </div><!-- /form-body -->
+
+    <!-- Footer -->
+    <div class="card-footer">
+      Already have an account? <a th:href="@{/login}">Login here</a>
+    </div>
+
+  </div><!-- /reg-card -->
+</div><!-- /page-wrapper -->
+
+<!-- Toast -->
+<div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i> <span id="toast-msg"></span></div>
+
+<script th:src="@{/js/register.js}"></script>
+</body>
+</html>

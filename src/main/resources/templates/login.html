@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Interview Platform</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/login.css}">
+</head>
+<body>
+
+<!-- ── LOGIN CARD ── -->
+<div class="login-card">
+
+  <!-- Header -->
+  <div class="card-header">
+    <div class="header-inner">
+      <div class="logo-lockup">
+        <i class="fa-solid fa-microphone-lines"></i> Interview Platform
+      </div>
+      <h2>Welcome Back</h2>
+      <p id="role-subtitle">Select your role and sign in to continue.</p>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="card-body">
+
+    <!-- Role Selector -->
+    <div class="role-label"><i class="fa-solid fa-user-circle"></i> Login as</div>
+    <div class="role-grid">
+      <button class="role-btn active" id="role-student" onclick="selectRole('Student',this)" type="button">
+        <div class="role-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+        <div class="role-info"><span class="role-name">Student</span></div>
+      </button>
+      <button class="role-btn" id="role-interviewer" onclick="selectRole('Interviewer',this)" type="button">
+        <div class="role-icon"><i class="fa-solid fa-user-tie"></i></div>
+        <div class="role-info"><span class="role-name">Interviewer</span></div>
+      </button>
+      <button class="role-btn" id="role-institute" onclick="selectRole('Institute',this)" type="button">
+        <div class="role-icon"><i class="fa-solid fa-building-columns"></i></div>
+        <div class="role-info"><span class="role-name">Institute</span></div>
+      </button>
+      <button class="role-btn" id="role-mentor" onclick="selectRole('Mentor',this)" type="button">
+        <div class="role-icon"><i class="fa-solid fa-chalkboard-user"></i></div>
+        <div class="role-info"><span class="role-name">Mentor</span></div>
+      </button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Register note (shown for Interviewer / Institute) -->
+    <div class="reg-note" id="regNote">
+      <i class="fa-solid fa-circle-info"></i>
+      <span id="regNoteText">Don't have an account? <a th:href="@{/register}">Register here</a></span>
+    </div>
+
+    <!-- Error Alert -->
+    <div class="error-alert" id="errorAlert">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span id="errorText">Invalid credentials. Please try again.</span>
+    </div>
+
+    <!-- Form -->
+    <form id="loginForm" novalidate onsubmit="handleLogin(event)">
+      <div class="field">
+        <label>Email Address</label>
+        <div class="input-wrap">
+          <i class="fa-regular fa-envelope ico"></i>
+          <input type="email" id="emailInput" placeholder="Enter your email address" required autocomplete="email">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Password</label>
+        <div class="input-wrap">
+          <i class="fa-solid fa-lock ico"></i>
+          <input type="password" id="passwordInput" placeholder="••••••••" required autocomplete="current-password">
+          <button type="button" class="pw-toggle" onclick="togglePw()" aria-label="Toggle password visibility">
+            <i class="fa-solid fa-eye" id="pwIcon"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="row-between">
+        <label class="remember-row">
+          <input type="checkbox" id="rememberMe"> Remember me
+        </label>
+        <a th:href="@{/forgot-password}" class="forgot-link">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="btn-login">
+        <i class="fa-solid fa-right-to-bracket"></i>
+        Login as <span id="btnRoleLabel">Student</span>
+      </button>
+    </form>
+
+  </div><!-- /card-body -->
+
+  <!-- Footer -->
+  <div class="card-footer">
+    New here? <a th:href="@{/register}">Create an account</a>
+  </div>
+
+</div><!-- /login-card -->
+
+<!-- ✅ SUCCESS MODAL -->
+<div class="modal-overlay" id="successModal">
+  <div class="modal-box">
+    <div class="modal-icon">
+      <i class="fa-solid fa-circle-check"></i>
+    </div>
+    <h3>Login Successful</h3>
+    <p id="modalMessage">Welcome back!</p>
+
+    <button class="modal-btn" onclick="closeModal()">
+      Continue
+    </button>
+  </div>
+</div>
+
+<a href="/" class="back-home">
+  <i class="fa-solid fa-arrow-left"></i> Back to Home
+</a>
+<script th:src="@{/js/login.js}"></script>
+</body>
+</html>

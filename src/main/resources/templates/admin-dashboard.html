@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" th:href="@{/css/admin-dashboard.css}">
+</head>
+<body>
+    <!-- <h1 id="dashboardContent">Loading...</h1> -->
+     
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <a href="#" class="logo"><i class="fa-solid fa-shield-halved"></i> Admin</a>
+  <ul class="nav-links">
+    <div class="nav-section-label">Overview</div>
+    <li><a onclick="showPage('dashboard',this)" class="active"><i class="fa-solid fa-gauge"></i> Dashboard</a></li>
+    <div class="nav-section-label">Management</div>
+    <li><a onclick="showPage('inst-req',this)"><i class="fa-solid fa-building-circle-exclamation"></i> Inst. Requests<span class="badge-count" id="instBadge">2</span></a></li>
+    <li><a onclick="showPage('int-req',this)"><i class="fa-solid fa-user-plus"></i> Interviewers<span class="badge-count" id="intBadge">2</span></a></li>
+    <li><a onclick="showPage('interviews',this)"><i class="fa-solid fa-microphone-lines"></i> All Interviews</a></li>
+    <div class="nav-section-label">Content</div>
+    <li><a onclick="showPage('records',this)"><i class="fa-solid fa-video"></i> Video Records</a></li>
+    <li><a onclick="showPage('reports',this)"><i class="fa-solid fa-chart-bar"></i> Reports</a></li>
+    <div class="nav-section-label">System</div>
+    <li><a onclick="showPage('settings',this)"><i class="fa-solid fa-gear"></i> Settings</a></li>
+  </ul>
+  <div class="sidebar-footer"><a onclick="openLogoutModal()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+<header>
+  <div class="header-left">
+    <button class="hamburger" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+    <div class="page-title-wrap">
+      <h2 id="pageTitle">Dashboard</h2>
+      <div class="breadcrumb">Admin / <span id="breadcrumbCurrent">Dashboard</span></div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="notif-wrap">
+      <div class="notif-btn" onclick="toggleNotif()">
+        <i class="fa-regular fa-bell"></i>
+        <div class="notif-dot" id="notifDot"></div>
+      </div>
+      <div class="notif-panel" id="notifPanel">
+        <div class="notif-panel-header"><b style="font-size:13.5px;">Notifications</b><span style="font-size:12px;color:var(--secondary);cursor:pointer;" onclick="markAllRead()">Mark all read</span></div>
+        <div class="notif-item unread"><div class="notif-icon" style="background:#EFF6FF;color:var(--primary);"><i class="fa-solid fa-building"></i></div><div><div style="font-size:13px;font-weight:600;">New Institute Request</div><div style="font-size:12px;color:var(--muted);">Global Tech University • 10 min ago</div></div></div>
+        <div class="notif-item unread"><div class="notif-icon" style="background:#F0FDF4;color:var(--success);"><i class="fa-solid fa-user-check"></i></div><div><div style="font-size:13px;font-weight:600;">Interviewer Approved</div><div style="font-size:12px;color:var(--muted);">John Doe is now active • 1 hr ago</div></div></div>
+        <div class="notif-item"><div class="notif-icon" style="background:#FEF3C7;color:#92400E;"><i class="fa-solid fa-video"></i></div><div><div style="font-size:13px;font-weight:600;">Recording Ready</div><div style="font-size:12px;color:var(--muted);">Apex Institute session • 3 hr ago</div></div></div>
+        <div style="padding:10px 16px;text-align:center;border-top:1px solid #F9FAFB;"><span style="font-size:12px;color:var(--secondary);cursor:pointer;">View all</span></div>
+      </div>
+    </div>
+    <div class="user-menu-wrap">
+      <div class="user-chip" onclick="toggleUserMenu()">
+        <div class="avatar">SA</div>
+        <i class="fa-solid fa-chevron-down chevron"></i>
+      </div>
+      <div class="user-dropdown" id="userDropdown">
+        <div class="user-dropdown-header"><p id="headerAdminName">Admin</p><span id="headerAdminEmail">Loading...</span></div>
+        <a onclick="showPage('settings',null);closeUserMenu()"><i class="fa-solid fa-gear" style="color:var(--muted);width:16px;"></i> Settings</a>
+        <a onclick="showPage('settings',null);closeUserMenu()"><i class="fa-solid fa-lock" style="color:var(--muted);width:16px;"></i> Change Password</a>
+        <a class="danger" onclick="openLogoutModal();closeUserMenu()"><i class="fa-solid fa-right-from-bracket" style="width:16px;"></i> Logout</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="content-body active">
+  <div class="stats-grid">
+    <div class="stat-card blue"><div class="stat-icon"><i class="fa-solid fa-building"></i></div><h3 id="statTotalInstitutes">—</h3><p>Total Institutes</p><div class="trend up"><i class="fa-solid fa-arrow-up"></i> from database</div></div>
+<div class="stat-card teal"><div class="stat-icon"><i class="fa-solid fa-user-tie"></i></div><h3 id="statTotalInterviewers">—</h3><p>Active Interviewers</p><div class="trend up"><i class="fa-solid fa-arrow-up"></i> approved</div></div>
+<div class="stat-card green"><div class="stat-icon"><i class="fa-solid fa-users"></i></div><h3 id="statTotalStudents">—</h3><p>Total Students</p><div class="trend up"><i class="fa-solid fa-arrow-up"></i> registered</div></div>
+<div class="stat-card orange"><div class="stat-icon"><i class="fa-solid fa-microphone-lines"></i></div><h3 id="statTotalRequests">—</h3><p>Total Requests</p><div class="trend up"><i class="fa-solid fa-arrow-up"></i> all time</div></div>
+  </div>
+  <div class="quick-actions">
+    <div class="qa-card" onclick="showPage('inst-req',null)"><i class="fa-solid fa-rotate" style="color:var(--primary);"></i><span>Process Requests</span></div>
+    <div class="qa-card" onclick="showPage('int-req',null)"><i class="fa-solid fa-user-check" style="color:var(--secondary);"></i><span>Approve Interviewers</span></div>
+    <div class="qa-card" onclick="showPage('interviews',null)"><i class="fa-solid fa-calendar-check" style="color:var(--success);"></i><span>View Interviews</span></div>
+    <div class="qa-card" onclick="showPage('records',null)"><i class="fa-solid fa-film" style="color:var(--warning);"></i><span>Review Recordings</span></div>
+  </div>
+  <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;">
+    <div class="data-card" style="margin-bottom:0;">
+      <div class="card-header"><h4>Recent Activity</h4></div>
+      <div id="recentActivityList"><p style="color:var(--muted);font-size:13px;padding:12px 0;">Loading...</p></div>
+    </div>
+    <div class="data-card" style="margin-bottom:0;">
+      <div class="card-header"><h4>Upcoming Interviews</h4></div>
+      <div id="upcomingInterviewsList" style="display:flex;flex-direction:column;gap:10px;">
+        <p style="color:var(--muted);font-size:13px;padding:12px 0;">Loading...</p>
+      </div>
+    </div>
+  </div>
+  <div class="grid-2-1" style="display:grid;grid-template-columns:2fr 1fr;gap:18px;">
+    <div class="data-card" style="margin-bottom:0;"><div class="card-header"><h4>Monthly Interview Activity</h4><span class="badge bg-blue">2026</span></div><canvas id="mainChart" height="130"></canvas></div>
+    <div class="data-card" style="margin-bottom:0;"><div class="card-header"><h4>Performance Distribution</h4></div><canvas id="pieChart"></canvas></div>
+  </div>
+</div>
+
+<!-- INSTITUTE REQUESTS -->
+<div id="inst-req" class="content-body">
+  <div class="data-card">
+    <div class="card-header">
+      <h4>Institute Applications</h4>
+      <div class="filter-tabs" id="instFilter">
+        <button class="filter-tab active" onclick="filterTable('requestTable','all','instFilter',this)">All</button>
+        <button class="filter-tab" onclick="filterTable('requestTable','pending','instFilter',this)">Pending</button>
+        <button class="filter-tab" onclick="filterTable('requestTable','scheduled','instFilter',this)">Scheduled</button>
+        <button class="filter-tab" onclick="filterTable('requestTable','rescheduled','instFilter',this)">Rescheduled</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="requestTable">
+        <thead><tr><th>Institute</th><th>Domains</th><th>Departments</th><th>Window</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="requestTableBody">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- INTERVIEWERS -->
+<div id="int-req" class="content-body">
+  <div class="data-card">
+    <div class="card-header"><h4>New Registration Requests</h4><span class="badge bg-pending" style="font-size:12px;padding:5px 12px;" id="pendingIntCount">2 Pending</span></div>
+    <div class="table-wrap">
+      <table id="newInterviewerTable">
+        <thead><tr><th>Interviewer</th><th>Email</th><th>Domain</th><th>Exp</th><th>Location</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="newInterviewerTableBody">
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="data-card">
+    <div class="card-header">
+      <h4>Platform Interviewers</h4>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div class="filter-tabs" id="platformFilter">
+          <button class="filter-tab active" onclick="filterTable('platformInterviewerTable','all','platformFilter',this)">All</button>
+          <button class="filter-tab" onclick="filterTable('platformInterviewerTable','active','platformFilter',this)">Active</button>
+          <button class="filter-tab" onclick="filterTable('platformInterviewerTable','inactive','platformFilter',this)">Inactive</button>
+        </div>
+        <div class="view-toggle">
+          <button class="active" id="viewBtn-table" onclick="showInterviewerView('table',this)"><i class="fa-solid fa-list"></i></button>
+          <button id="viewBtn-cards" onclick="showInterviewerView('cards',this)"><i class="fa-solid fa-grip"></i></button>
+        </div>
+      </div>
+    </div>
+    <div id="int-table-view">
+      <div class="table-wrap">
+        <table id="platformInterviewerTable">
+          <thead><tr><th>Interviewer</th><th>Location</th><th>Expertise</th><th>Done</th><th>Rating</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="platformInterviewerTableBody">
+            <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px;">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="int-cards-view" style="display:none;">
+      <div class="interviewer-cards" id="interviewerCardsContainer">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ALL INTERVIEWS -->
+<div id="interviews" class="content-body">
+  <div class="data-card">
+    <div class="card-header">
+      <h4>All Interviews</h4>
+      <div class="filter-tabs" id="interviewFilter">
+        <button class="filter-tab active" onclick="filterTable('interviewsTable','all','interviewFilter',this)">All</button>
+        <button class="filter-tab" onclick="filterTable('interviewsTable','upcoming','interviewFilter',this)">Upcoming</button>
+        <button class="filter-tab" onclick="filterTable('interviewsTable','completed','interviewFilter',this)">Completed</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="interviewsTable">
+        <thead><tr><th>Institute</th><th>Interviewers</th><th>Domain</th><th>Date & Time</th><th>Students</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="interviewsTableBody">
+          <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- VIDEO RECORDS -->
+<div id="records" class="content-body">
+  <div class="data-card">
+    <div class="card-header">
+      <h4>Recording Vault</h4>
+      <div class="filter-tabs" id="recordsFilter">
+        <button class="filter-tab active" onclick="filterTable('recordTable','all','recordsFilter',this)">All</button>
+        <button class="filter-tab" onclick="filterTable('recordTable','reviewed','recordsFilter',this)">Reviewed</button>
+        <button class="filter-tab" onclick="filterTable('recordTable','pending review','recordsFilter',this)">Pending Review</button>
+      </div>
+    </div>
+    <div class="filters-bar">
+      <select id="filterInstitute" onchange="applyRecordFilters()"><option value="">All Institutes</option></select>
+      <select id="filterInterviewer" onchange="applyRecordFilters()"><option value="">All Interviewers</option></select>
+      <input type="date" id="filterDate" onchange="applyRecordFilters()">
+      <button class="btn btn-outline btn-sm" onclick="clearRecordFilters()"><i class="fa-solid fa-xmark"></i> Clear</button>
+    </div>
+    <div class="table-wrap">
+      <table id="recordTable">
+        <thead><tr><th>Institute</th><th>Dept</th><th>Student</th><th>Year</th><th>Interviewer</th><th>Date & Time</th><th>Duration</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="recordTableBody">
+          <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:16px;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- REPORTS -->
+<div id="reports" class="content-body">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+    <div class="tab-nav" id="reportTabNav" style="margin-bottom:0;border-bottom:none;flex:1;">
+      <button class="tab-btn active" onclick="switchReportTab('interviewer',this)">Interviewer Reports</button>
+      <button class="tab-btn" onclick="switchReportTab('institute',this)">Institute Reports</button>
+      <button class="tab-btn" onclick="switchReportTab('student',this)">Student Reports</button>
+    </div>
+    <button class="btn btn-excel" onclick="showToast('Exporting Excel (demo)')"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+  </div>
+  <div class="tab-content active" id="report-interviewer">
+    <div class="stats-grid">
+      <div class="stat-card blue"><div class="stat-icon"><i class="fa-solid fa-star"></i></div><h3 id="rptAvgRating">—</h3><p>Avg Rating</p></div>
+      <div class="stat-card green"><div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div><h3 id="rptCompletionRate">—</h3><p>Completion Rate</p></div>
+      <div class="stat-card teal"><div class="stat-icon"><i class="fa-solid fa-clock"></i></div><h3 id="rptAvgSession">—</h3><p>Avg Session</p></div>
+      <div class="stat-card orange"><div class="stat-icon"><i class="fa-solid fa-thumbs-up"></i></div><h3 id="rptRecommendRate">—</h3><p>Recommendation Rate</p></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;" class="grid-2">
+      <div class="data-card" style="margin-bottom:0;"><div class="card-header"><h4>Interviews by Domain</h4></div><canvas id="domainChart" height="180"></canvas></div>
+      <div class="data-card" style="margin-bottom:0;"><div class="card-header"><h4>Monthly Completion Rate</h4></div><canvas id="completionChart" height="180"></canvas></div>
+    </div>
+    <div class="data-card"><div class="card-header"><h4>Top Performing Interviewers</h4></div><div class="table-wrap"><table><thead><tr><th>Interviewer</th><th>Domain</th><th>Interviews</th><th>Avg Score</th><th>Completion %</th><th>Rating</th></tr></thead><tbody id="topInterviewersBody"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px;">Loading...</td></tr></tbody></table></div></div>
+  </div>
+  <div class="tab-content" id="report-institute">
+    <div class="stats-grid">
+      <div class="stat-card blue"><div class="stat-icon"><i class="fa-solid fa-building"></i></div><h3 id="rptActiveInstitutes">—</h3><p>Active Institutes</p></div>
+      <div class="stat-card green"><div class="stat-icon"><i class="fa-solid fa-calendar-check"></i></div><h3 id="rptTotalInterviews">—</h3><p>Total Interviews</p></div>
+      <div class="stat-card teal"><div class="stat-icon"><i class="fa-solid fa-users"></i></div><h3 id="rptStudentsInterviewed">—</h3><p>Students Interviewed</p></div>
+      <div class="stat-card orange"><div class="stat-icon"><i class="fa-solid fa-chart-line"></i></div><h3 id="rptInstAvgScore">—</h3><p>Avg Score</p></div>
+    </div>
+    <div class="data-card"><div class="card-header"><h4>Institute Summary</h4></div><div class="table-wrap"><table><thead><tr><th>Institute</th><th>Departments</th><th>Sessions</th><th>Students</th><th>Avg Score</th><th>Status</th></tr></thead><tbody id="instituteSummaryBody"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px;">Loading...</td></tr></tbody></table></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;" class="grid-2">
+      <div class="data-card" style="margin-bottom:0;"><div class="card-header"><h4>Students per Institute</h4></div><canvas id="instStudentsChart" height="180"></canvas></div>
+      <div class="data-card" style="margin-bottom:0;"><div class="card-header"><h4>Avg Score by Institute</h4></div><canvas id="instScoreChart" height="180"></canvas></div>
+    </div>
+  </div>
+  <div class="tab-content" id="report-student">
+    <div class="stats-grid">
+      <div class="stat-card blue"><div class="stat-icon"><i class="fa-solid fa-users"></i></div><h3 id="rptTotalStudents">—</h3><p>Total Students</p></div>
+      <div class="stat-card green"><div class="stat-icon"><i class="fa-solid fa-star"></i></div><h3 id="rptStudentAvgScore">—</h3><p>Avg Score</p></div>
+      <div class="stat-card teal"><div class="stat-icon"><i class="fa-solid fa-trophy"></i></div><h3 id="rptHighScorers">—</h3><p>Scored 8+ / 10</p></div>
+      <div class="stat-card orange"><div class="stat-icon"><i class="fa-solid fa-arrow-up"></i></div><h3 id="rptAvgImprovement">—</h3><p>Avg Improvement</p></div>
+    </div>
+    <div class="data-card"><div class="card-header"><h4>Student Performance</h4></div><div class="table-wrap"><table><thead><tr><th>Student</th><th>Institute</th><th>Dept</th><th>Interviews</th><th>Avg Score</th><th>Best</th><th>Trend</th></tr></thead><tbody id="studentPerformanceBody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px;">Loading...</td></tr></tbody></table></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;" class="grid-2">
+      <div class="data-card" style="margin-bottom:0;"><div class="card-header"><h4>Score Distribution</h4></div><canvas id="studentScoreDistChart" height="180"></canvas></div>
+      <div class="data-card" style="margin-bottom:0;"><div class="card-header"><h4>Score Trend</h4></div><canvas id="studentTrendChart" height="180"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="settings" class="content-body">
+  <div class="tab-nav" id="settingsTabNav">
+    <button class="tab-btn active" onclick="switchSettingsTab('account',this)">Account</button>
+    <button class="tab-btn" onclick="switchSettingsTab('institutes',this)">Institutes</button>
+    <button class="tab-btn" onclick="switchSettingsTab('domains',this)">Domains</button>
+    <button class="tab-btn" onclick="switchSettingsTab('platform',this)">Platform</button>
+    <button class="tab-btn" onclick="switchSettingsTab('notifications',this)">Notifications</button>
+  </div>
+
+  <!-- Account -->
+  <div class="tab-content active" id="settings-account">
+    <div class="setting-section">
+      <h4><i class="fa-solid fa-lock" style="color:var(--primary);"></i> Change Password</h4>
+      <div style="max-width:440px;">
+        <div class="form-group"><label>Current Password</label><input type="password" placeholder="••••••••"></div>
+        <div class="form-group"><label>New Password</label><input type="password" id="newPass" placeholder="Min 8 chars" oninput="checkPassStrength()"></div>
+        <div class="form-group"><label>Confirm New Password</label><input type="password" id="confirmPass" placeholder="Repeat password"></div>
+        <div id="passStrength" style="font-size:12px;margin-bottom:12px;display:none;"></div>
+        <button class="btn btn-p" onclick="changePassword()"><i class="fa-solid fa-key"></i> Update Password</button>
+      </div>
+    </div>
+    <div class="setting-section">
+      <h4><i class="fa-solid fa-user" style="color:var(--primary);"></i> Admin Profile</h4>
+      <div style="max-width:440px;">
+        <div class="form-row">
+          <div class="form-group"><label>Full Name</label><input type="text" id="adminFullName" value=""></div>
+          <div class="form-group"><label>Email</label><input type="email" id="adminEmail" value=""></div>
+        </div>
+        <div class="form-group"><label>Phone</label><input type="tel" id="adminPhone" value=""></div>
+        <button class="btn btn-s" onclick="saveAdminProfile()"><i class="fa-solid fa-save"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Institutes -->
+  <div class="tab-content" id="settings-institutes">
+    <div class="setting-section">
+      <h4><i class="fa-solid fa-building" style="color:var(--primary);"></i> Manage Institutes</h4>
+      <div class="table-wrap">
+        <table id="settingsInstTable"><thead><tr><th>Institute</th><th>Status</th><th>Students</th><th>Joined</th><th>Actions</th></tr></thead>
+        <tbody id="settingsInstTableBody">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px;">Loading...</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOMAINS — NEW TAB -->
+  <div class="tab-content" id="settings-domains">
+    <div class="setting-section">
+      <h4><i class="fa-solid fa-tags" style="color:var(--primary);"></i> Manage Interview Domains</h4>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">These domains appear as options when institutes apply and when assigning interviewers. Add or remove as needed.</p>
+      <div class="domain-tags-wrap" id="domainTagsWrap">
+        <!-- populated by JS -->
+      </div>
+      <div class="add-domain-row">
+        <input type="text" id="newDomainInput" placeholder="e.g. Machine Learning, Cloud Computing…" onkeydown="if(event.key==='Enter') addDomain()">
+        <button class="btn btn-p btn-sm" onclick="addDomain()"><i class="fa-solid fa-plus"></i> Add Domain</button>
+      </div>
+      <div style="margin-top:14px;padding:12px;background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:var(--radius-sm);">
+        <p style="font-size:12.5px;color:#92400E;"><i class="fa-solid fa-triangle-exclamation"></i> Removing a domain will not affect existing interview requests already using that domain.</p>
+      </div>
+    </div>
+    <div class="setting-section">
+      <h4><i class="fa-solid fa-chart-pie" style="color:var(--secondary);"></i> Domain Usage Stats</h4>
+      <div class="table-wrap">
+        <table id="domainStatsTable">
+          <thead><tr><th>Domain</th><th>Interviewers</th><th>Requests</th><th>Interviews</th><th>Status</th></tr></thead>
+          <tbody id="domainStatsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Platform -->
+  <div class="tab-content" id="settings-platform">
+    <div class="setting-section">
+      <h4><i class="fa-solid fa-sliders" style="color:var(--primary);"></i> Platform Configuration</h4>
+      <div style="max-width:440px;">
+        <div class="form-group"><label>Default Interview Duration (min)</label><input type="number" value="45"></div>
+        <div class="form-group"><label>Max Students per Session</label><input type="number" value="30"></div>
+        <div class="form-group"><label>Session Buffer (min)</label><input type="number" value="10"></div>
+        <div class="form-group"><label>Scoring Scale</label><select><option>1-10</option><option>1-5</option><option>Percentage</option></select></div>
+        <button class="btn btn-p" onclick="showToast('Settings saved')"><i class="fa-solid fa-save"></i> Save Settings</button>
+      </div>
+    </div>
+    <div class="setting-section">
+      <h4><i class="fa-solid fa-triangle-exclamation" style="color:var(--danger);"></i> Danger Zone</h4>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-warn" onclick="showToast('Records archived','warn')"><i class="fa-solid fa-box-archive"></i> Archive Old Records</button>
+        <button class="btn btn-danger" onclick="confirmDelete('data','all old platform data')"><i class="fa-solid fa-trash"></i> Purge Old Data</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifications -->
+  <div class="tab-content" id="settings-notifications">
+    <div class="setting-section">
+      <h4><i class="fa-solid fa-bell" style="color:var(--primary);"></i> Notification Preferences</h4>
+      <div style="display:flex;flex-direction:column;gap:14px;max-width:440px;">
+        <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:14px;"><div><b style="font-size:14px;display:block;">New Institute Request</b><span style="font-size:12px;color:var(--muted);">Notify when a new institute applies</span></div><input type="checkbox" checked style="width:17px;height:17px;accent-color:var(--primary);flex-shrink:0;"></label>
+        <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:14px;"><div><b style="font-size:14px;display:block;">Interviewer Registration</b><span style="font-size:12px;color:var(--muted);">Notify on new signup</span></div><input type="checkbox" checked style="width:17px;height:17px;accent-color:var(--primary);flex-shrink:0;"></label>
+        <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:14px;"><div><b style="font-size:14px;display:block;">Recording Uploaded</b><span style="font-size:12px;color:var(--muted);">Notify when video is ready</span></div><input type="checkbox" style="width:17px;height:17px;accent-color:var(--primary);flex-shrink:0;"></label>
+        <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:14px;"><div><b style="font-size:14px;display:block;">Email Digest</b><span style="font-size:12px;color:var(--muted);">Daily summary email</span></div><input type="checkbox" checked style="width:17px;height:17px;accent-color:var(--primary);flex-shrink:0;"></label>
+        <button class="btn btn-p" onclick="showToast('Preferences saved')"><i class="fa-solid fa-save"></i> Save Preferences</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ══════════════ MODALS ══════════════ -->
+
+<!-- Process Institute -->
+<div class="modal-overlay" id="processModal">
+  <div class="modal wide">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-gears" style="color:var(--secondary);margin-right:6px;"></i>Process Institute Request</h3>
+      <div class="modal-close" onclick="closeOverlay('processModal')"><i class="fa-solid fa-xmark"></i></div>
+    </div>
+    <div style="background:#F0F9FF;border:1.5px solid #BAE6FD;border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#0369a1;margin-bottom:10px;letter-spacing:.06em;">Institute Information</div>
+      <div class="detail-grid" id="processInstInfo"></div>
+    </div>
+    <div class="form-group">
+      <label>Assign Interviewers <span id="domainFilterNote" style="font-style:normal;color:var(--secondary);text-transform:none;font-weight:600;font-size:11px;"></span></label>
+      <div class="interviewer-checklist" id="interviewerChecklist"></div>
+      <div id="noMatchMsg" class="no-match-msg" style="display:none;"><i class="fa-solid fa-circle-info"></i> No active interviewers match the requested domains. Please add matching interviewers first.</div>
+    </div>
+  </div>
+</div>
+
+<!-- View Schedule Details -->
+<div class="modal-overlay" id="viewDetailsModal">
+  <div class="modal">
+    <div class="modal-header"><h3>Schedule Details</h3><div class="modal-close" onclick="closeOverlay('viewDetailsModal')"><i class="fa-solid fa-xmark"></i></div></div>
+    <div id="viewDetailsContent"></div>
+    <button class="btn btn-p btn-block" style="margin-top:12px;" onclick="closeOverlay('viewDetailsModal')">Close</button>
+  </div>
+</div>
+
+<!-- Interviewer Registration Profile -->
+<div class="modal-overlay" id="regProfileModal">
+  <div class="modal">
+    <div class="modal-header"><h3>Applicant Profile</h3><div class="modal-close" onclick="closeOverlay('regProfileModal')"><i class="fa-solid fa-xmark"></i></div></div>
+    <div id="regProfileContent"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;" id="regProfileActions"></div>
+  </div>
+</div>
+
+<!-- Platform Interviewer Quick View -->
+<div class="modal-overlay" id="platformProfileModal">
+  <div class="modal">
+    <div class="modal-header"><h3>Interviewer Info</h3><div class="modal-close" onclick="closeOverlay('platformProfileModal')"><i class="fa-solid fa-xmark"></i></div></div>
+    <div id="platformProfileContent"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btn-p" style="flex:1;justify-content:center;" id="fullProfileBtn">Full Details <i class="fa-solid fa-arrow-right"></i></button>
+      <button class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeOverlay('platformProfileModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Full Interviewer Profile — side by side -->
+<div class="modal-overlay" id="fullProfileModal">
+  <div class="modal xwide">
+    <div class="modal-header"><h3>Full Interviewer Profile</h3><div class="modal-close" onclick="closeOverlay('fullProfileModal')"><i class="fa-solid fa-xmark"></i></div></div>
+    <div id="fullProfileContent"></div>
+  </div>
+</div>
+
+<!-- Interview Details -->
+<div class="modal-overlay" id="interviewDetailsModal">
+  <div class="modal">
+    <div class="modal-header"><h3>Interview Details</h3><div class="modal-close" onclick="closeOverlay('interviewDetailsModal')"><i class="fa-solid fa-xmark"></i></div></div>
+    <div id="interviewDetailsContent"></div>
+    <button class="btn btn-p btn-block" style="margin-top:14px;" onclick="closeOverlay('interviewDetailsModal')">Close</button>
+  </div>
+</div>
+
+<!-- Video Modal -->
+<div class="modal-overlay" id="videoModal">
+  <div class="modal wide">
+    <div class="modal-header"><h3 id="videoModalTitle">Interview Recording</h3><div class="modal-close" onclick="closeOverlay('videoModal')"><i class="fa-solid fa-xmark"></i></div></div>
+    <div class="video-player"><i class="fa-solid fa-circle-play" style="font-size:3rem;color:rgba(255,255,255,.4);"></i><p style="font-size:13px;">Click to play recording</p></div>
+    <div id="videoMeta" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:14px;"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-p" style="flex:1;justify-content:center;min-width:120px;" onclick="showToast('Marked as reviewed');closeOverlay('videoModal');"><i class="fa-solid fa-circle-check"></i> Mark Reviewed</button>
+      <button class="btn btn-s" style="flex:1;justify-content:center;min-width:120px;" onclick="openUploadModal()"><i class="fa-solid fa-upload"></i> Upload New</button>
+      <button class="btn btn-outline" style="flex:1;justify-content:center;min-width:80px;" onclick="closeOverlay('videoModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Video -->
+<div class="modal-overlay" id="uploadModal">
+  <div class="modal narrow">
+    <div class="modal-header"><h3>Upload Recording</h3><div class="modal-close" onclick="closeOverlay('uploadModal')"><i class="fa-solid fa-xmark"></i></div></div>
+    <div style="border:2px dashed var(--border);border-radius:10px;padding:28px;text-align:center;background:#F8FAFC;cursor:pointer;margin-bottom:14px;" onclick="showToast('File browser opened (demo)')">
+      <i class="fa-solid fa-cloud-arrow-up" style="font-size:2.5rem;color:var(--muted);display:block;margin-bottom:10px;"></i>
+      <p style="font-size:13px;color:var(--muted);">Drag & drop video here<br>or click to browse</p>
+      <p style="font-size:11px;color:var(--muted);margin-top:7px;">MP4, WebM · max 2 GB</p>
+    </div>
+    <div class="form-group"><label>Recording Date</label><input type="date"></div>
+    <div class="form-group"><label>Notes</label><textarea rows="2" placeholder="Optional notes..."></textarea></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-p" style="flex:1;justify-content:center;" onclick="closeOverlay('uploadModal');showToast('Recording uploaded successfully')"><i class="fa-solid fa-upload"></i> Upload</button>
+      <button class="btn btn-outline" onclick="closeOverlay('uploadModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal narrow" style="text-align:center;">
+    <div style="width:52px;height:52px;background:#FEE2E2;border-radius:50%;display:grid;place-items:center;margin:0 auto 14px;font-size:1.4rem;color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <h3 style="font-size:17px;font-weight:800;margin-bottom:7px;">Confirm Delete</h3>
+    <p id="deleteMsg" style="font-size:13.5px;color:var(--muted);margin-bottom:20px;"></p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeOverlay('deleteModal')">Cancel</button>
+      <button class="btn btn-danger" style="flex:1;justify-content:center;" id="deleteConfirmBtn"><i class="fa-solid fa-trash"></i> Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Logout -->
+<div class="modal-overlay" id="logoutModal" onclick="handleLogoutOverlayClick(event)">
+  <div class="logout-modal">
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to leave EvalMatrix?</p>
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:20px;">
+      <input type="checkbox" id="logoutConfirmCheck" style="width:15px;height:15px;accent-color:var(--primary);">
+      <label for="logoutConfirmCheck" style="font-size:13px;cursor:pointer;">Don't ask me again</label>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" style="flex:1;justify-content:center;background:#F3F4F6;color:var(--dark);" onclick="closeOverlay('logoutModal')">Cancel</button>
+      <button class="btn btn-danger" style="flex:1;justify-content:center;" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+</div>
+
+    <script th:src="@{/js/auth.js}"></script>
+    <!-- Chart.js is required by admin-dashboard.js (charts on Dashboard + Reports) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+    <script th:src="@{/js/admin-dashboard.js}"></script>
+</body>
+</html>
