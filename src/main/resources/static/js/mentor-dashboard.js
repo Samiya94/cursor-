@@ -725,7 +725,7 @@ function initCharts() {
 /* ===== INIT ===== */
 window.addEventListener('DOMContentLoaded', async function() {
     // 1. Check auth
-    if (!checkAuth('MENTOR')) return;
+    if (!await checkAuth('MENTOR')) return;
 
     // 2. Fetch mentor profile from backend
     await fetchMentorProfile();

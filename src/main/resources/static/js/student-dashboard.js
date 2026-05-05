@@ -38,7 +38,7 @@ var STUDENT_RESUME = {
 };
 
 window.addEventListener('DOMContentLoaded', async function() {
-  if (!checkAuth('STUDENT')) return;
+  if (!await checkAuth('STUDENT')) return;
   await loadDashboardStats();
   initStudentUI();
   renderSkillMasteryProgress();
@@ -56,11 +56,9 @@ window.addEventListener('DOMContentLoaded', async function() {
 });
 
 async function loadDashboardStats() {
-  var headers = getAuthHeaders();
-  if (!headers) return;
   try {
-    var res = await fetch('/api/student/dashboard-stats', { method:'GET', headers:headers });
-    if (res.status === 401) { localStorage.clear(); window.location.href = '/login'; return; }
+    var res = await secureFetch('/api/student/dashboard-stats', { method:'GET' });
+    if (!res) return;
     if (!res.ok) return;
     DASHBOARD_STATS = await res.json();
     var cls = DASHBOARD_STATS.studentClass || 'SYMCA';
@@ -198,13 +196,10 @@ function mapStatusToFilter(s){if(s==='CONFIRMED'||s==='APPROVED')return 'schedul
 
 async function cancelMyInterview(id, btn) {
   if (!confirm('Cancel this interview request?')) return;
-  var headers = getAuthHeaders();
-  if (headers) {
-    try {
-      var res = await fetch('/api/interview-requests/'+id+'/cancel', {method:'PUT', headers:headers});
-      if (!res.ok) throw new Error('cancel failed');
-    } catch(e) { showToast('Could not cancel on server','warn'); }
-  }
+  try {
+    var res = await secureFetch('/api/interview-requests/'+id+'/cancel', {method:'PUT'});
+    if (!res || !res.ok) throw new Error('cancel failed');
+  } catch(e) { showToast('Could not cancel on server','warn'); }
   var row = btn.closest('tr'); if(row) row.remove();
   MY_INTERVIEWS = MY_INTERVIEWS.filter(function(iv){return iv.id !== id;});
   showToast('Interview cancelled','warn');
@@ -419,11 +414,9 @@ function renderProfileStats() {
 }
 
 async function loadMyResume() {
-  var headers = getAuthHeaders();
-  if (!headers) return;
   try {
-    var res = await fetch('/api/students/me/resume', { headers: headers });
-    if (!res.ok) return;
+    var res = await secureFetch('/api/students/me/resume');
+    if (!res || !res.ok) return;
     var data = await res.json();
     STUDENT_RESUME.url = data.resumeUrl || null;
     STUDENT_RESUME.fileName = data.resumeFileName || null;
@@ -529,11 +522,9 @@ function applySlotById(id, topic, dateTime, contactPerson) {
 }
 
 async function loadAvailableInterviewsFromAPI() {
-    var headers = getAuthHeaders();
-    if (!headers) return;
     try {
-        var res = await fetch('/api/student/available-interviews', { headers: headers });
-        if (!res.ok) return;
+        var res = await secureFetch('/api/student/available-interviews');
+        if (!res || !res.ok) return;
         var interviews = await res.json();
 
         // Update MY_INTERVIEWS to include API data for the slots display
@@ -593,12 +584,10 @@ function renderAPISlotGrid(containerId, slotsOverride) {
 }
 
 async function applyToInterview(interviewRequestId, topic) {
-    var headers = getAuthHeaders();
-    if (!headers) return;
     try {
-        var res = await fetch('/api/applications/' + interviewRequestId + '/apply', {
+        var res = await secureFetch('/api/applications/' + interviewRequestId + '/apply', {
             method: 'POST',
-            headers: headers
+            headers: { 'Content-Type': 'application/json' }
         });
         if (res.ok) {
             appliedSlots[interviewRequestId] = true;
@@ -616,11 +605,9 @@ async function applyToInterview(interviewRequestId, topic) {
 }
 
 async function loadMyApplicationsFromAPI() {
-    var headers = getAuthHeaders();
-    if (!headers) return;
     try {
-        var res = await fetch('/api/applications/my', { headers: headers });
-        if (!res.ok) return;
+        var res = await secureFetch('/api/applications/my');
+        if (!res || !res.ok) return;
         var apps = await res.json();
 
         var tbody = document.getElementById('intTableBody');
@@ -668,12 +655,9 @@ async function loadMyApplicationsFromAPI() {
 
 async function withdrawApplication(applicationId, btn) {
     if (!confirm('Withdraw this application?')) return;
-    var headers = getAuthHeaders();
-    if (!headers) return;
     try {
-        var res = await fetch('/api/applications/' + applicationId + '/withdraw', {
-            method: 'DELETE',
-            headers: headers
+        var res = await secureFetch('/api/applications/' + applicationId + '/withdraw', {
+            method: 'DELETE'
         });
         if (res.ok) {
             btn.closest('tr').remove();
@@ -828,42 +812,29 @@ function saveAcademic(){
   var ye=document.getElementById('pf_year'),de=document.getElementById('pf_degree'),ab=document.getElementById('pf_about');
   STUDENT.year=ye?ye.value:STUDENT.year;STUDENT.degree=de?de.value:STUDENT.degree;STUDENT.class=STUDENT.year+STUDENT.degree;
   STUDENT.about=ab?ab.value:STUDENT.about;STUDENT.skills=getSkills();
-  var headers=getAuthHeaders();
-  if(headers){
-    fetch('/api/students/me',{method:'PUT',headers:headers,body:JSON.stringify({studentClass:STUDENT.class,cgpa:null,about:STUDENT.about||'',skills:STUDENT.skills||[]})})
+  secureFetch('/api/students/me',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({studentClass:STUDENT.class,cgpa:null,about:STUDENT.about||'',skills:STUDENT.skills||[]})})
       .then(function(res){if(!res.ok)throw new Error();try{localStorage.setItem('currentStudent',JSON.stringify(STUDENT));}catch(e){}updateClassCode();showToast('Academic details saved!');})
       .catch(function(){try{localStorage.setItem('currentStudent',JSON.stringify(STUDENT));}catch(e){}updateClassCode();showToast('Saved locally','warn');});
-    return;
-  }
-  try{localStorage.setItem('currentStudent',JSON.stringify(STUDENT));}catch(e){}updateClassCode();showToast('Academic details saved!');
 }
 function changePassword(){
   var c=document.getElementById('pf_curpwd').value,n=document.getElementById('pf_newpwd').value,p=document.getElementById('pf_confpwd').value;
   if(!c||!n||!p){showToast('Fill in all password fields.','warn');return;}
   if(n.length<8){showToast('New password must be at least 8 characters.','warn');return;}
   if(n!==p){showToast('Passwords do not match.','warn');return;}
-  var headers=getAuthHeaders();
-  if(headers){
-    fetch('/api/students/me/password',{method:'PUT',headers:headers,body:JSON.stringify({currentPassword:c,newPassword:n,confirmPassword:p})})
+  secureFetch('/api/students/me/password',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({currentPassword:c,newPassword:n,confirmPassword:p})})
       .then(function(res){if(!res.ok)throw new Error();document.getElementById('pf_curpwd').value='';document.getElementById('pf_newpwd').value='';document.getElementById('pf_confpwd').value='';checkPwdStrength('');showToast('Password updated successfully!');})
       .catch(function(){showToast('Password update failed','error');});
-    return;
-  }
-  showToast('Not authenticated','error');
 }
 async function handleResumeUpload(input){
   if (!input.files || !input.files[0]) return;
   var file = input.files[0];
   if (file.size > 5 * 1024 * 1024) { showToast('File too large. Max 5MB.', 'warn'); return; }
 
-  var headers = getAuthHeadersMultipart();
-  if (!headers) { showToast('Not authenticated', 'error'); return; }
-
   var fd = new FormData();
   fd.append('resume', file);
 
   try {
-    var res = await fetch('/api/students/me/resume', { method: 'POST', headers: headers, body: fd });
+    var res = await secureFetch('/api/students/me/resume', { method: 'POST', body: fd });
     if (!res.ok) {
       var txt = await res.text().catch(function(){ return ''; });
       showToast(txt || 'Resume upload failed', 'error');

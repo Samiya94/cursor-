@@ -84,6 +84,15 @@ public class InterviewerDashboardController {
             m.put("studentClass", a.getStudent().getStudentClass());
             m.put("applicationStatus", a.getStatus().name());
             m.put("appliedAt", a.getAppliedAt());
+            // Include resume info so interviewers can view student resumes
+            String resumeFileName = a.getStudent().getResumeUrl();
+            m.put("resumeFileName", resumeFileName);
+            m.put("resumeUrl", (resumeFileName != null && !resumeFileName.isBlank())
+                ? "/uploads/" + resumeFileName : null);
+            // Include extra profile info for the live interview panel
+            m.put("skills", a.getStudent().getSkills());
+            m.put("about", a.getStudent().getAbout());
+            m.put("profilePhotoUrl", a.getStudent().getProfilePhotoUrl());
             return m;
         }).toList();
         return ResponseEntity.ok(result);
