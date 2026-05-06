@@ -265,7 +265,7 @@ function showView(v) {
 }
 
 function openOverlay(id) { document.getElementById(id).classList.add('open'); }
-function closeOverlay(id) { document.getElementById(id).classList.remove('open'); if (id === 'resumeViewerModal') { document.getElementById('resumeViewerFrame').src = ''; } }
+function closeOverlay(id) { document.getElementById(id).classList.remove('open'); if (id === 'resumeViewerModal') { const frame = document.getElementById('resumeViewerFrame'); const obj = document.getElementById('resumeViewerObject'); if (frame) frame.src = ''; if (obj) obj.data = ''; } }
 function scrollToSection(id) { setTimeout(() => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200); }
 function setStep(n) { for (let i = 1; i <= 3; i++) { const s = document.getElementById('step' + i); s.classList.remove('active', 'done'); if (i < n) s.classList.add('done'); else if (i === n) s.classList.add('active'); } for (let i = 1; i <= 2; i++) document.getElementById('div' + i).classList.toggle('done', i < n); }
 function goToPhase2() { if (!APP.currentLiveStudent) return showToast('No students are available for interview yet.', 'warn'); document.getElementById('phase-info').classList.remove('active'); document.getElementById('phase-live').classList.add('active'); setStep(2); }
@@ -316,13 +316,19 @@ function viewStudentResume() {
     return showToast('No resume uploaded for this student.', 'warn');
   }
   const resumeUrl = APP.currentLiveStudent.resumeUrl;
+  // Build absolute URL to ensure iframe/object and download link work correctly
+  const absUrl = resumeUrl.startsWith('http') ? resumeUrl : window.location.origin + resumeUrl;
   const studentName = APP.currentLiveStudent.name || 'Candidate';
   const fileName = APP.currentLiveStudent.resumeFileName
     ? decodeURIComponent(APP.currentLiveStudent.resumeFileName.replace(/^\d+_/, ''))
     : 'Resume';
   document.getElementById('resumeViewerTitle').textContent = studentName + ' — ' + fileName;
-  document.getElementById('resumeDownloadLink').href = resumeUrl;
-  document.getElementById('resumeViewerFrame').src = resumeUrl + '#toolbar=1&navpanes=0';
+  document.getElementById('resumeDownloadLink').href = absUrl;
+  // Set both object[data] (primary) and iframe[src] (fallback)
+  const obj = document.getElementById('resumeViewerObject');
+  const frame = document.getElementById('resumeViewerFrame');
+  if (obj) obj.data = absUrl;
+  if (frame) frame.src = absUrl + '#toolbar=1&navpanes=0';
   openOverlay('resumeViewerModal');
 }
 function handleProfilePic(input) { if (!input.files || !input.files[0]) return; const reader = new FileReader(); reader.onload = function (e) { document.getElementById('profilePicLg').innerHTML = `<img src="${e.target.result}" alt="Profile">`; document.getElementById('headerAvatar').innerHTML = `<img src="${e.target.result}" alt="Profile" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }; reader.readAsDataURL(input.files[0]); showToast('Profile photo updated!'); }

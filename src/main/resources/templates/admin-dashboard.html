@@ -396,14 +396,61 @@
       <h3><i class="fa-solid fa-gears" style="color:var(--secondary);margin-right:6px;"></i>Process Institute Request</h3>
       <div class="modal-close" onclick="closeOverlay('processModal')"><i class="fa-solid fa-xmark"></i></div>
     </div>
+
+    <!-- Institute Info -->
     <div style="background:#F0F9FF;border:1.5px solid #BAE6FD;border-radius:10px;padding:14px;margin-bottom:16px;">
       <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:#0369a1;margin-bottom:10px;letter-spacing:.06em;">Institute Information</div>
       <div class="detail-grid" id="processInstInfo"></div>
     </div>
+
+    <!-- Scheduling Fields -->
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="form-group">
+        <label>Scheduled Date &amp; Time <span style="color:var(--danger);">*</span></label>
+        <input type="datetime-local" id="schedDate">
+      </div>
+      <div class="form-group">
+        <label>Venue / Location</label>
+        <input type="text" id="schedVenue" placeholder="e.g. Online / Campus Hall A">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px;">
+      <div class="form-group">
+        <label>Meeting Link (if online)</label>
+        <input type="text" id="schedMeetLink" placeholder="https://meet.google.com/...">
+      </div>
+      <div class="form-group">
+        <label>Students Required</label>
+        <input type="number" id="schedStudentCount" min="1" value="10">
+      </div>
+    </div>
+
+    <!-- Assign Interviewers -->
     <div class="form-group">
       <label>Assign Interviewers <span id="domainFilterNote" style="font-style:normal;color:var(--secondary);text-transform:none;font-weight:600;font-size:11px;"></span></label>
       <div class="interviewer-checklist" id="interviewerChecklist"></div>
-      <div id="noMatchMsg" class="no-match-msg" style="display:none;"><i class="fa-solid fa-circle-info"></i> No active interviewers match the requested domains. Please add matching interviewers first.</div>
+      <div id="noMatchMsg" class="no-match-msg" style="display:none;"><i class="fa-solid fa-circle-info"></i> No active interviewers match the requested domains.</div>
+    </div>
+
+    <!-- Reschedule Toggle -->
+    <div style="margin:12px 0;background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:8px;padding:12px 14px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;">
+        <input type="checkbox" id="rescheduleToggle" onclick="toggleReschedule()" style="accent-color:var(--primary);width:15px;height:15px;">
+        <i class="fa-solid fa-rotate" style="color:var(--warning);"></i> Reschedule Interview Window (change the requested dates)
+      </label>
+    </div>
+    <div id="rescheduleFields" style="display:none;">
+      <div class="form-row">
+        <div class="form-group"><label>New Start Date/Time</label><input type="datetime-local" id="startDateTime"></div>
+        <div class="form-group"><label>New End Date/Time</label><input type="datetime-local" id="endDateTime"></div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:10px;margin-top:6px;">
+      <button class="btn btn-s" style="flex:1;justify-content:center;" onclick="confirmSchedule()">
+        <i class="fa-solid fa-calendar-check"></i> Confirm &amp; Schedule</button>
+      <button class="btn btn-outline" onclick="closeOverlay('processModal')">Cancel</button>
     </div>
   </div>
 </div>

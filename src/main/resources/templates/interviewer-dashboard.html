@@ -465,11 +465,17 @@
       </div>
     </div>
     <div style="flex:1;overflow:hidden;border-radius:0 0 var(--r) var(--r);background:#525659;">
-      <iframe id="resumeViewerFrame"
-              src=""
-              style="width:100%;height:100%;border:none;"
-              title="Resume PDF Viewer">
-      </iframe>
+      <object id="resumeViewerObject"
+              data=""
+              type="application/pdf"
+              style="width:100%;height:100%;border:none;">
+        <!-- Fallback if <object> can't render the PDF inline -->
+        <iframe id="resumeViewerFrame"
+                src=""
+                style="width:100%;height:100%;border:none;"
+                title="Resume PDF Viewer">
+        </iframe>
+      </object>
     </div>
   </div>
 </div>

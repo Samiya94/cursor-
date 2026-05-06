@@ -18,7 +18,9 @@ public record StudentDashboardStatsDTO(
     String about,
     List<String> skills,
     Double cgpa,
-    List<StudentInterviewItemDTO> interviews
+    List<StudentInterviewItemDTO> interviews,
+    String resumeFileName,
+    String resumeUrl
 ) {
     public record StudentInterviewItemDTO(
         Long id,

@@ -2,6 +2,7 @@ package com.interviewPlatform.controllers;
 
 import java.util.List;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -48,6 +49,11 @@ public class DepartmentController {
      @DeleteMapping("/{id}")
     public void deleteDepartment(@PathVariable Long id) {
         departmentService.deleteDepartment(id);
+    }
+
+    @GetMapping("/{deptId}/students")
+    public ResponseEntity<?> getStudentsByDept(@PathVariable Long deptId) {
+        return departmentService.getStudentsByDepartment(deptId);
     }
 
 }

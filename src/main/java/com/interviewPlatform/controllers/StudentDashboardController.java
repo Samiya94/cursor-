@@ -86,6 +86,10 @@ public class StudentDashboardController {
             })
             .collect(Collectors.toList());
 
+        String resumeFileName = student.getResumeUrl();
+        String resumeUrl = (resumeFileName != null && !resumeFileName.isBlank())
+            ? "/uploads/" + resumeFileName : null;
+
         StudentDashboardStatsDTO stats = new StudentDashboardStatsDTO(
             interviewsTaken, pendingCount, confirmedCount,
             averageScore, bestScore,
@@ -95,7 +99,9 @@ public class StudentDashboardController {
             student.getDepartment() != null ? student.getDepartment().getName() : "",
             student.getInstitute() != null ? student.getInstitute().getInstituteName() : "",
             student.getAbout(), student.getSkills(), cgpa,
-            interviewItems
+            interviewItems,
+            resumeFileName,
+            resumeUrl
         );
 
         return ResponseEntity.ok(stats);
@@ -111,11 +117,20 @@ public ResponseEntity<?> getAvailableInterviews(Authentication auth) {
     List<com.interviewPlatform.entities.InterviewRequest> requests =
         interviewRequestRepository.findByInstituteIdAndStatusIn(
             student.getInstitute().getId(),
-            java.util.List.of(
-                com.interviewPlatform.enums.Status.CONFIRMED,
-                com.interviewPlatform.enums.Status.RESCHEDULED
+            List.of(
+                Status.CONFIRMED,
+                Status.RESCHEDULED,
+                Status.AWAITING_CONFIRMATION
             )
         );
+
+        // After finding requests, add this filter:
+        String studentDeptName = student.getDepartment() != null ? student.getDepartment().getName() : null;
+        if (studentDeptName != null) {
+            requests = requests.stream()
+                .filter(r -> studentDeptName.equalsIgnoreCase(r.getDepartmentName()))
+                .toList();
+        }
 
     List<Map<String, Object>> result = requests.stream().map(r -> {
         boolean applied = applicationRepository.existsByStudentIdAndInterviewRequestId(

@@ -109,7 +109,8 @@ function formatStatusLabel(raw) {
     PENDING: 'Pending',
     CONFIRMED: 'Confirmed',
     RESCHEDULED: 'Rescheduled',
-    CANCELLED: 'Cancelled'
+    CANCELLED: 'Cancelled',
+    AWAITING_CONFIRMATION: 'Awaiting Confirmation'
   };
   return labels[value] || 'Pending';
 }
@@ -566,9 +567,28 @@ function loadDeptDetail(name,coord,initials,email,phone,desg,color){
   document.getElementById('det-pend').textContent='—';
   document.getElementById('det-perc-text').textContent='0%';
   document.getElementById('det-perc-bar').style.width='0%';
+
+  // Load registered students for this department inline
+  const dept = departments.find(dep => dep.name === name);
+  if (dept && dept.id) {
+    let studentSection = document.getElementById('deptStudentSection');
+    if (!studentSection) {
+      studentSection = document.createElement('div');
+      studentSection.id = 'deptStudentSection';
+      studentSection.style.marginTop = '16px';
+      d.querySelector('.data-card').appendChild(studentSection);
+    }
+    studentSection.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:8px;letter-spacing:.05em;"><i class="fa-solid fa-users"></i> Registered Students</div><p style="color:var(--muted);font-size:12.5px;">Loading…</p>';
+    loadDeptStudents(dept.id, 'deptStudentSection');
+  }
+
   d.scrollIntoView({behavior:'smooth',block:'start'});
 }
-function hideDeptDetail(){ document.getElementById('deptDetailInline').style.display='none'; }
+function hideDeptDetail(){
+  document.getElementById('deptDetailInline').style.display='none';
+  const ss = document.getElementById('deptStudentSection');
+  if (ss) ss.remove();
+}
 
 /* ═══════════════ OVERVIEW ═══════════════ */
 async function renderOverview(){
@@ -626,6 +646,17 @@ async function renderOverview(){
     return;
   }
   grid.innerHTML='';
+    //Fetch student counts for all depts in parallel
+  const studentCounts = {};
+  await Promise.all(departments.map(async (dept) => {
+    if (dept.id) {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const r = await fetch(`/departments/${dept.id}/students`, { headers: { 'Authorization': 'Bearer ' + token } });
+        studentCounts[dept.name] = r.ok ? (await r.json()).length : 0;
+      } catch(e) { studentCounts[dept.name] = 0; }
+    } else { studentCounts[dept.name] = 0; }
+  }));
   departments.forEach((dept,idx)=>{
     const color=palette[idx%palette.length];
     const deptName = dept.departmentName || dept.name;
@@ -657,7 +688,15 @@ async function renderOverview(){
           :`<span class="badge bg-pending" style="font-size:10.5px;"><i class="fa-solid fa-clock"></i> Awaiting</span>`}
       </div>
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;">Coordinator</div>
+      
       <div style="font-weight:700;font-size:13px;margin-bottom:10px;">${coord}</div>
+      
+
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;background:#F0F9FF;border-radius:7px;padding:6px 10px;">
+        <i class="fa-solid fa-users" style="color:var(--primary);font-size:12px;"></i>
+        <span style="font-size:12px;font-weight:700;color:var(--primary);">${studentCounts[deptName] ?? 0} Registered Student${(studentCounts[deptName]??0)!==1?'s':''}</span>
+      </div>
+
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="font-size:11.5px;font-weight:600;color:var(--muted);">Request</span>
         ${status ? statusBadge(status) : '<span class="badge bg-pending"><i class="fa-solid fa-clock"></i> Not Scheduled</span>'}
@@ -723,6 +762,21 @@ function openDeptModal(dept,tpo,l,color){
       </button>
     </div>`;
   openOverlay('deptDetailModal');
+
+
+    // Load registered students inside the modal
+    document.getElementById('deptDetailBody').insertAdjacentHTML('beforeend', `
+      <div id="deptModalStudentSection" style="margin-top:14px;margin-bottom:6px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;margin-bottom:8px;"><i class="fa-solid fa-users"></i> Registered Students</div>
+        <p style="color:var(--muted);font-size:12.5px;">Loading…</p>
+      </div>`);
+
+    const deptObj = departments.find(d => d.name === dept.name || d.name === dept.departmentName);
+    if (deptObj && deptObj.id) {
+      loadDeptStudents(deptObj.id, 'deptModalStudentSection');
+    } else {
+      document.getElementById('deptModalStudentSection').innerHTML = '<p style="color:var(--muted);font-size:12.5px;">No student data available.</p>';
+    }
 }
 
 /* ═══════════════ REQUESTS ═══════════════ */
@@ -858,17 +912,28 @@ async function applyFilters(){
     if (fQ && !(deptName + ' ' + coord + ' ' + exp).toLowerCase().includes(fQ)) return;
     visible++;
 
-    const tr=document.createElement('tr');
     const normalized = normalizeStatusValue(s);
-    const showConfirm = (normalized === 'RESCHEDULED' || normalized === 'CONFIRMED') && !d.instituteConfirmed;
-    tr.innerHTML=`<td><b>${deptName}</b></td>
+
+    const showConfirm = (normalized === 'AWAITING_CONFIRMATION') && !d.instituteConfirmed;
+    const showViewDetails = (normalized === 'CONFIRMED') && d.instituteConfirmed;
+
+    const actionCell = showConfirm
+      ? `<button class="btn btn-s btn-sm" onclick="promptConfirmRequest(${d.id},'${deptName.replace(/'/g,"\\'")}')">
+            <i class="fa-solid fa-check"></i> Confirm Slot
+        </button>`
+      : showViewDetails
+        ? `<button class="btn btn-info btn-sm" onclick="openInterviewViewModal(${d.id})">
+            <i class="fa-solid fa-eye"></i> View Details
+          </button>`
+        : '<span style="color:var(--muted);font-size:12px;">—</span>';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><b>${deptName}</b></td>
       <td>${coord}</td>
       <td style="font-size:12.5px;color:var(--muted);">${exp}</td>
       <td style="font-size:12.5px;color:var(--muted);">${slot}</td>
       <td>${statusBadge(s)}</td>
-      <td>
-        ${showConfirm ? `<button class="btn btn-s btn-sm" onclick="promptConfirmRequest(${d.id},'${(deptName || '').replace(/'/g, "\\'")}')"><i class="fa-solid fa-check"></i> Confirm Slot</button>` : '<span style="color:var(--muted);font-size:12px;">—</span>'}
-      </td>`;
+      <td>${actionCell}</td>`;
     tbody.appendChild(tr);
   });
 
@@ -901,8 +966,8 @@ function resetFilters(){
 /* ═══════════════ STATUS BADGE ═══════════════ */
 function statusBadge(s){
   const label = formatStatusLabel(s);
-  const map = {Pending:'bg-pending',Confirmed:'bg-success',Rescheduled:'bg-purple',Cancelled:'bg-cancel'};
-  const ico = {Pending:'fa-clock',Confirmed:'fa-circle-check',Rescheduled:'fa-rotate',Cancelled:'fa-ban'};
+  const map = {Pending:'bg-pending',Confirmed:'bg-success',Rescheduled:'bg-purple',Cancelled:'bg-cancel','Awaiting Confirmation':'bg-info'};
+  const ico = {Pending:'fa-clock',Confirmed:'fa-circle-check',Rescheduled:'fa-rotate',Cancelled:'fa-ban','Awaiting Confirmation':'fa-hourglass-half'};
   return `<span class="badge ${map[label]||'bg-pending'}"><i class="fa-solid ${ico[label]||'fa-clock'}"></i> ${label}</span>`;
 }
 
@@ -1024,7 +1089,8 @@ async function handleSchedSubmit(e){
         endDate: end,
         contactPerson: cp,
         contactEmail: ce,
-        remarks: rem
+        remarks: rem,
+        registeredStudentsCount: await getRegisteredStudentCountForDept(dept)
       };
 
       const res = await fetch("/api/interview-requests", {
@@ -1161,9 +1227,21 @@ function cancelStatus(){
 }
 
 function promptConfirmRequest(requestId, deptName) {
+  const iv = (dashboardState.interviews||[]).find(i => i.id === requestId);
+  const slot = iv ? formatInterviewSlot(iv) : 'Not available';
+  const venue = iv?.scheduledVenue || 'TBD';
+  const interviewers = (iv?.assignedInterviewerNames||[]).join(', ') || 'Not Assigned';
+  
   _pendingConfirmRequestId = requestId;
-  document.getElementById('statusModalTitle').textContent='Confirm Interview Slot';
-  document.getElementById('statusModalText').textContent=`Are you sure you want to confirm the scheduled slot for "${deptName}"?`;
+  document.getElementById('statusModalTitle').textContent = 'Confirm Interview Slot';
+  document.getElementById('statusModalText').innerHTML = `
+    <div style="text-align:left;margin-bottom:12px;">
+      <b>Department:</b> ${deptName}<br>
+      <b>Slot:</b> ${slot}<br>
+      <b>Venue:</b> ${venue}<br>
+      <b>Interviewers:</b> ${interviewers}
+    </div>
+    Are you sure you want to confirm this interview slot?`;
   openOverlay('statusModal');
 }
 
@@ -1288,6 +1366,103 @@ function showToast(msg,type='success'){
   t.innerHTML=`<i class="fa-solid fa-${type==='error'?'circle-xmark':type==='warn'?'triangle-exclamation':'circle-check'}"></i>${msg}`;
   document.body.appendChild(t);
   setTimeout(()=>t.remove(),3000);
+}
+
+async function getRegisteredStudentCountForDept(deptName) {
+  try {
+    const dept = departments.find(d => d.name === deptName);
+    if (!dept || !dept.id) return 0;
+    const token = localStorage.getItem("accessToken");
+    const res = await fetch(`/departments/${dept.id}/students`, {
+      headers: { "Authorization": "Bearer " + token }
+    });
+    if (!res.ok) return 0;
+    const students = await res.json();
+    return students.length;
+  } catch(e) { return 0; }
+}
+
+async function loadDeptStudents(deptId, containerId) {
+  const token = localStorage.getItem("accessToken");
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '<p style="color:var(--muted);font-size:12px;">Loading students...</p>';
+  try {
+    const res = await fetch(`/departments/${deptId}/students`, {
+      headers: { "Authorization": "Bearer " + token }
+    });
+    if (!res.ok) throw new Error("Failed");
+    const students = await res.json();
+    if (!students.length) {
+      container.innerHTML = '<p style="color:var(--muted);">No students registered yet.</p>';
+      return;
+    }
+    container.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+      <thead><tr style="background:#F8FAFC;">
+        <th style="padding:8px;text-align:left;">Name</th>
+        <th style="padding:8px;text-align:left;">Email</th>
+        <th style="padding:8px;text-align:left;">Class</th>
+        <th style="padding:8px;text-align:left;">CGPA</th>
+      </tr></thead><tbody>
+      ${students.map(s => `<tr style="border-bottom:1px solid #F1F5F9;">
+        <td style="padding:8px;font-weight:600;">${s.firstName||''} ${s.lastName||''}</td>
+        <td style="padding:8px;color:var(--muted);">${s.email||'—'}</td>
+        <td style="padding:8px;">${s.studentClass||'—'}</td>
+        <td style="padding:8px;">${s.cgpa!=null?s.cgpa:'—'}</td>
+      </tr>`).join('')}
+      </tbody></table></div>`;
+  } catch(e) {
+    container.innerHTML = '<p style="color:var(--muted);">Could not load students.</p>';
+  }
+}
+
+function openInterviewViewModal(requestId) {
+  const iv = (dashboardState.interviews||[]).find(i => i.id === requestId);
+  if (!iv) return;
+  const slot = formatInterviewSlot(iv);
+  const modalHtml = `
+    <div class="modal-overlay open" id="ivViewModal" onclick="if(event.target===this)document.getElementById('ivViewModal').remove()">
+      <div class="modal" style="max-width:480px;width:95%;">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-calendar-check"></i> Interview Details</h3>
+          <button class="modal-close" onclick="document.getElementById('ivViewModal').remove()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:20px;">
+          <div style="display:grid;gap:12px;">
+            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Department</div>
+              <div style="font-weight:700;">${iv.departmentName||'—'}</div>
+            </div>
+            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Scheduled Slot</div>
+              <div style="font-weight:700;">${slot}</div>
+            </div>
+            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Venue</div>
+              <div style="font-weight:700;">${iv.scheduledVenue||'TBD'}</div>
+            </div>
+            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Meeting Link</div>
+              <div style="font-weight:700;">${iv.meetingLink?`<a href="${iv.meetingLink}" target="_blank">${iv.meetingLink}</a>`:'N/A'}</div>
+            </div>
+            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Interviewers</div>
+              <div style="font-weight:700;">${(iv.assignedInterviewerNames||[]).join(', ')||'Not Assigned'}</div>
+            </div>
+            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Students Required</div>
+              <div style="font-weight:700;">${iv.numberOfStudentsRequired??'TBD'}</div>
+            </div>
+            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Status</div>
+              <div>${statusBadge(iv.status)}</div>
+            </div>
+          </div>
+          <button class="btn btn-ghost" style="margin-top:16px;width:100%;justify-content:center;" onclick="document.getElementById('ivViewModal').remove()">Close</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
 /* ═══════════════ RENDER ALL ═══════════════ */

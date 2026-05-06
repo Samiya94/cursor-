@@ -19,6 +19,7 @@ public record InterviewRequestResponseDTO(
     String scheduledVenue,
     String meetingLink,
     Integer numberOfStudentsRequired,
+    Integer registeredStudentsCount,
     Boolean instituteConfirmed,
     java.util.List<Long> assignedInterviewerIds,
     java.util.List<String> assignedInterviewerNames,

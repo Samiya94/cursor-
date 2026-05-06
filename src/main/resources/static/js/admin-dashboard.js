@@ -46,6 +46,15 @@ async function loadAdminStats() {
         setEl('statConfirmedRequests', data.confirmedRequests ?? 0);
         setEl('statPendingRequests', data.pendingRequests ?? 0);
 
+        // After existing stat assignments:
+        const deptCounts = data.deptStudentCounts || {};
+        const deptEl = document.getElementById('statDeptStudentCounts');
+        if (deptEl) {
+        deptEl.innerHTML = Object.entries(deptCounts)
+            .map(([dept, cnt]) => `<span class="req-tag">${dept}: <b>${cnt}</b></span>`)
+            .join('');
+        }
+
         // Update sidebar badge
         const intBadge = document.getElementById('intBadge');
         if (intBadge) intBadge.textContent = data.pendingInterviewers ?? 0;
@@ -289,6 +298,11 @@ async function rejectInterviewerById(id, name) {
     } catch (e) { showToast('Error', 'error'); }
 }
 
+
+function toggleReschedule(){
+    const fields = document.getElementById('rescheduleFields');
+    if (fields) fields.style.display = document.getElementById('rescheduleToggle').checked ? 'block' : 'none';
+}
 /* ═══════════════════════════════════════
    ACTIVE INTERVIEWERS TABLE
 ═══════════════════════════════════════ */
@@ -488,8 +502,13 @@ async function loadAllInterviewRequests() {
         requests.forEach(req => {
             const statusClass = {
                 'PENDING': 'bg-pending', 'CONFIRMED': 'bg-success',
-                'RESCHEDULED': 'bg-blue', 'CANCELLED': 'bg-danger'
+                'RESCHEDULED': 'bg-blue', 'CANCELLED': 'bg-danger', 'AWAITING_CONFIRMATION': 'bg-purple'
             }[req.status] || 'bg-pending';
+            const statusLabel = {
+                'PENDING': 'Pending', 'CONFIRMED': 'Confirmed',
+                'RESCHEDULED': 'Rescheduled', 'CANCELLED': 'Cancelled',
+                'AWAITING_CONFIRMATION': 'Awaiting Confirmation'
+            }[req.status] || req.status;
 
             const expertiseTags = (req.expertise || []).map(e => `<span class="req-tag">${e}</span>`).join('');
             const startDate = req.startDate ? new Date(req.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
@@ -507,16 +526,16 @@ async function loadAllInterviewRequests() {
 
             const canAssign = (req.status === 'CONFIRMED' || req.status === 'RESCHEDULED');
             const actionBtn = req.status === 'PENDING'
-                ? `<button class="btn btn-s btn-sm" onclick="openScheduleModal(${req.id},'${req.instituteName || ''}','${req.departmentName || ''}','${(req.expertise || []).join(', ')}')\"><i class="fa-solid fa-calendar"></i> Schedule</button>`
-                : `<button class="btn btn-info btn-sm" onclick="openRescheduleModal(${req.id})"><i class="fa-solid fa-rotate"></i> Reschedule</button>`;
+            ? `<button class="btn btn-s btn-sm" onclick="openProcessModal(${req.id})"><i class="fa-solid fa-gear"></i> Process</button>`
+            : `<button class="btn btn-info btn-sm" onclick="openRescheduleModal(${req.id})"><i class="fa-solid fa-rotate"></i> Reschedule</button>`;
             const assignBtn = canAssign
                 ? `<button class="btn btn-s btn-sm" onclick="openAssignInterviewerModal(${req.id},'${req.instituteName || ''}','${req.departmentName || ''}','${(req.expertise || []).join(', ')}')\"><i class="fa-solid fa-user-check"></i> Assign Interviewers</button>`
                 : '';
-            const instConfirmedBadge = (req.status === 'CONFIRMED' || req.status === 'RESCHEDULED')
-                ? (req.instituteConfirmed
-                    ? `<span class="badge bg-success" title="Institute has confirmed the slot"><i class="fa-solid fa-circle-check"></i> Inst. Confirmed</span>`
-                    : `<span class="badge bg-pending" title="Awaiting institute confirmation"><i class="fa-solid fa-clock"></i> Awaiting Confirmation</span>`)
-                : '';
+           const instConfirmedBadge = (req.status === 'CONFIRMED' || req.status === 'AWAITING_CONFIRMATION')
+            ? (req.instituteConfirmed
+                ? `<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> Inst. Confirmed</span>`
+                : `<span class="badge bg-pending"><i class="fa-solid fa-clock"></i> Awaiting Confirmation</span>`)
+            : '';
 
             row.innerHTML = `
                 <td><div style="display:flex;align-items:center;gap:10px;">
@@ -529,7 +548,7 @@ async function loadAllInterviewRequests() {
                 <td>${expertiseTags || '—'}</td>
                 <td>${req.departmentName || '—'}</td>
                 <td style="font-size:12px;white-space:nowrap;">${startDate} – ${endDate}</td>
-                <td><span class="badge ${statusClass}">${req.status}</span>${instConfirmedBadge ? '<br/>' + instConfirmedBadge : ''}</td>
+                <td><span class="badge ${statusClass}">${statusLabel}</span>${instConfirmedBadge ? '<br/>' + instConfirmedBadge : ''}</td>
                 <td><div style="display:flex;gap:5px;flex-wrap:wrap;">
                     ${actionBtn}
                     ${assignBtn}
@@ -544,82 +563,145 @@ async function loadAllInterviewRequests() {
 /* ═══════════════════════════════════════
    SCHEDULE MODAL
 ═══════════════════════════════════════ */
-async function openScheduleModal(reqId, instituteName, dept, domains) {
+// async function openScheduleModal(reqId, instituteName, dept, domains) {
+//     const ivs = await getActiveInterviewersList();
+//     const interviewerChecklist = ivs.length
+//         ? ivs.map(iv => `<label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;"><input type="checkbox" class="schedule-iv-cb" value="${iv.id}"><span>${iv.fullName || 'Interviewer'} <span style="color:var(--muted);font-size:12px;">(${iv.domain || 'General'})</span></span></label>`).join('')
+//         : '<div style="color:var(--muted);font-size:12px;">No active interviewers available.</div>';
+
+//     document.getElementById('processInstInfo').innerHTML = `
+//         <div class="detail-item"><span>Institute</span><b>${instituteName}</b></div>
+//         <div class="detail-item"><span>Department</span><b>${dept}</b></div>
+//         <div class="detail-item"><span>Domains</span><b>${domains}</b></div>
+//         <div style="margin-top:16px;">
+//             <label style="font-size:12px;font-weight:600;">Scheduled Date &amp; Time *</label>
+//             <input type="datetime-local" id="schedDate" style="width:100%;margin-top:4px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
+//         </div>
+//         <div style="margin-top:10px;">
+//             <label style="font-size:12px;font-weight:600;">Venue / Location</label>
+//             <input type="text" id="schedVenue" placeholder="e.g. Online / Campus Hall A" style="width:100%;margin-top:4px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
+//         </div>
+//         <div style="margin-top:10px;">
+//             <label style="font-size:12px;font-weight:600;">Meeting Link (if online)</label>
+//             <input type="text" id="schedMeetLink" placeholder="https://meet.google.com/..." style="width:100%;margin-top:4px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
+//         </div>
+//         <div style="margin-top:10px;">
+//             <label style="font-size:12px;font-weight:600;">Number of Students Required</label>
+//             <input type="number" id="schedStudentCount" min="1" value="10" style="width:100%;margin-top:4px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
+//         </div>
+//         <div style="margin-top:10px;">
+//             <label style="font-size:12px;font-weight:600;">Assign Interviewers (Multiple)</label>
+//             <div style="margin-top:6px;max-height:140px;overflow:auto;border:1px solid #E2E8F0;border-radius:6px;padding:8px;">
+//                 ${interviewerChecklist}
+//             </div>
+//         </div>
+//         <div style="margin-top:16px;display:flex;gap:10px;">
+//             <button class="btn btn-s" style="flex:1;justify-content:center;" onclick="confirmSchedule(${reqId})">
+//                 <i class="fa-solid fa-calendar-check"></i> Confirm Schedule</button>
+//             <button class="btn btn-outline" onclick="closeOverlay('processModal')">Cancel</button>
+//         </div>`;
+
+//     document.getElementById('interviewerChecklist').innerHTML = '';
+//     document.getElementById('interviewerChecklist').style.display = 'none';
+//     document.getElementById('noMatchMsg').style.display = 'none';
+//     document.getElementById('domainFilterNote').textContent = '';
+//     openOverlay('processModal');
+// }
+
+async function openProcessModal(reqId) {
+    let req = allAdminRequestsCache.find(r => r.id === reqId);
+    if (!req) {
+        try {
+            const r = await secureFetch('/api/interview-requests/all');
+            if (r && r.ok) { allAdminRequestsCache = await r.json(); req = allAdminRequestsCache.find(r => r.id === reqId); }
+        } catch(e) {}
+    }
+    if (!req) { showToast('Request not found', 'error'); return; }
+
     const ivs = await getActiveInterviewersList();
-    const interviewerChecklist = ivs.length
-        ? ivs.map(iv => `<label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;"><input type="checkbox" class="schedule-iv-cb" value="${iv.id}"><span>${iv.fullName || 'Interviewer'} <span style="color:var(--muted);font-size:12px;">(${iv.domain || 'General'})</span></span></label>`).join('')
-        : '<div style="color:var(--muted);font-size:12px;">No active interviewers available.</div>';
+    const requestedDomains = (req.expertise || []).map(d => d.toLowerCase());
+    const matchedIvs = ivs.filter(iv => {
+        const ivDomain = (iv.domain || '').toLowerCase();
+        return requestedDomains.some(d => ivDomain.includes(d) || d.includes(ivDomain));
+    });
+
+    const interviewerChecklist = matchedIvs.length
+        ? matchedIvs.map(iv => `<label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;padding:6px 8px;border-radius:6px;background:#F8FAFC;cursor:pointer;">
+            <input type="checkbox" class="schedule-iv-cb" value="${iv.id}" style="margin-top:2px;accent-color:var(--primary);">
+            <span style="font-size:13px;">${iv.fullName || 'Interviewer'} <span style="color:var(--muted);font-size:11.5px;">(${iv.domain || 'General'})</span></span>
+          </label>`).join('')
+        : '';
+
+    const startDate = req.startDate ? new Date(req.startDate).toLocaleString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const endDate   = req.endDate   ? new Date(req.endDate).toLocaleString('en-IN',   {day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const studentCount = req.registeredStudentsCount ?? req.numberOfStudentsRequired ?? '—';
 
     document.getElementById('processInstInfo').innerHTML = `
-        <div class="detail-item"><span>Institute</span><b>${instituteName}</b></div>
-        <div class="detail-item"><span>Department</span><b>${dept}</b></div>
-        <div class="detail-item"><span>Domains</span><b>${domains}</b></div>
-        <div style="margin-top:16px;">
-            <label style="font-size:12px;font-weight:600;">Scheduled Date &amp; Time *</label>
-            <input type="datetime-local" id="schedDate" style="width:100%;margin-top:4px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
-        </div>
-        <div style="margin-top:10px;">
-            <label style="font-size:12px;font-weight:600;">Venue / Location</label>
-            <input type="text" id="schedVenue" placeholder="e.g. Online / Campus Hall A" style="width:100%;margin-top:4px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
-        </div>
-        <div style="margin-top:10px;">
-            <label style="font-size:12px;font-weight:600;">Meeting Link (if online)</label>
-            <input type="text" id="schedMeetLink" placeholder="https://meet.google.com/..." style="width:100%;margin-top:4px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
-        </div>
-        <div style="margin-top:10px;">
-            <label style="font-size:12px;font-weight:600;">Number of Students Required</label>
-            <input type="number" id="schedStudentCount" min="1" value="10" style="width:100%;margin-top:4px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
-        </div>
-        <div style="margin-top:10px;">
-            <label style="font-size:12px;font-weight:600;">Assign Interviewers (Multiple)</label>
-            <div style="margin-top:6px;max-height:140px;overflow:auto;border:1px solid #E2E8F0;border-radius:6px;padding:8px;">
-                ${interviewerChecklist}
-            </div>
-        </div>
-        <div style="margin-top:16px;display:flex;gap:10px;">
-            <button class="btn btn-s" style="flex:1;justify-content:center;" onclick="confirmSchedule(${reqId})">
-                <i class="fa-solid fa-calendar-check"></i> Confirm Schedule</button>
-            <button class="btn btn-outline" onclick="closeOverlay('processModal')">Cancel</button>
+        <div class="detail-item"><span>Institute</span><b>${req.instituteName || '—'}</b></div>
+        <div class="detail-item"><span>Department</span><b>${req.departmentName || '—'}</b></div>
+        <div class="detail-item"><span>Domains Requested</span><b>${(req.expertise||[]).join(', ')||'—'}</b></div>
+        <div class="detail-item"><span>Contact Email</span><b>${req.contactEmail || '—'}</b></div>
+        <div class="detail-item"><span>Preferred Window</span><b>${startDate} – ${endDate}</b></div>
+        <div class="detail-item" style="background:#EFF6FF;border:1.5px solid #BFDBFE;">
+          <span style="color:var(--primary);">Registered Students</span>
+          <b style="color:var(--primary);font-size:17px;">${studentCount}</b>
         </div>`;
 
-    document.getElementById('interviewerChecklist').innerHTML = '';
-    document.getElementById('interviewerChecklist').style.display = 'none';
-    document.getElementById('noMatchMsg').style.display = 'none';
-    document.getElementById('domainFilterNote').textContent = '';
+    document.getElementById('interviewerChecklist').innerHTML = matchedIvs.length ? interviewerChecklist : '';
+    document.getElementById('interviewerChecklist').style.display = matchedIvs.length ? 'block' : 'none';
+    document.getElementById('noMatchMsg').style.display = matchedIvs.length ? 'none' : 'block';
+    document.getElementById('domainFilterNote').textContent = matchedIvs.length
+        ? `— ${matchedIvs.length} matching interviewer(s) for: ${(req.expertise||[]).join(', ')}`
+        : '';
+
+    const toggle = document.getElementById('rescheduleToggle');
+    if (toggle) toggle.checked = false;
+    const schedFields = document.getElementById('rescheduleFields');
+    if (schedFields) schedFields.style.display = 'none';
+
+    window._currentProcessReqId = reqId;
     openOverlay('processModal');
 }
 
 async function confirmSchedule(reqId) {
+    const id = reqId || window._currentProcessReqId;
     const dateVal = document.getElementById('schedDate')?.value;
     if (!dateVal) { showToast('Please select a date and time', 'warn'); return; }
 
     const selectedInterviewerIds = [...document.querySelectorAll('.schedule-iv-cb:checked')]
-        .map(cb => parseInt(cb.value))
-        .filter(Number.isFinite);
+        .map(cb => parseInt(cb.value)).filter(Number.isFinite);
+
+    const isReschedule = document.getElementById('rescheduleToggle')?.checked;
+    const newStart = document.getElementById('startDateTime')?.value;
+    const newEnd   = document.getElementById('endDateTime')?.value;
 
     const payload = {
         scheduledDate: new Date(dateVal).toISOString(),
         scheduledVenue: document.getElementById('schedVenue')?.value || '',
         meetingLink: document.getElementById('schedMeetLink')?.value || '',
         assignedInterviewerIds: selectedInterviewerIds,
-        numberOfStudentsRequired: parseInt(document.getElementById('schedStudentCount')?.value || '10')
+        numberOfStudentsRequired: parseInt(document.getElementById('schedStudentCount')?.value || '10'),
+        ...(isReschedule && newStart ? { startDate: new Date(newStart).toISOString() } : {}),
+        ...(isReschedule && newEnd   ? { endDate:   new Date(newEnd).toISOString()   } : {})
     };
 
     try {
-        const res = await secureFetch(`/api/interview-requests/${reqId}/schedule`, {
+        const endpoint = isReschedule
+            ? `/api/interview-requests/${id}/reschedule`
+            : `/api/interview-requests/${id}/schedule`;
+        const res = await secureFetch(endpoint, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
         if (res && res.ok) {
             closeOverlay('processModal');
-            showToast('Interview scheduled successfully!');
+            showToast(isReschedule ? 'Rescheduled! Awaiting institute confirmation.' : 'Scheduled! Awaiting institute confirmation.');
             await loadAllInterviewRequests();
             await loadAdminStats();
             await loadRecentActivity();
         } else {
-            const err = await res.text();
-            showToast(err || 'Failed to schedule', 'error');
+            showToast(await res.text() || 'Failed to schedule', 'error');
         }
     } catch (e) { showToast('Error scheduling', 'error'); }
 }
@@ -1424,4 +1506,132 @@ async function loadReportData(tab) {
             if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px;">Student score data not yet available.</td></tr>';
         }
     } catch (e) { console.error('Report data error:', e); }
+}
+
+async function openProcessModal(reqId) {
+  try {
+    const res = await secureFetch('/api/interview-requests/all');
+    if (!res || !res.ok) return;
+    const all = await res.json();
+    const req = all.find(r => r.id === reqId);
+    if (!req) return;
+
+    const ivs = await getActiveInterviewersList();
+    const reqDomains = (req.expertise || []).map(e => e.toLowerCase());
+    
+    // Filter interviewers matching the request domains
+    const matchingIvs = ivs.filter(iv => 
+      iv.domain && reqDomains.some(d => iv.domain.toLowerCase().includes(d) || d.includes(iv.domain.toLowerCase()))
+    );
+    const otherIvs = ivs.filter(iv => !matchingIvs.includes(iv));
+    
+    const buildChecklist = (list, label) => list.length ? `
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:8px 0 4px;">${label}</div>
+      ${list.map(iv => `<label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;padding:6px 8px;background:${matchingIvs.includes(iv)?'#EFF6FF':'#F8FAFC'};border-radius:6px;">
+        <input type="checkbox" class="schedule-iv-cb" value="${iv.id}" ${matchingIvs.includes(iv)?'checked':''}>
+        <span>${iv.fullName||'Interviewer'} <span style="color:var(--muted);font-size:12px;">(${iv.domain||'General'})</span></span>
+      </label>`).join('')}` : '';
+
+    const interviewerSection = ivs.length
+      ? buildChecklist(matchingIvs, '✓ Matching Domain') + buildChecklist(otherIvs, 'Other Interviewers')
+      : '<div style="color:var(--muted);font-size:12px;">No active interviewers available.</div>';
+
+    const startDate = req.startDate ? new Date(req.startDate).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
+    const endDate = req.endDate ? new Date(req.endDate).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
+    const regStudents = req.registeredStudentsCount != null ? req.registeredStudentsCount : '—';
+
+    document.getElementById('processInstInfo').innerHTML = `
+      <div class="detail-grid" style="margin-bottom:16px;">
+        <div class="detail-item"><span>Institute</span><b>${req.instituteName||'—'}</b></div>
+        <div class="detail-item"><span>Department</span><b>${req.departmentName||'—'}</b></div>
+        <div class="detail-item"><span>Domains</span><b>${(req.expertise||[]).join(', ')||'—'}</b></div>
+        <div class="detail-item"><span>Requested Dates</span><b>${startDate} – ${endDate}</b></div>
+        <div class="detail-item"><span>Contact</span><b>${req.contactEmail||'—'}</b></div>
+        <div class="detail-item"><span>Registered Students</span><b style="color:#1E3A8A;">${regStudents}</b></div>
+      </div>
+      <hr style="border:none;border-top:1px solid #E2E8F0;margin:12px 0;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">
+        <i class="fa-solid fa-calendar"></i> Schedule Interview
+      </div>
+      <label style="font-size:12px;font-weight:600;">Scheduled Date &amp; Time *</label>
+      <input type="datetime-local" id="schedDate" style="width:100%;margin:4px 0 10px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
+      <label style="font-size:12px;font-weight:600;">Venue / Location</label>
+      <input type="text" id="schedVenue" placeholder="e.g. Online / Campus Hall A" style="width:100%;margin:4px 0 10px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
+      <label style="font-size:12px;font-weight:600;">Meeting Link (if online)</label>
+      <input type="text" id="schedMeetLink" placeholder="https://meet.google.com/..." style="width:100%;margin:4px 0 10px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
+      <label style="font-size:12px;font-weight:600;">Number of Students Required</label>
+      <input type="number" id="schedStudentCount" min="1" value="${regStudents !== '—' ? regStudents : 10}" style="width:100%;margin:4px 0 10px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <input type="checkbox" id="rescheduleCheck" onchange="toggleRescheduleSection()">
+        <label for="rescheduleCheck" style="font-size:12px;font-weight:600;cursor:pointer;">Admin wants to reschedule?</label>
+      </div>
+      <div id="rescheduleSection" style="display:none;background:#FEF3C7;border:1px solid #FCD34D;border-radius:6px;padding:10px;margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:8px;">Reschedule Dates</div>
+        <label style="font-size:12px;font-weight:600;">New Start Date</label>
+        <input type="datetime-local" id="reschedStart" style="width:100%;margin:4px 0 8px;padding:8px;border:1px solid #FCD34D;border-radius:6px;">
+        <label style="font-size:12px;font-weight:600;">New End Date</label>
+        <input type="datetime-local" id="reschedEnd" style="width:100%;margin:4px 0;padding:8px;border:1px solid #FCD34D;border-radius:6px;">
+      </div>
+      <hr style="border:none;border-top:1px solid #E2E8F0;margin:12px 0;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">
+        <i class="fa-solid fa-user-check"></i> Assign Interviewers
+      </div>
+      <div style="max-height:180px;overflow:auto;border:1px solid #E2E8F0;border-radius:6px;padding:8px;">
+        ${interviewerSection}
+      </div>
+      <div style="margin-top:16px;display:flex;gap:10px;">
+        <button class="btn btn-s" style="flex:1;justify-content:center;" onclick="confirmAndSchedule(${reqId})">
+          <i class="fa-solid fa-calendar-check"></i> Confirm & Schedule</button>
+        <button class="btn btn-outline" onclick="closeOverlay('processModal')">Cancel</button>
+      </div>`;
+
+    document.getElementById('interviewerChecklist').innerHTML = '';
+    document.getElementById('interviewerChecklist').style.display = 'none';
+    document.getElementById('noMatchMsg').style.display = 'none';
+    document.getElementById('domainFilterNote').textContent = '';
+    openOverlay('processModal');
+  } catch(e) { showToast('Error loading request details', 'error'); }
+}
+
+function toggleRescheduleSection() {
+  const check = document.getElementById('rescheduleCheck');
+  const section = document.getElementById('rescheduleSection');
+  if (section) section.style.display = check?.checked ? 'block' : 'none';
+}
+
+async function confirmAndSchedule(reqId) {
+  const dateVal = document.getElementById('schedDate')?.value;
+  if (!dateVal) { showToast('Please select a scheduled date and time', 'warn'); return; }
+
+  const selectedInterviewerIds = [...document.querySelectorAll('.schedule-iv-cb:checked')]
+    .map(cb => parseInt(cb.value)).filter(Number.isFinite);
+
+  const isReschedule = document.getElementById('rescheduleCheck')?.checked;
+  
+  const payload = {
+    scheduledDate: new Date(dateVal).toISOString(),
+    scheduledVenue: document.getElementById('schedVenue')?.value || '',
+    meetingLink: document.getElementById('schedMeetLink')?.value || '',
+    assignedInterviewerIds: selectedInterviewerIds,
+    numberOfStudentsRequired: parseInt(document.getElementById('schedStudentCount')?.value || '10')
+  };
+
+  try {
+    const endpoint = isReschedule ? `/api/interview-requests/${reqId}/reschedule` : `/api/interview-requests/${reqId}/schedule`;
+    const res = await secureFetch(endpoint, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res && res.ok) {
+      closeOverlay('processModal');
+      showToast(isReschedule ? 'Interview rescheduled! Awaiting institute confirmation.' : 'Interview scheduled! Awaiting institute confirmation.');
+      await loadAllInterviewRequests();
+      await loadAdminStats();
+      await loadRecentActivity();
+    } else {
+      const err = await res.text();
+      showToast(err || 'Failed to schedule', 'error');
+    }
+  } catch(e) { showToast('Error scheduling', 'error'); }
 }

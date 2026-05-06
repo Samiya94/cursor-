@@ -78,6 +78,11 @@ async function loadDashboardStats() {
       cgpa:          DASHBOARD_STATS.cgpa
     };
     MY_INTERVIEWS = DASHBOARD_STATS.interviews || [];
+    // Seed resume info from dashboard-stats so it's available before loadResumeInfo() runs
+    if (DASHBOARD_STATS.resumeFileName) {
+      STUDENT_RESUME.url = DASHBOARD_STATS.resumeUrl || null;
+      STUDENT_RESUME.fileName = DASHBOARD_STATS.resumeFileName || null;
+    }
     try { localStorage.setItem('currentStudent', JSON.stringify(STUDENT)); } catch(e){}
   } catch(e) { console.error('Dashboard load error:', e); }
 }
@@ -423,7 +428,11 @@ async function loadMyResume() {
 
     var nm = document.getElementById('resumeName');
     var dt = document.getElementById('resumeDate');
-    if (nm) nm.textContent = data.resumeFileName || '—';
+    // Strip timestamp prefix (e.g. "1714927312000_myfile.pdf" → "myfile.pdf")
+    var displayName = data.resumeFileName
+      ? decodeURIComponent(data.resumeFileName.replace(/^\d+_/, ''))
+      : '—';
+    if (nm) nm.textContent = displayName;
     if (dt) {
       if (data.uploadedAt) {
         dt.textContent = 'Uploaded ' + new Date(data.uploadedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -432,7 +441,6 @@ async function loadMyResume() {
       }
     }
   } catch (e) {
-    // Resume is optional; don't block UI.
     console.error('Resume load error:', e);
   }
 }
@@ -442,7 +450,9 @@ function viewResume() {
     showToast('Upload a resume first', 'warn');
     return;
   }
-  window.open(STUDENT_RESUME.url, '_blank');
+  // Use absolute URL to ensure correct origin regardless of page context
+  var url = STUDENT_RESUME.url.startsWith('http') ? STUDENT_RESUME.url : window.location.origin + STUDENT_RESUME.url;
+  window.open(url, '_blank');
 }
 
 function startRealtimeRefresh() {
@@ -543,15 +553,23 @@ async function loadAvailableInterviewsFromAPI() {
             };
         });
 
-        // Mark already-applied slots
-        apiSlots.forEach(function(s) {
-            if (s.alreadyApplied) appliedSlots[s.id] = true;
-        });
+  // Mark already-applied slots
+    apiSlots.forEach(function(s) {
+        if (s.alreadyApplied) appliedSlots[s.id] = true;
+    });
 
-        // Store for rendering
-        window.API_INTERVIEW_SLOTS = apiSlots;
-        renderAPISlotGrid('dashSlots');
-        renderAPISlotGrid('applyGrid');
+    // Filter: only show interviews for the student's own department
+    var studentDept = (STUDENT.department || '').trim().toLowerCase();
+    var filteredSlots = studentDept
+        ? apiSlots.filter(function(s) {
+            return (s.topic || '').trim().toLowerCase() === studentDept;
+        })
+        : apiSlots;
+
+    // Store for rendering
+    window.API_INTERVIEW_SLOTS = filteredSlots;
+    renderAPISlotGrid('dashSlots');
+    renderAPISlotGrid('applyGrid');
     } catch(e) {
         console.error('Available interviews error:', e);
     }
@@ -846,7 +864,10 @@ async function handleResumeUpload(input){
 
     var nm = document.getElementById('resumeName');
     var dt = document.getElementById('resumeDate');
-    if (nm) nm.textContent = data.resumeFileName || '—';
+    var displayName = data.resumeFileName
+      ? decodeURIComponent(data.resumeFileName.replace(/^\d+_/, ''))
+      : '—';
+    if (nm) nm.textContent = displayName;
     if (dt) {
       if (data.uploadedAt) {
         dt.textContent = 'Uploaded ' + new Date(data.uploadedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });

@@ -72,6 +72,7 @@ public class InterviewRequest {
     private String meetingLink;
 
     private Integer numberOfStudentsRequired;
+    private Integer registeredStudentsCount;
     private Boolean instituteConfirmed;
 
     @PrePersist

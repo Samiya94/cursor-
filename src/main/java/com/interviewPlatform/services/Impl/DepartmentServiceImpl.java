@@ -17,6 +17,7 @@ import com.interviewPlatform.entities.InterviewRequest;
 import com.interviewPlatform.repositories.DepartmentRepository;
 import com.interviewPlatform.repositories.InstituteRepository;
 import com.interviewPlatform.repositories.InterviewRequestRepository;
+import com.interviewPlatform.repositories.StudentRepository;
 import com.interviewPlatform.services.DepartmentService;
 
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class DepartmentServiceImpl implements DepartmentService {
     private final DepartmentRepository departmentRepository;
     private final InstituteRepository instituteRepository;
     private final InterviewRequestRepository interviewRequestRepository;
+    private final StudentRepository studentRepository;
 
     @Transactional
     @Override
@@ -88,6 +90,24 @@ public class DepartmentServiceImpl implements DepartmentService {
                 dept.getInstitute().getInstituteName()
         );
     }
+
+    @Override
+public org.springframework.http.ResponseEntity<?> getStudentsByDepartment(Long deptId) {
+    var students = studentRepository.findByDepartmentId(deptId);
+    var result = students.stream().map(s -> {
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("id", s.getId());
+        m.put("firstName", s.getFirstName());
+        m.put("lastName", s.getLastName());
+        m.put("email", s.getUser() != null ? s.getUser().getEmail() : "");
+        m.put("phone", s.getPhone());
+        m.put("studentClass", s.getStudentClass());
+        m.put("cgpa", s.getCgpa());
+        m.put("skills", s.getSkills());
+        return m;
+    }).toList();
+    return org.springframework.http.ResponseEntity.ok(result);
+}
 
 
 }
