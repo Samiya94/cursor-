@@ -63,10 +63,13 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
         String code = String.format("%06d", secureRandom.nextInt(1_000_000));
 
-        otpRepository.deleteByEmail(normalized);
+        PasswordResetOtp row = otpRepository.findByEmail(normalized)
+                .orElseGet(() -> {
+                    PasswordResetOtp otp = new PasswordResetOtp();
+                    otp.setEmail(normalized);
+                    return otp;
+                });
 
-        PasswordResetOtp row = new PasswordResetOtp();
-        row.setEmail(normalized);
         row.setCode(code);
         row.setExpiresAt(Instant.now().plus(OTP_EXPIRY_MINUTES, ChronoUnit.MINUTES));
         row.setVerifiedAt(null);
