@@ -113,6 +113,39 @@
   </div>
 </div>
 
+<!-- ══════ STUDENT DETAIL MODAL ══════ -->
+<div class="modal-overlay" id="instStudentDetailModal" onclick="if(event.target===this)closeOverlay('instStudentDetailModal')">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div>
+        <h3 id="instModalStudentName" style="font-size:16px;font-weight:800;"></h3>
+        <div id="instModalStudentMeta" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;font-size:12px;color:var(--muted);"></div>
+      </div>
+      <div class="modal-close" onclick="closeOverlay('instStudentDetailModal')"><i class="fa-solid fa-xmark"></i></div>
+    </div>
+    <div id="instModalBanner"></div>
+    <div class="modal-tabs">
+      <div class="modal-tab active" onclick="instSwitchTab(this,'instTabOverview')"><i class="fa-solid fa-chart-pie" style="margin-right:4px;font-size:10px;"></i>Overview</div>
+      <div class="modal-tab" onclick="instSwitchTab(this,'instTabFeedback')"><i class="fa-solid fa-comment" style="margin-right:4px;font-size:10px;"></i>Feedback</div>
+      <div class="modal-tab" onclick="instSwitchTab(this,'instTabRounds')"><i class="fa-solid fa-list-check" style="margin-right:4px;font-size:10px;"></i>Rounds</div>
+      <div class="modal-tab" onclick="instSwitchTab(this,'instTabVideo')"><i class="fa-solid fa-video" style="margin-right:4px;font-size:10px;"></i>Recording</div>
+    </div>
+    <div id="instTabOverview" class="modal-tab-panel active">
+      <div class="vd-grid">
+        <div class="vd-item"><span>Overall Score</span><b id="instModalScore">—</b></div>
+        <div class="vd-item"><span>Interviews Attended</span><b id="instModalAttended">0 interviews</b></div>
+        <div class="vd-item"><span>Last Interview</span><b id="instModalLastDate">—</b></div>
+        <div class="vd-item"><span>Performance</span><div id="instModalPerfBadge" style="margin-top:4px;"></div></div>
+      </div>
+      <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;">Skill Scores</p>
+      <div id="instTabSkillBars"></div>
+    </div>
+    <div id="instTabFeedback" class="modal-tab-panel"><div id="instFeedbackContent"></div></div>
+    <div id="instTabRounds" class="modal-tab-panel"><div class="round-timeline" id="instRoundsContent"></div></div>
+    <div id="instTabVideo" class="modal-tab-panel"><div id="instVideoContent"></div></div>
+  </div>
+</div>
+
 <!-- ══════ SIDEBAR OVERLAY ══════ -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
@@ -124,7 +157,7 @@
     <li><a onclick="showView('overview')"   id="link-overview"   class="active"><i class="fa-solid fa-house"></i> Overview</a></li>
     <div class="nav-section-label">Management</div>
     <li><a onclick="showView('departments')" id="link-departments"><i class="fa-solid fa-sitemap"></i> Departments</a></li>
-    <li><a onclick="showView('requests')"   id="link-requests"  ><i class="fa-solid fa-paper-plane"></i> Interview Requests</a></li>
+    <li><a onclick="showView('requests')"   id="link-requests"  ><i class="fa-solid fa-paper-plane"></i> Interview Requests <span class="nav-badge" id="reqNavBadge" style="display:none;">0</span></a></li>
     <li><a onclick="showView('schedule')"   id="link-schedule"  ><i class="fa-solid fa-calendar-plus"></i> Schedule Interview</a></li>
     <div class="nav-section-label">Account</div>
     <li><a onclick="showView('settings')"   id="link-settings"  ><i class="fa-solid fa-gear"></i> Settings</a></li>
@@ -149,6 +182,20 @@
       </div>
     </div>
     <div class="header-right">
+      <!-- Notification Bell -->
+      <div class="notif-wrap" id="notifWrap">
+        <button class="notif-btn" id="notifBtn" onclick="toggleNotifPanel()" title="Notifications">
+          <i class="fa-solid fa-bell"></i>
+          <span class="notif-badge" id="notifBadge" style="display:none;">0</span>
+        </button>
+        <div class="notif-panel" id="notifPanel">
+          <div class="notif-panel-header">
+            <span style="font-weight:700;font-size:14px;">Notifications</span>
+            <button class="btn btn-ghost btn-sm" onclick="clearNotifications()" style="font-size:11px;padding:3px 8px;">Clear all</button>
+          </div>
+          <div id="notifList"><p style="color:var(--muted);font-size:13px;padding:16px;text-align:center;">No notifications yet.</p></div>
+        </div>
+      </div>
       <div class="user-menu-wrap">
         <div class="user-chip" onclick="toggleUserMenu()">
           <div class="avatar" id="headerAvatar">AI</div>
@@ -161,7 +208,7 @@
         <div class="user-dropdown" id="userDropdown">
           <div class="user-dropdown-header">
             <p id="dropInstName">ABC Institute of Technology</p>
-            <span id="dropInstEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f796939a9e99b7969594d9929382">[email&#160;protected]</a></span>
+            <span id="dropInstEmail"></span>
           </div>
           <a onclick="showView('settings');closeUserMenu()"><i class="fa-solid fa-gear" style="color:var(--muted);width:16px;"></i> Settings</a>
           <a class="danger" onclick="openLogout();closeUserMenu()"><i class="fa-solid fa-right-from-bracket" style="width:16px;"></i> Logout</a>
@@ -187,10 +234,14 @@
     </div>
 
     <!-- Stats row -->
-    <div class="stat-grid-4" id="ovStatGrid">
+    <div class="stat-grid-5" id="ovStatGrid">
       <div class="stat-card">
         <div class="stat-icon" style="background:#EFF6FF;color:var(--primary);"><i class="fa-solid fa-sitemap"></i></div>
         <p>Total Departments</p><h3 id="ovDepts" style="color:var(--primary);">—</h3>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#F0FDF4;color:var(--secondary);"><i class="fa-solid fa-users"></i></div>
+        <p>Total Students</p><h3 id="ovStudents" style="color:var(--secondary);">—</h3>
       </div>
       <div class="stat-card">
         <div class="stat-icon" style="background:#FEF3C7;color:#D97706;"><i class="fa-solid fa-paper-plane"></i></div>

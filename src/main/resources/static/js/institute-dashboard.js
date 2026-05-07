@@ -141,7 +141,13 @@ function formatInterviewSlot(interview) {
 function initHeader(){
   const name = loggedInstitute.instituteName||loggedInstitute.name||'Institute';
   const short = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,3)||'AI';
-  document.getElementById('headerAvatar').textContent = short;
+  const avatarEl = document.getElementById('headerAvatar');
+  const savedLogo = localStorage.getItem(getLogoKey ? getLogoKey() : 'instituteLogo_'+getInstituteId());
+  if (savedLogo) {
+    avatarEl.innerHTML = `<img src="${savedLogo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  } else {
+    avatarEl.textContent = short;
+  }
   document.getElementById('headerInstName').textContent = name.length>20?name.slice(0,20)+'…':name;
   document.getElementById('dropInstName').textContent  = name;
   document.getElementById('dropInstEmail').textContent = loggedInstitute.email||'';
@@ -157,13 +163,23 @@ async function fetchInstituteDetails() {
         loggedInstitute = {
             id: data.id,
             instituteName: data.instituteName,
-            city: data.city
+            email: data.email || '',
+            city: data.city,
+            website: data.website || ''
         };
 
         // Store only the ID
         localStorage.setItem("instituteId", data.id);
 
         initHeader();
+
+        // Pre-fill website in settings if not already saved in branding
+        const brandingKey = 'instituteBranding_' + data.id;
+        const saved = JSON.parse(localStorage.getItem(brandingKey) || '{}');
+        if (!saved.website && data.website) {
+            saved.website = data.website;
+            localStorage.setItem(brandingKey, JSON.stringify(saved));
+        }
     } catch (err) {
         console.error("Error fetching institute:", err);
     }
@@ -568,18 +584,97 @@ function loadDeptDetail(name,coord,initials,email,phone,desg,color){
   document.getElementById('det-perc-text').textContent='0%';
   document.getElementById('det-perc-bar').style.width='0%';
 
-  // Load registered students for this department inline
+  // Load registered students and fix stats for this department
   const dept = departments.find(dep => dep.name === name);
   if (dept && dept.id) {
-    let studentSection = document.getElementById('deptStudentSection');
-    if (!studentSection) {
-      studentSection = document.createElement('div');
-      studentSection.id = 'deptStudentSection';
-      studentSection.style.marginTop = '16px';
-      d.querySelector('.data-card').appendChild(studentSection);
-    }
-    studentSection.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:8px;letter-spacing:.05em;"><i class="fa-solid fa-users"></i> Registered Students</div><p style="color:var(--muted);font-size:12.5px;">Loading…</p>';
-    loadDeptStudents(dept.id, 'deptStudentSection');
+    // --- Fix interview counts for this specific department ---
+    const interviews = (dashboardState.interviews || []).filter(i =>
+      (i.departmentName || i.name || '').toLowerCase() === name.toLowerCase()
+    );
+    let completed = 0, scheduled = 0, pending = 0;
+    interviews.forEach(i => {
+      const s = normalizeStatusValue(i.status);
+      if (s === 'CONFIRMED') completed++;
+      else if (s === 'RESCHEDULED' || s === 'AWAITING_CONFIRMATION') scheduled++;
+      else if (s === 'PENDING') pending++;
+    });
+    document.getElementById('det-comp').textContent = completed;
+    document.getElementById('det-sched').textContent = scheduled;
+    document.getElementById('det-pend').textContent = pending;
+
+    // --- Fetch and set total registered students for this dept ---
+    const token = localStorage.getItem('accessToken');
+    fetch(`/departments/${dept.id}/students`, { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(r => r.ok ? r.json() : [])
+      .then(students => {
+        document.getElementById('det-total').textContent = students.length;
+        const total = students.length;
+        const doneCount = completed;
+        const pct = total ? Math.round((doneCount / total) * 100) : 0;
+        document.getElementById('det-perc-text').textContent = pct + '%';
+        document.getElementById('det-perc-bar').style.width = pct + '%';
+
+        // --- Render student table with Name, Email, Class, Phone, CGPA, Action ---
+        let studentSection = document.getElementById('deptStudentSection');
+        if (!studentSection) {
+          studentSection = document.createElement('div');
+          studentSection.id = 'deptStudentSection';
+          studentSection.style.marginTop = '16px';
+          d.querySelector('.data-card').appendChild(studentSection);
+        }
+        if (!students.length) {
+          studentSection.innerHTML = '<p style="color:var(--muted);font-size:13px;">No students registered yet.</p>';
+          return;
+        }
+        studentSection.innerHTML = `
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:10px;letter-spacing:.05em;">
+            <i class="fa-solid fa-users"></i> Registered Students (${students.length})
+          </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+              <thead>
+                <tr style="background:#F8FAFC;">
+                  <th style="padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--border);">Name</th>
+                  <th style="padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--border);">Email</th>
+                  <th style="padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--border);">Class</th>
+                  <th style="padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--border);">Phone</th>
+                  <th style="padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--border);">CGPA</th>
+                  <th style="padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--border);">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${students.map(s => {
+                  const sName = ((s.firstName||'') + ' ' + (s.lastName||'')).trim();
+                  const sEmail = s.email || '—';
+                  const sCls = s.studentClass || '—';
+                  const sPhone = s.phone || '—';
+                  const sCgpa = s.cgpa != null ? parseFloat(s.cgpa).toFixed(1) : '—';
+                  const sSkills = (s.skills && s.skills.length) ? s.skills.join(', ') : '—';
+                  const safeName = sName.replace(/'/g,"\\'");
+                  const safeEmail = sEmail.replace(/'/g,"\\'");
+                  const safeSkills = sSkills.replace(/'/g,"\\'");
+                  return `<tr style="border-bottom:1px solid #F1F5F9;transition:background .15s;" onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background=''">
+                    <td style="padding:9px 10px;font-weight:700;">${sName || '—'}</td>
+                    <td style="padding:9px 10px;color:var(--muted);font-size:12px;">${sEmail}</td>
+                    <td style="padding:9px 10px;">${sCls}</td>
+                    <td style="padding:9px 10px;font-size:12px;">${sPhone}</td>
+                    <td style="padding:9px 10px;"><b style="color:var(--primary);">${sCgpa}</b></td>
+                    <td style="padding:9px 10px;">
+                      <button class="btn btn-ghost btn-sm"
+                        onclick="openInstStudentDetail(${s.id||0},'${safeName}','${sCls}','${safeEmail}',${s.cgpa||0},'${safeSkills}','${sPhone}','${name}')">
+                        <i class="fa-solid fa-eye"></i> View
+                      </button>
+                    </td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      })
+      .catch(() => {
+        const ss = document.getElementById('deptStudentSection');
+        if (ss) ss.innerHTML = '<p style="color:var(--muted);">Could not load students.</p>';
+      });
   }
 
   d.scrollIntoView({behavior:'smooth',block:'start'});
@@ -617,6 +712,27 @@ async function renderOverview(){
   document.getElementById('ovReqs').textContent=total;
   document.getElementById('ovConfirmed').textContent=confirmed;
   document.getElementById('ovPending').textContent=pending;
+
+  // Total students across all departments (fetch in background, update when ready)
+  const ovStudentsEl = document.getElementById('ovStudents');
+  if (ovStudentsEl) {
+    ovStudentsEl.textContent = '…';
+    (async () => {
+      const token = localStorage.getItem('accessToken');
+      let totalStudents = 0;
+      await Promise.all(departments.map(async dept => {
+        if (!dept.id) return;
+        try {
+          const r = await fetch(`/departments/${dept.id}/students`, { headers: { 'Authorization': 'Bearer ' + token } });
+          if (r.ok) totalStudents += (await r.json()).length;
+        } catch(e) {}
+      }));
+      ovStudentsEl.textContent = totalStudents;
+    })();
+  }
+
+  // Update nav badge for AWAITING_CONFIRMATION requests
+  updateReqNavBadge();
 
   // status summary
   const summary=document.getElementById('ovStatusSummary');
@@ -762,21 +878,6 @@ function openDeptModal(dept,tpo,l,color){
       </button>
     </div>`;
   openOverlay('deptDetailModal');
-
-
-    // Load registered students inside the modal
-    document.getElementById('deptDetailBody').insertAdjacentHTML('beforeend', `
-      <div id="deptModalStudentSection" style="margin-top:14px;margin-bottom:6px;">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;margin-bottom:8px;"><i class="fa-solid fa-users"></i> Registered Students</div>
-        <p style="color:var(--muted);font-size:12.5px;">Loading…</p>
-      </div>`);
-
-    const deptObj = departments.find(d => d.name === dept.name || d.name === dept.departmentName);
-    if (deptObj && deptObj.id) {
-      loadDeptStudents(deptObj.id, 'deptModalStudentSection');
-    } else {
-      document.getElementById('deptModalStudentSection').innerHTML = '<p style="color:var(--muted);font-size:12.5px;">No student data available.</p>';
-    }
 }
 
 /* ═══════════════ REQUESTS ═══════════════ */
@@ -1254,6 +1355,7 @@ async function confirmInstituteRequest(requestId) {
       return;
     }
     showToast('Interview slot confirmed successfully.');
+    addNotification(`Interview slot confirmed for the requested department.`, 'success');
     await fetchInterviewRequests();
     await renderAll();
   } catch (e) {
@@ -1276,7 +1378,9 @@ function initBranding(){
   const inp=document.getElementById('instDisplayName');
   if(inp) inp.value=name;
   const saved=JSON.parse(localStorage.getItem(getBrandingKey())||'{}');
-  if(saved.website) document.getElementById('instWebsite').value=saved.website;
+  // Website: prefer saved branding, fallback to fetched API value
+  const websiteVal = saved.website || loggedInstitute.website || '';
+  if(websiteVal) document.getElementById('instWebsite').value=websiteVal;
   if(saved.displayName){ if(inp) inp.value=saved.displayName; }
   document.getElementById('logoInstNameDisplay').textContent=saved.displayName||name;
   const logo=localStorage.getItem(getLogoKey());
@@ -1290,6 +1394,9 @@ function applyLogoPreview(src){
   img.src=src; img.style.display='block';
   icon.style.display='none';
   rmBtn.style.display='inline-flex';
+  // Also update the header avatar
+  const avatarEl = document.getElementById('headerAvatar');
+  if (avatarEl) avatarEl.innerHTML = `<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
 }
 
 function handleLogoUpload(e){
@@ -1314,6 +1421,11 @@ function removeLogo(){
   img.src=''; img.style.display='none';
   icon.style.display='';
   rmBtn.style.display='none';
+  // Restore text initials in header avatar
+  const name = loggedInstitute.instituteName||loggedInstitute.name||'Institute';
+  const short = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,3)||'AI';
+  const avatarEl = document.getElementById('headerAvatar');
+  if (avatarEl) { avatarEl.innerHTML = ''; avatarEl.textContent = short; }
   showToast('Logo removed.');
 }
 
@@ -1357,6 +1469,185 @@ function confirmLogout() {
 }
 
 /* ═══════════════ TOAST ═══════════════ */
+/* ═══════════════ INSTITUTE STUDENT DETAIL MODAL ═══════════════ */
+function instSwitchTab(tabEl, panelId) {
+  document.querySelectorAll('#instStudentDetailModal .modal-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#instStudentDetailModal .modal-tab-panel').forEach(p => p.classList.remove('active'));
+  tabEl.classList.add('active');
+  const panel = document.getElementById(panelId);
+  if (panel) panel.classList.add('active');
+}
+
+function instGetInitials(n) {
+  return (n || 'S').split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'S';
+}
+
+function openInstStudentDetail(id, name, cls, email, cgpa, skills, phone, deptName) {
+  document.getElementById('instModalStudentName').textContent = name;
+  document.getElementById('instModalStudentMeta').innerHTML =
+    `<span><i class="fa-solid fa-graduation-cap"></i> ${cls}</span>` +
+    `<span><i class="fa-solid fa-envelope"></i> ${email || '—'}</span>` +
+    (cgpa ? `<span><i class="fa-solid fa-star"></i> CGPA: ${cgpa}</span>` : '');
+
+  document.getElementById('instModalBanner').innerHTML =
+    `<div class="profile-banner" style="background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:16px 20px;border-radius:10px;display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+      <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;font-size:1rem;font-weight:800;">${instGetInitials(name)}</div>
+      <div>
+        <p style="font-size:15px;font-weight:800;margin-bottom:2px;">${name}</p>
+        <p style="font-size:12px;opacity:.8;">${cls} · ${deptName || ''}</p>
+      </div>
+    </div>`;
+
+  document.getElementById('instModalScore').textContent = '—';
+  document.getElementById('instModalAttended').textContent = '0 interviews';
+  document.getElementById('instModalLastDate').textContent = '—';
+  document.getElementById('instModalPerfBadge').innerHTML =
+    '<span class="badge bg-gray"><i class="fa-solid fa-clock"></i> Not Evaluated Yet</span>';
+
+  // Skills
+  const skillsArr = skills ? skills.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const skEl = document.getElementById('instTabSkillBars');
+  if (skillsArr.length && skills !== '—') {
+    skEl.innerHTML = skillsArr.map(sk =>
+      `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-size:13px;min-width:120px;">${sk}</span>
+        <span class="badge bg-info">${sk}</span>
+      </div>`
+    ).join('');
+  } else {
+    skEl.innerHTML = '<p style="color:var(--muted);font-size:13px;">No skills listed yet.</p>';
+  }
+
+  document.getElementById('instFeedbackContent').innerHTML =
+    '<p style="color:var(--muted);font-size:13px;padding:10px;">No feedback available yet. Feedback will appear after interviews are completed.</p>';
+  document.getElementById('instRoundsContent').innerHTML =
+    '<p style="color:var(--muted);font-size:13px;padding:10px;">No interview rounds yet.</p>';
+  document.getElementById('instVideoContent').innerHTML =
+    '<p style="color:var(--muted);font-size:13px;padding:10px;">No recordings available yet.</p>';
+
+  // Reset tabs
+  document.querySelectorAll('#instStudentDetailModal .modal-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#instStudentDetailModal .modal-tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('#instStudentDetailModal .modal-tab').classList.add('active');
+  document.getElementById('instTabOverview').classList.add('active');
+
+  openOverlay('instStudentDetailModal');
+}
+
+/* ═══════════════ NOTIFICATIONS ═══════════════ */
+function getNotifKey() { return 'instituteNotifs_' + getInstituteId(); }
+
+function loadNotifications() { return JSON.parse(localStorage.getItem(getNotifKey()) || '[]'); }
+function saveNotifications(list) { localStorage.setItem(getNotifKey(), JSON.stringify(list)); }
+
+function addNotification(message, type = 'info') {
+  const list = loadNotifications();
+  list.unshift({ id: Date.now(), message, type, time: new Date().toISOString(), read: false });
+  // Keep only last 50
+  if (list.length > 50) list.splice(50);
+  saveNotifications(list);
+  renderNotifPanel();
+  updateNotifBadge();
+}
+
+function updateNotifBadge() {
+  const list = loadNotifications();
+  const unread = list.filter(n => !n.read).length;
+  const badge = document.getElementById('notifBadge');
+  if (badge) {
+    badge.textContent = unread > 9 ? '9+' : unread;
+    badge.style.display = unread > 0 ? 'flex' : 'none';
+  }
+}
+
+function updateReqNavBadge() {
+  const interviews = dashboardState.interviews || [];
+  const awaitingCount = interviews.filter(i =>
+    normalizeStatusValue(i.status) === 'AWAITING_CONFIRMATION' && !i.instituteConfirmed
+  ).length;
+  const badge = document.getElementById('reqNavBadge');
+  if (badge) {
+    badge.textContent = awaitingCount > 9 ? '9+' : awaitingCount;
+    badge.style.display = awaitingCount > 0 ? 'inline-flex' : 'none';
+  }
+  // Also add a notification for each new awaiting request
+  if (awaitingCount > 0) {
+    const key = 'lastAwaitingCount_' + getInstituteId();
+    const prev = parseInt(localStorage.getItem(key) || '0', 10);
+    if (awaitingCount > prev) {
+      addNotification(
+        `${awaitingCount - prev} new interview slot${awaitingCount - prev > 1 ? 's' : ''} scheduled by admin — please confirm.`,
+        'request'
+      );
+    }
+    localStorage.setItem(key, String(awaitingCount));
+  }
+}
+
+function renderNotifPanel() {
+  const list = loadNotifications();
+  const listEl = document.getElementById('notifList');
+  if (!listEl) return;
+  if (!list.length) {
+    listEl.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:16px;text-align:center;">No notifications yet.</p>';
+    return;
+  }
+  const typeIcon = { request: 'fa-calendar-check', info: 'fa-circle-info', success: 'fa-circle-check', warn: 'fa-triangle-exclamation' };
+  const typeColor = { request: 'var(--secondary)', info: 'var(--primary)', success: 'var(--success)', warn: '#D97706' };
+  listEl.innerHTML = list.map(n => {
+    const dt = new Date(n.time);
+    const timeStr = dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' · ' +
+      dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    return `<div class="notif-item ${n.read ? 'read' : ''}" onclick="markNotifRead(${n.id})">
+      <div class="notif-icon" style="color:${typeColor[n.type]||typeColor.info};">
+        <i class="fa-solid ${typeIcon[n.type]||typeIcon.info}"></i>
+      </div>
+      <div class="notif-body">
+        <div class="notif-msg">${n.message}</div>
+        <div class="notif-time">${timeStr}</div>
+      </div>
+      ${!n.read ? '<div class="notif-dot"></div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function markNotifRead(id) {
+  const list = loadNotifications();
+  const n = list.find(x => x.id === id);
+  if (n) { n.read = true; saveNotifications(list); renderNotifPanel(); updateNotifBadge(); }
+  // If it's a request notification, jump to requests view
+  if (n && n.type === 'request') { closeNotifPanel(); showView('requests'); }
+}
+
+function clearNotifications() {
+  saveNotifications([]);
+  renderNotifPanel();
+  updateNotifBadge();
+}
+
+function toggleNotifPanel() {
+  const panel = document.getElementById('notifPanel');
+  if (!panel) return;
+  const isOpen = panel.classList.toggle('open');
+  if (isOpen) { renderNotifPanel(); markAllNotifRead(); }
+}
+
+function closeNotifPanel() {
+  const panel = document.getElementById('notifPanel');
+  if (panel) panel.classList.remove('open');
+}
+
+function markAllNotifRead() {
+  const list = loadNotifications();
+  list.forEach(n => n.read = true);
+  saveNotifications(list);
+  updateNotifBadge();
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#notifWrap')) closeNotifPanel();
+});
+
 function showToast(msg,type='success'){
   const cols={success:['#DCFCE7','#166534'],warn:['#FEF3C7','#92400E'],error:['#FEE2E2','#991B1B']};
   const[bg,col]=cols[type]||cols.success;
@@ -1496,6 +1787,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   // 4. UI setup
   initHeader();
   initBranding();
+  updateNotifBadge();
+  renderNotifPanel();
 
   // 5. load departments
   
