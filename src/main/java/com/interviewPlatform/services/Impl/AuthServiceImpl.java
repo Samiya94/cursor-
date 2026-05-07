@@ -127,6 +127,22 @@ public class AuthServiceImpl implements AuthService{
             throw new RuntimeException("File upload failed");
         }
 
+        //6. Handle Resume Upload
+        try {
+            if (request.resumeFile() != null && !request.resumeFile().isEmpty()) {
+                String resumeFileName = System.currentTimeMillis() + "_resume_" +
+                        request.resumeFile().getOriginalFilename();
+
+                Path resumePath = Paths.get("uploads/resumes/" + resumeFileName);
+                Files.createDirectories(resumePath.getParent());
+                Files.write(resumePath, request.resumeFile().getBytes());
+
+                interviewer.setResumeUrl("/uploads/resumes/" + resumeFileName);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Resume upload failed");
+        }
+
         interviewerRepository.save(interviewer);
     }
 

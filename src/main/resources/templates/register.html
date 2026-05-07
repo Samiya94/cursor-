@@ -212,7 +212,7 @@
                 <input type="text" name="location" placeholder="e.g. Pune, Maharashtra" required>
               </div>
             </div>
-            <div class="field full">
+            <div class="field">
               <label>Profile Photo <span class="required">*</span></label>
               <div class="photo-upload-area">
                 <div class="photo-preview-circle" id="photo-circle">
@@ -225,6 +225,21 @@
                   </label>
                   <input type="file" name="profilePhoto" id="photo-upload-input" accept="image/*" onchange="previewPhoto(this)">
                   <div class="photo-filename" id="photo-filename">JPG, PNG or WEBP · Max 2 MB</div>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Resume / CV <span class="required">*</span></label>
+              <div class="photo-upload-area">
+                <div class="photo-preview-circle" id="resume-circle" style="background:#F0FDF4;color:var(--success,#16a34a);">
+                  <i class="fa-solid fa-file-pdf" style="font-size:1.3rem;"></i>
+                </div>
+                <div class="photo-upload-btn">
+                  <label for="resume-upload-input">
+                    <i class="fa-solid fa-file-arrow-up"></i> Upload Resume
+                  </label>
+                  <input type="file" name="resumeFile" id="resume-upload-input" accept=".pdf,.doc,.docx" onchange="showResumeFilename(this)" required>
+                  <div class="photo-filename" id="resume-filename">PDF, DOC or DOCX · Max 5 MB</div>
                 </div>
               </div>
             </div>

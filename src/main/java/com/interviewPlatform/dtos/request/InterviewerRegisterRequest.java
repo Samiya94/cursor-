@@ -27,7 +27,8 @@ public record InterviewerRegisterRequest(
 
     String password,
     String confirmPassword,
-    MultipartFile profilePhoto
+    MultipartFile profilePhoto,
+    MultipartFile resumeFile
 ) {
 
 }

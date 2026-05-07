@@ -248,6 +248,8 @@ async function loadPendingInterviewers() {
                 row.setAttribute('data-bio', iv.bio || '');
                 row.setAttribute('data-linkedin', iv.linkedin || '#');
                 row.setAttribute('data-loc', iv.location || '');
+                row.setAttribute('data-resume', iv.resumeUrl || '');
+                row.setAttribute('data-id', iv.id || '');
                 row.innerHTML = `
                     <td><div style="display:flex;align-items:center;gap:10px;">
                         <div style="width:34px;height:34px;border-radius:50%;background:#EFF6FF;color:var(--primary);display:grid;place-items:center;font-weight:800;font-size:12px;">${initials}</div>
@@ -257,7 +259,9 @@ async function loadPendingInterviewers() {
                     <td>${iv.experience || '—'}</td>
                     <td>${iv.location || '—'}</td>
                     <td><span class="badge bg-pending">Pending</span></td>
-                    <td><div style="display:flex;gap:5px;">
+                    <td><div style="display:flex;gap:5px;flex-wrap:wrap;">
+                        <button class="btn btn-info btn-sm" onclick="openRegProfileModal(this.closest('tr'))">
+                            <i class="fa-solid fa-eye"></i> Profile</button>
                         <button class="btn btn-s btn-sm" onclick="approveInterviewerById(${iv.id},'${name}','${iv.domain || ''}','${initials}','${iv.location || ''}')">
                             <i class="fa-solid fa-check"></i> Approve</button>
                         <button class="btn btn-reject btn-sm" onclick="rejectInterviewerById(${iv.id},'${name}')">
@@ -273,6 +277,47 @@ async function loadPendingInterviewers() {
         if (badgeEl) badgeEl.textContent = interviewers.length;
 
     } catch (e) { console.error('Pending interviewers error:', e); }
+}
+
+function openRegProfileModal(row) {
+    const d = row.dataset;
+    const name = d.name || '—';
+    const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const resumeUrl = d.resume || '';
+    const resumeBlock = resumeUrl
+        ? `<div style="display:flex;align-items:center;gap:10px;background:#111827;padding:10px 14px;border-radius:8px;">
+             <i class="fa-solid fa-file-pdf" style="color:#ef4444;font-size:1.4rem;flex-shrink:0;"></i>
+             <span style="color:#fff;font-size:13px;flex:1;">${name.replace(' ', '_')}_Resume.pdf</span>
+             <a href="${resumeUrl}" target="_blank" class="btn btn-s btn-sm"><i class="fa-solid fa-eye"></i> View</a>
+           </div>`
+        : `<div style="color:var(--muted);font-size:13px;padding:8px 0;"><i class="fa-solid fa-circle-info"></i> No resume uploaded</div>`;
+
+    document.getElementById('regProfileContent').innerHTML = `
+        <div class="profile-banner">
+            <div class="profile-banner-avatar">${initials}</div>
+            <div><h3 style="font-size:15px;">${name}</h3><p style="font-size:12.5px;opacity:.8;">${d.domain || '—'} · ${d.exp || '—'} exp</p></div>
+        </div>
+        <div class="detail-grid">
+            <div class="detail-item"><span>Email</span><b>${d.email || '—'}</b></div>
+            <div class="detail-item"><span>Phone</span><b>${d.phone || '—'}</b></div>
+            <div class="detail-item"><span>Location</span><b>${d.loc || '—'}</b></div>
+            <div class="detail-item"><span>LinkedIn</span><b><a href="${d.linkedin || '#'}" target="_blank" style="color:var(--secondary);">View Profile</a></b></div>
+        </div>
+        <div style="background:#F8FAFC;border-radius:8px;padding:12px;margin-bottom:10px;">
+            <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:5px;">Bio</div>
+            <p style="font-size:13px;line-height:1.6;">${d.bio || 'No bio provided.'}</p>
+        </div>
+        <div style="background:#F8FAFC;border-radius:8px;padding:12px;">
+            <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:8px;">CV / Resume</div>
+            ${resumeBlock}
+        </div>`;
+
+    const ivId = d.id;
+    document.getElementById('regProfileActions').innerHTML = `
+        <button class="btn btn-s" style="flex:1;justify-content:center;" onclick="approveInterviewerById(${ivId},'${name}','${d.domain || ''}','${initials}','${d.loc || ''}');closeOverlay('regProfileModal');"><i class="fa-solid fa-check"></i> Approve</button>
+        <button class="btn btn-reject" style="flex:1;justify-content:center;" onclick="rejectInterviewerById(${ivId},'${name}');closeOverlay('regProfileModal');"><i class="fa-solid fa-xmark"></i> Reject</button>
+        <button class="btn btn-outline" onclick="closeOverlay('regProfileModal')">Close</button>`;
+    openOverlay('regProfileModal');
 }
 
 async function approveInterviewerById(id, name, domain, initials, loc) {

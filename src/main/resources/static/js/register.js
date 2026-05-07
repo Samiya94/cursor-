@@ -69,6 +69,22 @@ function previewPhoto(input){
   reader.readAsDataURL(file);
 }
 
+function showResumeFilename(input){
+  const file=input.files[0];
+  const el=document.getElementById('resume-filename');
+  if(!file||!el)return;
+  const maxMB=5;
+  if(file.size>maxMB*1024*1024){
+    el.textContent='File too large (max 5 MB)';
+    el.style.color='#dc2626';
+    input.value='';
+    return;
+  }
+  el.textContent=file.name;
+  el.style.color='var(--success,#16a34a)';
+}
+
+
 /* ── Password Strength ── */
 function checkStrength(inputId, barId, textId){
   const val=document.getElementById(inputId).value;
