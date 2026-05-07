@@ -3,10 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Student Dashboard | Interview Platform</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" th:href="@{/css/student-dashboard.css}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+      /* Notification badge (replaces old notif-dot) */
+      .notif-badge{position:absolute;top:4px;right:4px;min-width:17px;height:17px;background:var(--danger);border-radius:999px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;padding:0 3px;line-height:1;}
+      /* Notification empty state */
+      .notif-empty{padding:28px 16px;text-align:center;color:var(--muted);}
+      .notif-empty i{font-size:1.6rem;display:block;margin-bottom:8px;opacity:.3;}
+      .notif-empty p{font-size:12.5px;margin:0;}
+      /* Animate new notification arrival */
+      @keyframes notifSlideIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+      .notif-item-new{animation:notifSlideIn .25s ease;}
+    </style>
 </head>
 <body>
     <!-- <h1 id="dashboardContent">Loading...</h1> -->
@@ -139,14 +150,13 @@
     </div>
     <div class="header-right">
       <div class="notif-wrap">
-        <button class="notif-btn" onclick="toggleNotif()"><i class="fa-regular fa-bell"></i><div class="notif-dot" id="notifDot"></div></button>
+        <button class="notif-btn" onclick="toggleNotif()">
+          <i class="fa-regular fa-bell"></i>
+          <div class="notif-badge" id="notifBadge" style="display:none;"></div>
+        </button>
         <div class="notif-panel" id="notifPanel">
           <div class="notif-hd"><b>Notifications</b><span onclick="markAllRead()">Mark all read</span></div>
-          <div class="notif-item unread"><div class="notif-icon" style="background:#F0FDFA;color:var(--accent);"><i class="fa-solid fa-calendar-check"></i></div><div><div class="notif-txt">Interview Scheduled</div><div class="notif-sub">DSA confirmed — Oct 24 · 10:30 AM</div></div></div>
-          <div class="notif-item unread"><div class="notif-icon" style="background:#FEF3C7;color:var(--warning);"><i class="fa-solid fa-star"></i></div><div><div class="notif-txt">Feedback Ready</div><div class="notif-sub">Spring Boot report available · 2 days ago</div></div></div>
-          <div class="notif-item"><div class="notif-icon" style="background:#EFF6FF;color:var(--primary);"><i class="fa-solid fa-bullhorn"></i></div><div><div class="notif-txt">New Slot Available</div><div class="notif-sub">Full Stack Dev — Oct 27 · 11:30 AM</div></div></div>
-          <div class="notif-item"><div class="notif-icon" style="background:#DCFCE7;color:var(--success);"><i class="fa-solid fa-circle-check"></i></div><div><div class="notif-txt">Application Confirmed</div><div class="notif-sub">System Design slot confirmed · 3 days ago</div></div></div>
-          <div style="padding:10px 16px;text-align:center;border-top:1px solid var(--border);"><span style="font-size:12px;color:var(--accent);cursor:pointer;font-weight:600;" onclick="closeNotif()">View all notifications</span></div>
+          <div id="notifList"></div>
         </div>
       </div>
       <div class="user-menu-wrap">
@@ -293,7 +303,7 @@
   <!-- ═══ PERFORMANCE ═══ -->
   <section id="view-performance" class="content-body">
     <div class="stat-grid">
-      <div class="stat-card c-teal"><div class="stat-icon" style="background:#F0FDFA;color:var(--accent);"><i class="fa-solid fa-chart-line"></i></div><p>Score Trend</p><h3 id="perfScoreTrend" style="color:var(--success);">—</h3></div>
+      <div class="stat-card c-teal"><div class="stat-icon" style="background:#F0FDFA;color:var(--accent);"><i class="fa-solid fa-microphone-lines"></i></div><p>Interviews Done</p><h3 id="perfInterviewsDone" style="color:var(--accent);">—</h3></div>
       <div class="stat-card c-green"><div class="stat-icon" style="background:#F0FDF4;color:var(--success);"><i class="fa-solid fa-star"></i></div><p>Best Score</p><h3 id="perfBestScore">—</h3></div>
       <div class="stat-card c-amber"><div class="stat-icon" style="background:#FFFBEB;color:var(--warning);"><i class="fa-solid fa-fire"></i></div><p>Streak</p><h3 id="perfStreak" style="color:var(--warning);">—</h3></div>
       <div class="stat-card c-blue"><div class="stat-icon" style="background:#EFF6FF;color:var(--primary);"><i class="fa-solid fa-percent"></i></div><p>Improvement</p><h3 id="perfImprovement" style="color:var(--primary);">—</h3></div>
@@ -314,11 +324,10 @@
         <p id="phSub">SYMCA · Computer Science · Global Tech University</p>
         <div class="ph-tags">
           <div class="ph-tag"><i class="fa-solid fa-envelope"></i><span id="phEmail">aditya.sharma@gtu.ac.in</span></div>
-          <div class="ph-tag"><i class="fa-solid fa-id-badge"></i> #CS2024-01</div>
         </div>
       </div>
       <div style="text-align:right;position:relative;z-index:1;">
-        <div style="font-size:2rem;font-weight:800;font-family:'Plus Jakarta Sans',sans-serif;">7.8</div>
+        <div id="phAvgScore" style="font-size:2rem;font-weight:800;font-family:'Plus Jakarta Sans',sans-serif;">—</div>
         <div style="color:#FCD34D;font-size:12px;">★★★★☆</div>
         <div style="opacity:.65;font-size:11px;margin-top:2px;">Avg Score</div>
       </div>
@@ -422,15 +431,32 @@
       </div>
       <div>
         <div class="card">
-          <div class="card-header"><h4>Resume</h4><button class="btn btn-sm btn-ghost" onclick="document.getElementById('resumeInput').click()"><i class="fa-solid fa-upload"></i> Replace</button></div>
+          <!-- Header changes based on whether resume exists -->
+          <div class="card-header" id="resumeCardHeader">
+            <h4>Resume</h4>
+            <!-- Shown only when resume exists -->
+            <button class="btn btn-sm btn-ghost" id="resumeReplaceBtn" style="display:none;" onclick="document.getElementById('resumeInput').click()"><i class="fa-solid fa-upload"></i> Replace</button>
+          </div>
           <div class="card-body">
-            <div class="resume-box">
-              <i class="fa-solid fa-file-pdf" style="font-size:2.5rem;color:#ef4444;margin-bottom:10px;display:block;"></i>
-              <p id="resumeName" style="font-size:13.5px;font-weight:600;margin-bottom:4px;">—</p>
-              <p style="font-size:11.5px;opacity:.5;" id="resumeDate">No resume uploaded</p>
+            <!-- Upload state (shown when no resume) -->
+            <div id="resumeUploadState" style="display:none;">
+              <div style="border:2px dashed var(--border);border-radius:var(--r);padding:28px 16px;text-align:center;background:var(--bg);margin-bottom:12px;">
+                <i class="fa-solid fa-cloud-arrow-up" style="font-size:2.2rem;color:var(--muted);margin-bottom:10px;display:block;"></i>
+                <p style="font-size:13.5px;font-weight:600;color:var(--dark);margin-bottom:4px;">No resume uploaded yet</p>
+                <p style="font-size:11.5px;color:var(--muted);margin-bottom:0;">Upload your resume so interviewers can review it</p>
+              </div>
+              <button class="btn btn-p" style="width:100%;justify-content:center;" onclick="document.getElementById('resumeInput').click()"><i class="fa-solid fa-upload"></i> Upload Resume</button>
+            </div>
+            <!-- Has-resume state (shown when resume exists) -->
+            <div id="resumeExistState" style="display:none;">
+              <div class="resume-box">
+                <i class="fa-solid fa-file-pdf" style="font-size:2.5rem;color:#ef4444;margin-bottom:10px;display:block;"></i>
+                <p id="resumeName" style="font-size:13.5px;font-weight:600;margin-bottom:4px;">—</p>
+                <p style="font-size:11.5px;opacity:.5;" id="resumeDate">Resume available</p>
+              </div>
+              <button class="btn btn-outline" style="width:100%;justify-content:center;" onclick="viewResume()"><i class="fa-solid fa-eye"></i> View Resume</button>
             </div>
             <input type="file" id="resumeInput" accept=".pdf,.doc,.docx" style="display:none;" onchange="handleResumeUpload(this)">
-            <button class="btn btn-outline" style="width:100%;justify-content:center;" onclick="viewResume()"><i class="fa-solid fa-eye"></i> View Resume</button>
           </div>
         </div>
         <div class="card">

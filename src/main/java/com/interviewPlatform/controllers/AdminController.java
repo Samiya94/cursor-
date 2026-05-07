@@ -40,6 +40,13 @@ public class AdminController {
             .filter(iv -> iv.getUser() != null && iv.getUser().getStatus() == Status.ACTIVE)
             .count();
 
+            Map<String, Long> deptStudentCounts = new LinkedHashMap<>();
+            studentRepository.findAll().forEach(s -> {
+                if (s.getDepartment() != null) {
+                    deptStudentCounts.merge(s.getDepartment().getName(), 1L, Long::sum);
+                }
+            });
+
         return ResponseEntity.ok(Map.of(
             "totalInstitutes", instituteRepository.count(),
             "totalInterviewers", interviewerRepository.count(),
@@ -48,7 +55,8 @@ public class AdminController {
             "totalRequests", interviewRequestRepository.count(),
             "pendingInterviewers", interviewerRepository.findByUserStatus(Status.PENDING).size(),
             "confirmedRequests", interviewRequestRepository.findByStatus(Status.CONFIRMED).size(),
-            "pendingRequests", interviewRequestRepository.findByStatus(Status.PENDING).size()
+            "pendingRequests", interviewRequestRepository.findByStatus(Status.PENDING).size(),
+            "deptStudentCounts", deptStudentCounts
         ));
     }
 

@@ -30,6 +30,10 @@ public class SecurityConfig {
 
         return http
             .csrf(customizer -> customizer.disable())
+            // Allow same-origin iframes (needed for PDF resume viewer)
+            .headers(headers -> headers
+                .frameOptions(frameOptions -> frameOptions.sameOrigin())
+            )
             .authorizeHttpRequests(request -> request
 
                 // Explicitly allow POST for auth endpoints
@@ -38,7 +42,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/refresh").permitAll()
                 .requestMatchers(HttpMethod.POST, "/register").permitAll()
                 .requestMatchers(HttpMethod.POST, "/register/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/password-reset/**").permitAll()
 
                 // All public paths (GET pages)
                 .requestMatchers(

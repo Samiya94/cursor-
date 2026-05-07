@@ -12,7 +12,8 @@ public record InterviewRequestDTO(
 
     String contactPerson,
     String contactEmail,
-    String remarks
+    String remarks,
+    Integer registeredStudentsCount
 ) {
 
 }

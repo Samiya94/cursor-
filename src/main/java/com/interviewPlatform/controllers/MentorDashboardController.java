@@ -84,10 +84,62 @@ public class MentorDashboardController {
         return ResponseEntity.ok(dtos);
     }
 
+    // Mentor sees students who have applied for upcoming interviews in their institute
+    @PreAuthorize("hasRole('MENTOR')")
+    @GetMapping("/upcoming-students")
+    public ResponseEntity<?> getUpcomingStudents(Authentication auth) {
+        Mentor mentor = mentorRepository.findByUserEmail(auth.getName())
+            .orElseThrow(() -> new RuntimeException("Mentor not found"));
+
+        Long instituteId = mentor.getInstitute().getId();
+
+        // Get all confirmed/rescheduled interview requests for this institute
+        List<com.interviewPlatform.entities.InterviewRequest> upcomingRequests =
+            interviewRequestRepository.findByInstituteIdAndStatusIn(
+                instituteId,
+                List.of(Status.CONFIRMED, Status.RESCHEDULED, Status.PENDING)
+            );
+
+        // For each request, get the applicants and build a flat row per student
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (com.interviewPlatform.entities.InterviewRequest req : upcomingRequests) {
+            List<com.interviewPlatform.entities.StudentApplication> applications =
+                applicationRepository.findByInterviewRequestId(req.getId());
+
+            for (com.interviewPlatform.entities.StudentApplication app : applications) {
+                com.interviewPlatform.entities.Student s = app.getStudent();
+                Map<String, Object> row = new HashMap<>();
+                // Student fields
+                row.put("studentId", s.getId());
+                row.put("firstName", s.getFirstName());
+                row.put("lastName", s.getLastName());
+                row.put("email", s.getUser().getEmail());
+                row.put("phone", s.getPhone());
+                row.put("studentClass", s.getStudentClass());
+                row.put("cgpa", s.getCgpa());
+                row.put("skills", s.getSkills());
+                // Application fields
+                row.put("applicationId", app.getId());
+                row.put("applicationStatus", app.getStatus() != null ? app.getStatus().name() : "PENDING");
+                row.put("appliedAt", app.getAppliedAt());
+                // Interview request fields
+                row.put("interviewId", req.getId());
+                row.put("departmentName", req.getDepartmentName());
+                row.put("scheduledDate", req.getScheduledDate());
+                row.put("scheduledVenue", req.getScheduledVenue());
+                row.put("expertise", req.getExpertise());
+                row.put("interviewStatus", req.getStatus().name());
+                result.add(row);
+            }
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
     // Mentor sees confirmed/rescheduled interviews for their institute + applicant counts
-@PreAuthorize("hasRole('MENTOR')")
-@GetMapping("/interviews")
-public ResponseEntity<?> getScheduledInterviews(Authentication auth) {
+    @PreAuthorize("hasRole('MENTOR')")
+    @GetMapping("/interviews")
+    public ResponseEntity<?> getScheduledInterviews(Authentication auth) {
     Mentor mentor = mentorRepository.findByUserEmail(auth.getName())
         .orElseThrow(() -> new RuntimeException("Mentor not found"));
 

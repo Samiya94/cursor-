@@ -53,7 +53,7 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
         request.setContactPerson(dto.contactPerson());
         request.setContactEmail(dto.contactEmail());
         request.setRemarks(dto.remarks());
-
+        request.setRegisteredStudentsCount(dto.registeredStudentsCount());
         request.setStatus(Status.PENDING);
         request.setInstituteConfirmed(false);
 
@@ -120,7 +120,7 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
         }
 
         req.setInstituteConfirmed(true);
-        if (req.getStatus() == Status.PENDING) {
+        if (req.getStatus() == Status.PENDING || req.getStatus() == Status.AWAITING_CONFIRMATION) {
             req.setStatus(Status.CONFIRMED);
         }
         requestRepo.save(req);
@@ -141,7 +141,7 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
         req.setScheduledVenue(dto.scheduledVenue());
         req.setMeetingLink(dto.meetingLink());
         req.setNumberOfStudentsRequired(dto.numberOfStudentsRequired());
-        req.setStatus(Status.CONFIRMED);
+        req.setStatus(Status.AWAITING_CONFIRMATION);
         req.setInstituteConfirmed(false);
         req.setAssignedInterviewer(null);
         req.setAssignedInterviewerIds(null);
@@ -198,7 +198,7 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
     public List<InterviewRequestResponseDTO> getConfirmedRequestsForInstitute(Long instituteId) {
         return requestRepo.findByInstituteIdAndStatusIn(
             instituteId,
-            java.util.List.of(Status.CONFIRMED, Status.RESCHEDULED)
+            java.util.List.of(Status.CONFIRMED, Status.RESCHEDULED, Status.AWAITING_CONFIRMATION)
         ).stream().map(this::mapToDTO).toList();
     }
 
@@ -227,6 +227,7 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
         req.getScheduledVenue(),
         req.getMeetingLink(),
         req.getNumberOfStudentsRequired(),
+        req.getRegisteredStudentsCount(),
         req.getInstituteConfirmed(),
         assignedIds,
         assignedNames,

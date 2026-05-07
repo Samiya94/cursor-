@@ -187,41 +187,36 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
-    public StudentResumeResponseDTO uploadMyResume(String email, MultipartFile resumeFile) {
-        Student student = getStudentByEmail(email);
-        if (resumeFile == null || resumeFile.isEmpty()) {
-            throw new RuntimeException("Resume file is required");
-        }
-
-        String original = resumeFile.getOriginalFilename();
-        String ext = "";
-        if (original != null && original.contains(".")) {
-            ext = original.substring(original.lastIndexOf('.'));
-        }
-
-        String fileName = System.currentTimeMillis() + "_" + (original == null ? "resume" : original);
-        // Avoid double extensions like name.pdf.pdf
-        if (!ext.isBlank() && !fileName.toLowerCase().endsWith(ext.toLowerCase())) {
-            fileName = System.currentTimeMillis() + "_resume" + ext;
-        }
-
-        try {
-            var uploadsDir = java.nio.file.Paths.get("uploads");
-            java.nio.file.Files.createDirectories(uploadsDir);
-            var target = uploadsDir.resolve(fileName);
-            java.nio.file.Files.write(target, resumeFile.getBytes());
-
-            student.setResumeUrl(fileName);
-            studentRepository.save(student);
-
-            return new StudentResumeResponseDTO(
-                student.getId(),
-                fileName,
-                java.time.LocalDateTime.now(),
-                "/uploads/" + fileName
-            );
-        } catch (Exception e) {
-            throw new RuntimeException("Resume upload failed");
-        }
+public StudentResumeResponseDTO uploadMyResume(String email, MultipartFile resumeFile) {
+    Student student = getStudentByEmail(email);
+    if (resumeFile == null || resumeFile.isEmpty()) {
+        throw new RuntimeException("Resume file is required");
     }
+
+    String original = resumeFile.getOriginalFilename();
+    if (original == null || original.isBlank()) original = "resume.pdf";
+    // Sanitize filename: remove path separators and unsafe characters
+    original = original.replaceAll("[/\\\\:*?\"<>|]", "_").trim();
+
+    String fileName = System.currentTimeMillis() + "_" + original;
+
+    try {
+        var uploadsDir = java.nio.file.Paths.get("uploads");
+        java.nio.file.Files.createDirectories(uploadsDir);
+        var target = uploadsDir.resolve(fileName);
+        java.nio.file.Files.write(target, resumeFile.getBytes());
+
+        student.setResumeUrl(fileName);
+        studentRepository.save(student);
+
+        return new StudentResumeResponseDTO(
+            student.getId(),
+            fileName,
+            java.time.LocalDateTime.now(),
+            "/uploads/" + fileName
+        );
+    } catch (Exception e) {
+        throw new RuntimeException("Resume upload failed");
+    }
+}
 }

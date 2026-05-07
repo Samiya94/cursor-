@@ -105,7 +105,11 @@ function normalizeStudent(interview, student) {
     scheduledText: dt ? dt.toLocaleString() : 'TBD',
     className: student.studentClass || '—',
     cgpa: student.cgpa ?? '—',
-    resumeUrl: null,
+    resumeUrl: student.resumeUrl || null,
+    resumeFileName: student.resumeFileName || null,
+    skills: student.skills || [],
+    about: student.about || '',
+    profilePhotoUrl: student.profilePhotoUrl || null,
     instituteConfirmed: interview.instituteConfirmed === true
   };
 }
@@ -163,8 +167,14 @@ function renderLiveStudent() {
   setText('live-name', s.name); setText('live-name2', s.name); setText('eval-name', s.name);
   setText('live-degree', s.className); setText('info-name', s.name); setText('info-studentId', s.email || '—');
   setText('info-institute', s.institute); setText('info-program', s.domain); setText('info-year', s.className); setText('info-cgpa', s.cgpa);
-  setText('live-resume-name', s.resumeUrl ? 'Resume available' : 'No resume uploaded');
-  setText('live-resume-name2', s.resumeUrl ? 'Resume available' : 'No resume uploaded');
+  const resumeLabel = s.resumeUrl ? (s.resumeFileName ? decodeURIComponent(s.resumeFileName.replace(/^\d+_/, '')) : 'Resume available') : 'No resume uploaded';
+  setText('live-resume-name', resumeLabel);
+  setText('live-resume-name2', resumeLabel);
+  if (s.profilePhotoUrl) {
+    const photoUrl = s.profilePhotoUrl.startsWith('http') ? s.profilePhotoUrl : '/uploads/' + s.profilePhotoUrl;
+    const avatarImg = '<img src="' + photoUrl + '" alt="' + s.name + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
+    ['live-avatar','live-avatar2','eval-avatar'].forEach(function(id) { const el = document.getElementById(id); if (el) el.innerHTML = avatarImg; });
+  }
   document.getElementById('live-resume-btn').disabled = !s.resumeUrl;
   document.getElementById('live-resume-btn2').disabled = !s.resumeUrl;
   document.getElementById('live-domains').innerHTML = `<span class="badge bg-info">${s.domain}</span>`;
@@ -255,7 +265,7 @@ function showView(v) {
 }
 
 function openOverlay(id) { document.getElementById(id).classList.add('open'); }
-function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+function closeOverlay(id) { document.getElementById(id).classList.remove('open'); if (id === 'resumeViewerModal') { const frame = document.getElementById('resumeViewerFrame'); const obj = document.getElementById('resumeViewerObject'); if (frame) frame.src = ''; if (obj) obj.data = ''; } }
 function scrollToSection(id) { setTimeout(() => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200); }
 function setStep(n) { for (let i = 1; i <= 3; i++) { const s = document.getElementById('step' + i); s.classList.remove('active', 'done'); if (i < n) s.classList.add('done'); else if (i === n) s.classList.add('active'); } for (let i = 1; i <= 2; i++) document.getElementById('div' + i).classList.toggle('done', i < n); }
 function goToPhase2() { if (!APP.currentLiveStudent) return showToast('No students are available for interview yet.', 'warn'); document.getElementById('phase-info').classList.remove('active'); document.getElementById('phase-live').classList.add('active'); setStep(2); }
@@ -301,7 +311,26 @@ function applyHistFilters() { const instVal = (document.getElementById('histInst
 function clearHistFilters() { document.getElementById('histInstFilter').value = ''; applyHistFilters(); }
 function openVideoModal(s, d) { setText('vm-student', s); setText('vm-date', d); setText('videoModalTitle', `Recording — ${s}`); openOverlay('videoModal'); }
 
-function viewStudentResume() { if (!APP.currentLiveStudent || !APP.currentLiveStudent.resumeUrl) return showToast('No resume uploaded for this student.', 'warn'); window.open(APP.currentLiveStudent.resumeUrl, '_blank'); }
+function viewStudentResume() {
+  if (!APP.currentLiveStudent || !APP.currentLiveStudent.resumeUrl) {
+    return showToast('No resume uploaded for this student.', 'warn');
+  }
+  const resumeUrl = APP.currentLiveStudent.resumeUrl;
+  // Build absolute URL to ensure iframe/object and download link work correctly
+  const absUrl = resumeUrl.startsWith('http') ? resumeUrl : window.location.origin + resumeUrl;
+  const studentName = APP.currentLiveStudent.name || 'Candidate';
+  const fileName = APP.currentLiveStudent.resumeFileName
+    ? decodeURIComponent(APP.currentLiveStudent.resumeFileName.replace(/^\d+_/, ''))
+    : 'Resume';
+  document.getElementById('resumeViewerTitle').textContent = studentName + ' — ' + fileName;
+  document.getElementById('resumeDownloadLink').href = absUrl;
+  // Set both object[data] (primary) and iframe[src] (fallback)
+  const obj = document.getElementById('resumeViewerObject');
+  const frame = document.getElementById('resumeViewerFrame');
+  if (obj) obj.data = absUrl;
+  if (frame) frame.src = absUrl + '#toolbar=1&navpanes=0';
+  openOverlay('resumeViewerModal');
+}
 function handleProfilePic(input) { if (!input.files || !input.files[0]) return; const reader = new FileReader(); reader.onload = function (e) { document.getElementById('profilePicLg').innerHTML = `<img src="${e.target.result}" alt="Profile">`; document.getElementById('headerAvatar').innerHTML = `<img src="${e.target.result}" alt="Profile" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }; reader.readAsDataURL(input.files[0]); showToast('Profile photo updated!'); }
 function handleCvUpload(input) { if (!input.files || !input.files[0]) return; const name = input.files[0].name; const el = document.getElementById('cvFileName'); setText('cvFileNameText', name + ' — ready to upload'); el.style.display = 'flex'; setText('cvName', name); setText('cvDate', new Date().toLocaleDateString()); document.getElementById('cvViewBtn').disabled = false; showToast('CV selected: ' + name); }
 function saveProfile() { showToast('Profile details updated in UI. Backend update endpoint can be added next.'); }
