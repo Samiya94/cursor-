@@ -129,42 +129,66 @@ async function renderUpcomingTable() {
     const tbody = document.getElementById('upcomingTableBody');
     if (!tbody) return;
 
-    // Load students if not already loaded
-    if (!departmentStudents.length) {
-        departmentStudents = await fetchMyStudents();
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</td></tr>';
+
+    let upcomingStudents = [];
+    try {
+        const res = await secureFetch('/api/mentor/upcoming-students');
+        if (res && res.ok) {
+            upcomingStudents = await res.json();
+        }
+    } catch(e) {
+        console.error('Error fetching upcoming students:', e);
     }
 
-    if (!departmentStudents.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);">No students in your department yet.</td></tr>';
-        updateAllStats();
+    if (!upcomingStudents.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted);">' +
+            '<i class="fa-solid fa-calendar-xmark" style="font-size:2rem;display:block;margin-bottom:10px;opacity:.3;"></i>' +
+            'No students have applied for upcoming interviews yet.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = departmentStudents.map(function(s) {
-        const name = (s.firstName || '') + ' ' + (s.lastName || '');
-        const cls = s.studentClass || '—';
-        const email = s.email || '—';
-        const cgpa = s.cgpa ? s.cgpa.toFixed(1) : '—';
-        const safeId = s.id;
-        const safeName = name.replace(/'/g, "\\'");
+    tbody.innerHTML = upcomingStudents.map(function(s) {
+        const name   = ((s.firstName || '') + ' ' + (s.lastName || '')).trim();
+        const cls    = s.studentClass || '—';
+        const email  = s.email || '—';
+        const cgpa   = s.cgpa != null ? parseFloat(s.cgpa).toFixed(1) : '—';
+        const skills = (s.skills && s.skills.length) ? s.skills.slice(0, 3).join(', ') : '—';
+        const safeId    = s.studentId;
+        const safeName  = name.replace(/'/g, "\\'");
         const safeEmail = email.replace(/'/g, "\\'");
 
-        return `<tr data-class="${cls}" data-name="${name.toLowerCase()}">
-            <td><b>${name}</b></td>
+        const dept = s.departmentName || '—';
+        const scheduledDate = s.scheduledDate
+            ? new Date(s.scheduledDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+            : 'TBD';
+        const expertise = (s.expertise && s.expertise.length) ? s.expertise.join(', ') : '';
+
+        const appStatus = s.applicationStatus || 'PENDING';
+        const badgeCls  = appStatus === 'APPROVED' ? 'bg-success'
+                        : appStatus === 'REJECTED'  ? 'bg-danger'
+                        : 'bg-pending';
+        const badgeTxt  = appStatus === 'APPROVED' ? '<i class="fa-solid fa-circle-check"></i> Confirmed'
+                        : appStatus === 'REJECTED'  ? '<i class="fa-solid fa-circle-xmark"></i> Rejected'
+                        : '<i class="fa-solid fa-clock"></i> Pending';
+
+        return `<tr data-class="${cls}" data-name="${name.toLowerCase()}" data-status="${appStatus}">
+            <td>
+              <div style="font-weight:700;">${name}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">${dept}${expertise ? ' · ' + expertise : ''} · ${scheduledDate}</div>
+            </td>
             <td>${cls}</td>
             <td style="font-size:12px;">${email}</td>
-            <td><b>${cgpa}</b></td>
-            <td><span class="badge bg-gray"><i class="fa-solid fa-clock"></i> Not Evaluated</span></td>
+            <td><b style="color:var(--primary);">${cgpa}</b></td>
+            <td><span class="badge ${badgeCls}">${badgeTxt}</span></td>
             <td>
                 <button class="btn btn-ghost btn-sm"
-                    onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}',${s.cgpa || 0},'')">
+                    onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}',${s.cgpa || 0},'${skills}')">
                     <i class="fa-solid fa-eye"></i> View
                 </button>
             </td>
         </tr>`;
     }).join('');
-
-    updateAllStats();
 }
 
 /* ===== RENDER REPORT STUDENT TABLE ===== */
