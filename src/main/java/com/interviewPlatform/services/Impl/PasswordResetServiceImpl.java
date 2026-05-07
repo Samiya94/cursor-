@@ -8,7 +8,11 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +37,11 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     private final UserRepository userRepository;
     private final PasswordResetOtpRepository otpRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JavaMailSender mailSender;
     private final SecureRandom secureRandom = new SecureRandom();
+
+    @Value("${app.mail.from:${spring.mail.username:no-reply@interview-platform.local}}")
+    private String fromEmail;
 
     private static String normalizeEmail(String email) {
         return email == null ? "" : email.trim();
@@ -64,7 +72,26 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         row.setVerifiedAt(null);
         otpRepository.save(row);
 
-        log.info("Password reset OTP for {}: {} (replace with email delivery in production)", normalized, code);
+        sendOtpEmail(normalized, code);
+    }
+
+    private void sendOtpEmail(String email, String code) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(email);
+        message.setFrom(fromEmail);
+        message.setSubject("Your Interview Platform password reset OTP");
+        message.setText(
+                "Your OTP for password reset is: " + code + "\n\n"
+                        + "This code is valid for 15 minutes.\n"
+                        + "If you did not request this, you can ignore this email.");
+        try {
+            mailSender.send(message);
+            log.info("Password reset OTP email sent to {}", email);
+        } catch (MailException e) {
+            log.error("Failed to send password reset OTP email to {}", email, e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to send reset code right now. Please try again.");
+        }
     }
 
     @Override
