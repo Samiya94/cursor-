@@ -41,6 +41,7 @@ window.addEventListener('DOMContentLoaded', async function() {
   if (!await checkAuth('STUDENT')) return;
   await loadDashboardStats();
   initStudentUI();
+  initNotifications();   // load stored notifs, render panel + badge
   renderSkillMasteryProgress();
   renderUpcomingInterviewCard();
   renderInterviewTimeline();
@@ -52,6 +53,17 @@ window.addEventListener('DOMContentLoaded', async function() {
 
   await loadMyResume();
   renderProfileStats();
+
+  // Initial notification sync from freshly loaded data
+  try {
+    var initAppsRes = await secureFetch('/api/applications/my');
+    if (initAppsRes && initAppsRes.ok) {
+      var initApps = await initAppsRes.json();
+      syncNotificationsFromData(initApps, window.API_INTERVIEW_SLOTS || []);
+    }
+  } catch(e) { /* silent */ }
+
+  startNotifPolling();
   startRealtimeRefresh();
 });
 
@@ -122,10 +134,13 @@ function initStudentUI() {
 
   fillDashboardStatCards();
 
-  document.querySelectorAll('.profile-hero').forEach(function(hero){
-    var big = hero.querySelector('[style*="font-size:2rem"]');
-    if(big && STUDENT.cgpa != null) big.textContent = STUDENT.cgpa.toFixed(1);
-  });
+  var phAvgScore = document.getElementById('phAvgScore');
+  if (phAvgScore) {
+    var displayScore = (DASHBOARD_STATS && DASHBOARD_STATS.interviewsTaken > 0 && DASHBOARD_STATS.averageScore != null)
+      ? DASHBOARD_STATS.averageScore.toFixed(1)
+      : '—';
+    phAvgScore.textContent = displayScore;
+  }
 
   updateGreeting();
 }
@@ -137,12 +152,12 @@ function fillDashboardStatCards() {
   var cardPending = document.querySelector('#view-dashboard .stat-card.c-amber h3');
   var cardBest    = document.querySelector('#view-dashboard .stat-card.c-green h3');
   if(cardTaken)   cardTaken.textContent   = pad2(DASHBOARD_STATS.interviewsTaken);
-  if(cardScore)   cardScore.textContent   = DASHBOARD_STATS.averageScore != null ? DASHBOARD_STATS.averageScore.toFixed(1) : '—';
+  if(cardScore)   cardScore.textContent   = (DASHBOARD_STATS.interviewsTaken > 0 && DASHBOARD_STATS.averageScore != null) ? DASHBOARD_STATS.averageScore.toFixed(1) : '—';
   if(cardPending) cardPending.textContent = pad2(DASHBOARD_STATS.pendingCount);
-  if(cardBest)    cardBest.textContent    = DASHBOARD_STATS.bestScore != null ? DASHBOARD_STATS.bestScore.toFixed(1) : '—';
+  if(cardBest)    cardBest.textContent    = (DASHBOARD_STATS.interviewsTaken > 0 && DASHBOARD_STATS.bestScore != null) ? DASHBOARD_STATS.bestScore.toFixed(1) : '—';
 
   var perfBest = document.querySelector('#view-performance .stat-card.c-green h3');
-  if(perfBest) perfBest.textContent = DASHBOARD_STATS.bestScore != null ? DASHBOARD_STATS.bestScore.toFixed(1) : '—';
+  if(perfBest) perfBest.textContent = (DASHBOARD_STATS.interviewsTaken > 0 && DASHBOARD_STATS.bestScore != null) ? DASHBOARD_STATS.bestScore.toFixed(1) : '—';
 
   var bannerSub = document.querySelector('.wb-left p');
   if(bannerSub) {
@@ -392,7 +407,7 @@ function renderProfileStats() {
   var bestDomEl = document.getElementById('msBestDomain');
   var impEl = document.getElementById('msImprovement');
   if (totalEl) totalEl.textContent = DASHBOARD_STATS.interviewsTaken != null ? DASHBOARD_STATS.interviewsTaken : '—';
-  if (avgEl) avgEl.textContent = DASHBOARD_STATS.averageScore != null ? DASHBOARD_STATS.averageScore.toFixed(1) + ' / 10' : '—';
+  if (avgEl) avgEl.textContent = (DASHBOARD_STATS.interviewsTaken > 0 && DASHBOARD_STATS.averageScore != null) ? DASHBOARD_STATS.averageScore.toFixed(1) + ' / 10' : '—';
 
   // Pick the most frequent topic among approved interviews (best-effort “domain” proxy).
   var approved = (MY_INTERVIEWS || []).filter(function(iv) { return iv.status === 'APPROVED'; });
@@ -406,8 +421,8 @@ function renderProfileStats() {
   if (bestDomEl) bestDomEl.textContent = best || '—';
 
   if (impEl) {
-    var avg = DASHBOARD_STATS.averageScore != null ? DASHBOARD_STATS.averageScore : null;
-    var bestScore = DASHBOARD_STATS.bestScore != null ? DASHBOARD_STATS.bestScore : null;
+    var avg = (DASHBOARD_STATS.interviewsTaken > 0 && DASHBOARD_STATS.averageScore != null) ? DASHBOARD_STATS.averageScore : null;
+    var bestScore = (DASHBOARD_STATS.interviewsTaken > 0 && DASHBOARD_STATS.bestScore != null) ? DASHBOARD_STATS.bestScore : null;
     if (avg == null || bestScore == null) impEl.textContent = '—';
     else {
       var diff = bestScore - avg;
@@ -418,30 +433,49 @@ function renderProfileStats() {
   }
 }
 
+function updateResumeUI() {
+  var hasResume = !!STUDENT_RESUME.url;
+  var uploadState = document.getElementById('resumeUploadState');
+  var existState = document.getElementById('resumeExistState');
+  var replaceBtn = document.getElementById('resumeReplaceBtn');
+  if (uploadState) uploadState.style.display = hasResume ? 'none' : 'block';
+  if (existState) existState.style.display = hasResume ? 'block' : 'none';
+  if (replaceBtn) replaceBtn.style.display = hasResume ? '' : 'none';
+}
+
 async function loadMyResume() {
   try {
     var res = await secureFetch('/api/students/me/resume');
-    if (!res || !res.ok) return;
+    if (!res || !res.ok) {
+      STUDENT_RESUME.url = null;
+      STUDENT_RESUME.fileName = null;
+      updateResumeUI();
+      return;
+    }
     var data = await res.json();
     STUDENT_RESUME.url = data.resumeUrl || null;
     STUDENT_RESUME.fileName = data.resumeFileName || null;
 
-    var nm = document.getElementById('resumeName');
-    var dt = document.getElementById('resumeDate');
-    // Strip timestamp prefix (e.g. "1714927312000_myfile.pdf" → "myfile.pdf")
-    var displayName = data.resumeFileName
-      ? decodeURIComponent(data.resumeFileName.replace(/^\d+_/, ''))
-      : '—';
-    if (nm) nm.textContent = displayName;
-    if (dt) {
-      if (data.uploadedAt) {
-        dt.textContent = 'Uploaded ' + new Date(data.uploadedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-      } else {
-        dt.textContent = data.resumeFileName ? 'Resume available' : 'No resume uploaded';
+    if (STUDENT_RESUME.url) {
+      var nm = document.getElementById('resumeName');
+      var dt = document.getElementById('resumeDate');
+      var displayName = data.resumeFileName
+        ? decodeURIComponent(data.resumeFileName.replace(/^\d+_/, ''))
+        : '—';
+      if (nm) nm.textContent = displayName;
+      if (dt) {
+        if (data.uploadedAt) {
+          dt.textContent = 'Uploaded ' + new Date(data.uploadedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        } else {
+          dt.textContent = data.resumeFileName ? 'Resume available' : 'No resume uploaded';
+        }
       }
     }
+    updateResumeUI();
   } catch (e) {
     console.error('Resume load error:', e);
+    STUDENT_RESUME.url = null;
+    updateResumeUI();
   }
 }
 
@@ -456,28 +490,8 @@ function viewResume() {
 }
 
 function startRealtimeRefresh() {
-  if (window.__studentRealtimeStarted) return;
-  window.__studentRealtimeStarted = true;
-  setInterval(async function() {
-    try {
-      await loadDashboardStats();
-      initStudentUI();
-      renderSkillMasteryProgress();
-      renderUpcomingInterviewCard();
-      renderInterviewTimeline();
-      renderFeedbackReports();
-      renderProfileStats();
-      var perfView = document.getElementById('view-performance');
-      if (perfView && perfView.classList.contains('active')) {
-        initPerfCharts();
-      }
-      await loadMyApplicationsFromAPI();
-      await loadAvailableInterviewsFromAPI();
-      initSkillTags();
-    } catch (e) {
-      console.error('Realtime refresh error:', e);
-    }
-  }, 30000);
+  // No automatic polling — data is loaded fresh on every login.
+  // The dashboard reflects the latest state when the student logs in.
 }
 
 function renderAvailableSlots() { renderSlotGrid('dashSlots'); renderSlotGrid('applyGrid'); }
@@ -613,6 +627,11 @@ async function applyToInterview(interviewRequestId, topic) {
             renderAPISlotGrid('dashSlots');
             renderAPISlotGrid('applyGrid');
             await loadMyApplicationsFromAPI();
+            // Trigger notification sync so "Application Submitted" appears
+            try {
+              var applyRes = await secureFetch('/api/applications/my');
+              if (applyRes && applyRes.ok) syncNotificationsFromData(await applyRes.json(), window.API_INTERVIEW_SLOTS || []);
+            } catch(e) { /* silent */ }
         } else {
             var err = await res.text();
             showToast(err || 'Could not apply', 'warn');
@@ -875,6 +894,7 @@ async function handleResumeUpload(input){
         dt.textContent = data.resumeFileName ? 'Resume updated' : 'No resume uploaded';
       }
     }
+    updateResumeUI();
     showToast('Resume uploaded successfully!');
     input.value = '';
   } catch (e) {
@@ -897,23 +917,29 @@ function initPerfCharts(){
 
   var SEC='#0D9488',PRI='#1E3A8A',WARN='#D97706',GRID='rgba(0,0,0,0.04)',LBL='#94A3B8';
   var completed=(MY_INTERVIEWS||[]).filter(function(iv){return iv.status==='APPROVED';}).slice(-8);
-  var lineLabels=completed.length>0?completed.map(function(_,i){return 'Int '+(i+1);}):['Int 1','Int 2','Int 3'];
-  var baseScore=(DASHBOARD_STATS&&DASHBOARD_STATS.averageScore!=null)?DASHBOARD_STATS.averageScore:(STUDENT.cgpa||7.0);
-  var lineData=completed.length>0?completed.map(function(){return baseScore;}):[baseScore,baseScore,baseScore];
+  var hasData = completed.length > 0;
 
-  // Update performance stat cards (best score + derived improvement).
-  var best = (DASHBOARD_STATS&&DASHBOARD_STATS.bestScore!=null)?DASHBOARD_STATS.bestScore:null;
-  var avg  = (DASHBOARD_STATS&&DASHBOARD_STATS.averageScore!=null)?DASHBOARD_STATS.averageScore:null;
+  // Build per-interview score data (use averageScore as baseline since per-interview score may not exist)
+  var lineLabels = hasData ? completed.map(function(_,i){return 'Int '+(i+1);}) : [];
+  var baseScore=(DASHBOARD_STATS&&DASHBOARD_STATS.averageScore!=null)?DASHBOARD_STATS.averageScore:null;
+  var lineData = hasData && baseScore != null ? completed.map(function(){ return baseScore; }) : [];
+
+  // Update performance stat cards.
+  var interviewsDone = (DASHBOARD_STATS&&DASHBOARD_STATS.interviewsTaken!=null)?DASHBOARD_STATS.interviewsTaken:0;
+  var best = (DASHBOARD_STATS&&DASHBOARD_STATS.bestScore!=null&&interviewsDone>0)?DASHBOARD_STATS.bestScore:null;
+  var avg  = (DASHBOARD_STATS&&DASHBOARD_STATS.averageScore!=null&&interviewsDone>0)?DASHBOARD_STATS.averageScore:null;
   var streak = completed.length;
+
   var impEl = document.getElementById('perfImprovement');
   var bestEl = document.getElementById('perfBestScore');
   var streakEl = document.getElementById('perfStreak');
-  var trendEl = document.getElementById('perfScoreTrend');
-  if (trendEl) trendEl.textContent = '—';
+  var doneEl = document.getElementById('perfInterviewsDone');
+
   if (bestEl) bestEl.textContent = best != null ? best.toFixed(1) : '—';
-  if (streakEl) streakEl.textContent = streak;
+  if (streakEl) streakEl.textContent = streak > 0 ? streak : '—';
+  if (doneEl) doneEl.textContent = interviewsDone > 0 ? interviewsDone : '—';
   if (impEl) {
-    if (best == null || avg == null) impEl.textContent = '—';
+    if (best == null || avg == null) { impEl.textContent = '—'; }
     else {
       var diff = best - avg;
       var pct = Math.round((diff / 10) * 100);
@@ -922,7 +948,27 @@ function initPerfCharts(){
     }
   }
 
-  new Chart(document.getElementById('perfChart'),{type:'line',data:{labels:lineLabels,datasets:[{label:'Score',data:lineData,borderColor:SEC,backgroundColor:'rgba(13,148,136,0.06)',tension:0.4,fill:true,pointBackgroundColor:SEC,pointRadius:4,borderWidth:2.5}]},options:{plugins:{legend:{display:false}},scales:{y:{min:0,max:10,grid:{color:GRID},ticks:{color:LBL}},x:{grid:{color:GRID},ticks:{color:LBL}}}}});
+  // Score Trend chart
+  var perfChartCanvas = document.getElementById('perfChart');
+  if (perfChartCanvas) {
+    var perfChartParent = perfChartCanvas.parentElement;
+    if (!hasData || lineData.length === 0) {
+      perfChartCanvas.style.display = 'none';
+      var noDataMsg = perfChartParent.querySelector('.chart-empty-msg');
+      if (!noDataMsg) {
+        noDataMsg = document.createElement('div');
+        noDataMsg.className = 'chart-empty-msg';
+        noDataMsg.style.cssText = 'text-align:center;padding:32px 16px;color:var(--muted);font-size:13px;';
+        noDataMsg.innerHTML = '<i class="fa-solid fa-chart-line" style="font-size:1.8rem;display:block;margin-bottom:8px;opacity:.3;"></i>Score trend will appear after your first completed interview.';
+        perfChartParent.appendChild(noDataMsg);
+      }
+    } else {
+      perfChartCanvas.style.display = '';
+      var existingMsg = perfChartParent.querySelector('.chart-empty-msg');
+      if (existingMsg) existingMsg.remove();
+      new Chart(perfChartCanvas,{type:'line',data:{labels:lineLabels,datasets:[{label:'Score',data:lineData,borderColor:SEC,backgroundColor:'rgba(13,148,136,0.06)',tension:0.4,fill:true,pointBackgroundColor:SEC,pointRadius:4,borderWidth:2.5}]},options:{plugins:{legend:{display:false}},scales:{y:{min:0,max:10,grid:{color:GRID},ticks:{color:LBL}},x:{grid:{color:GRID},ticks:{color:LBL}}}}});
+    }
+  }
 
   var mastery = computeSkillMasteryPercents();
   var radarData = [
@@ -935,10 +981,29 @@ function initPerfCharts(){
 
   new Chart(document.getElementById('radarChart'),{type:'radar',data:{labels:['Technical','Problem Solving','Communication','Confidence','Domain'],datasets:[{data:radarData,backgroundColor:'rgba(13,148,136,0.1)',borderColor:SEC,pointBackgroundColor:SEC,pointRadius:4}]},options:{plugins:{legend:{display:false}},scales:{r:{min:0,max:100,ticks:{display:false},grid:{color:'rgba(0,0,0,0.06)'},pointLabels:{color:LBL,font:{size:11}}}}}});
 
-  var domainMap={};(MY_INTERVIEWS||[]).forEach(function(iv){if(iv.expertise){iv.expertise.split(',').forEach(function(e){var k=e.trim();if(k)domainMap[k]=(domainMap[k]||0)+1;});}});
-  var dLabels=Object.keys(domainMap).slice(0,5),dData=dLabels.map(function(k){return Math.min(10,5+domainMap[k]);});
-  if(!dLabels.length){dLabels=['General'];dData=[STUDENT.cgpa||7];}
-  new Chart(document.getElementById('domainChart'),{type:'bar',data:{labels:dLabels,datasets:[{label:'Activity',data:dData,backgroundColor:[SEC,PRI,WARN,'#7C3AED','#DC2626'],borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{min:0,max:10,grid:{color:GRID},ticks:{color:LBL}},x:{grid:{display:false},ticks:{color:LBL}}}}});
+  // Domain chart — only show after interviews, no "General" placeholder
+  var domainChartCanvas = document.getElementById('domainChart');
+  if (domainChartCanvas) {
+    var domainParent = domainChartCanvas.parentElement;
+    var domainMap={};(MY_INTERVIEWS||[]).forEach(function(iv){if(iv.expertise){iv.expertise.split(',').forEach(function(e){var k=e.trim();if(k)domainMap[k]=(domainMap[k]||0)+1;});}});
+    var dLabels=Object.keys(domainMap).slice(0,5),dData=dLabels.map(function(k){return Math.min(10,5+domainMap[k]);});
+    if(!dLabels.length) {
+      domainChartCanvas.style.display = 'none';
+      var domainEmpty = domainParent.querySelector('.chart-empty-msg');
+      if (!domainEmpty) {
+        domainEmpty = document.createElement('div');
+        domainEmpty.className = 'chart-empty-msg';
+        domainEmpty.style.cssText = 'text-align:center;padding:32px 16px;color:var(--muted);font-size:13px;';
+        domainEmpty.innerHTML = '<i class="fa-solid fa-chart-bar" style="font-size:1.8rem;display:block;margin-bottom:8px;opacity:.3;"></i>Domain scores will appear after you complete interviews across different topics.';
+        domainParent.appendChild(domainEmpty);
+      }
+    } else {
+      domainChartCanvas.style.display = '';
+      var existingDomainMsg = domainParent.querySelector('.chart-empty-msg');
+      if (existingDomainMsg) existingDomainMsg.remove();
+      new Chart(domainChartCanvas,{type:'bar',data:{labels:dLabels,datasets:[{label:'Activity',data:dData,backgroundColor:[SEC,PRI,WARN,'#7C3AED','#DC2626'],borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{min:0,max:10,grid:{color:GRID},ticks:{color:LBL}},x:{grid:{display:false},ticks:{color:LBL}}}}});
+    }
+  }
 }
 
 var pageTitles={dashboard:'Dashboard',apply:'Apply / Browse',myinterviews:'My Interviews',reports:'Feedback Reports',performance:'Performance',profile:'My Profile'};
@@ -957,9 +1022,224 @@ function showView(v){
 
 function toggleSidebar(){var s=document.getElementById('sidebar'),o=document.getElementById('sidebarOverlay'),b=document.getElementById('hamburger'),open=s.classList.toggle('open');o.classList.toggle('active',open);b.classList.toggle('open',open);}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('active');document.getElementById('hamburger').classList.remove('open');}
-function toggleNotif(){document.getElementById('notifPanel').classList.toggle('open');}
+/* ============================================================
+   NOTIFICATION SYSTEM  –  Realtime, driven by actual API data
+   ============================================================
+   Storage key: 'studentNotifs_<email>'
+   Each notif: { id, type, title, sub, icon, iconBg, iconColor, ts, read }
+   Types: slot_available | app_approved | app_rejected | app_pending |
+          interview_scheduled | feedback_ready
+   ============================================================ */
+
+var NOTIF_STORE_KEY = 'studentNotifs_default';
+var NOTIF_LIST      = [];          // in-memory list (newest first)
+var NOTIF_PREV_SNAP = {};          // id → status, used to detect changes
+
+function notifStoreKey() {
+  return 'studentNotifs_' + (STUDENT.email || 'default');
+}
+
+function loadNotifFromStorage() {
+  try {
+    var raw = localStorage.getItem(notifStoreKey());
+    NOTIF_LIST = raw ? JSON.parse(raw) : [];
+  } catch(e) { NOTIF_LIST = []; }
+}
+
+function saveNotifToStorage() {
+  try { localStorage.setItem(notifStoreKey(), JSON.stringify(NOTIF_LIST.slice(0, 50))); } catch(e) {}
+}
+
+function timeAgo(ts) {
+  var diff = Date.now() - ts;
+  var m = Math.floor(diff / 60000);
+  if (m < 1)  return 'Just now';
+  if (m < 60) return m + 'm ago';
+  var h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  var d = Math.floor(h / 24);
+  return d === 1 ? 'Yesterday' : d + 'd ago';
+}
+
+function buildNotifItem(n) {
+  var unreadCls = n.read ? '' : ' unread notif-item-new';
+  return '<div class="notif-item' + unreadCls + '" data-nid="' + n.id + '" onclick="readNotif(this)">' +
+    '<div class="notif-icon" style="background:' + n.iconBg + ';color:' + n.iconColor + ';"><i class="' + n.icon + '"></i></div>' +
+    '<div style="flex:1;min-width:0;">' +
+      '<div class="notif-txt">' + escHtml(n.title) + '</div>' +
+      '<div class="notif-sub">' + escHtml(n.sub) + ' · ' + timeAgo(n.ts) + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderNotifPanel() {
+  var list = document.getElementById('notifList');
+  if (!list) return;
+
+  if (!NOTIF_LIST.length) {
+    list.innerHTML =
+      '<div class="notif-empty"><i class="fa-regular fa-bell-slash"></i>' +
+      '<p>No notifications yet.<br>We\'ll notify you when something happens.</p></div>';
+  } else {
+    list.innerHTML = NOTIF_LIST.map(buildNotifItem).join('');
+  }
+
+  // Badge
+  var unread = NOTIF_LIST.filter(function(n) { return !n.read; }).length;
+  var badge = document.getElementById('notifBadge');
+  if (badge) {
+    if (unread > 0) {
+      badge.style.display = '';
+      badge.textContent = unread > 9 ? '9+' : unread;
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+}
+
+function readNotif(el) {
+  var nid = el.getAttribute('data-nid');
+  var n = NOTIF_LIST.find(function(x){ return x.id === nid; });
+  if (n && !n.read) {
+    n.read = true;
+    saveNotifToStorage();
+    renderNotifPanel();
+  }
+}
+
+function pushNotif(n) {
+  // Deduplicate by id
+  if (NOTIF_LIST.find(function(x){ return x.id === n.id; })) return false;
+  NOTIF_LIST.unshift(n);
+  saveNotifToStorage();
+  return true;
+}
+
+// Derive notifications from the current MY_INTERVIEWS / available slots snapshot
+function syncNotificationsFromData(apps, availableSlots) {
+  var changed = false;
+
+  // 1. Application status changes (approved / rejected / confirmed)
+  (apps || []).forEach(function(app) {
+    var key = 'app_' + app.applicationId + '_' + app.applicationStatus;
+    var prev = NOTIF_PREV_SNAP['app_' + app.applicationId];
+
+    if (prev !== app.applicationStatus) {
+      NOTIF_PREV_SNAP['app_' + app.applicationId] = app.applicationStatus;
+
+      var dept = app.departmentName || 'Interview';
+      var dateStr = app.scheduledDate
+        ? new Date(app.scheduledDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+        : '';
+
+      if (app.applicationStatus === 'APPROVED') {
+        changed |= pushNotif({
+          id: key, type: 'app_approved', read: false, ts: Date.now(),
+          title: 'Interview Scheduled',
+          sub: dept + (dateStr ? ' confirmed — ' + dateStr : ' confirmed'),
+          icon: 'fa-solid fa-calendar-check',
+          iconBg: '#F0FDFA', iconColor: 'var(--accent)'
+        });
+      } else if (app.applicationStatus === 'REJECTED') {
+        changed |= pushNotif({
+          id: key, type: 'app_rejected', read: false, ts: Date.now(),
+          title: 'Application Not Selected',
+          sub: dept + ' — better luck next time',
+          icon: 'fa-solid fa-circle-xmark',
+          iconBg: '#FEF2F2', iconColor: 'var(--danger)'
+        });
+      } else if (app.applicationStatus === 'PENDING' && !prev) {
+        // First time we see a pending app (initial load) — only notify if applied in last 5 minutes
+        var appliedAt = app.appliedAt ? new Date(app.appliedAt).getTime() : 0;
+        if (Date.now() - appliedAt < 5 * 60 * 1000) {
+          changed |= pushNotif({
+            id: key, type: 'app_pending', read: false, ts: appliedAt || Date.now(),
+            title: 'Application Submitted',
+            sub: dept + ' — under review',
+            icon: 'fa-solid fa-paper-plane',
+            iconBg: '#EFF6FF', iconColor: 'var(--primary)'
+          });
+        } else {
+          // Just snapshot it silently so future changes are detected
+          NOTIF_PREV_SNAP['app_' + app.applicationId] = app.applicationStatus;
+        }
+      }
+    }
+
+    // Feedback available: APPROVED + scheduledDate is in the past
+    if (app.applicationStatus === 'APPROVED' && app.scheduledDate) {
+      var pastTs = new Date(app.scheduledDate).getTime();
+      if (pastTs < Date.now()) {
+        var fbKey = 'feedback_' + app.applicationId;
+        if (!NOTIF_PREV_SNAP[fbKey]) {
+          NOTIF_PREV_SNAP[fbKey] = true;
+          changed |= pushNotif({
+            id: fbKey, type: 'feedback_ready', read: false, ts: pastTs,
+            title: 'Feedback Report Ready',
+            sub: (app.departmentName || 'Interview') + ' report available',
+            icon: 'fa-solid fa-star',
+            iconBg: '#FEF3C7', iconColor: 'var(--warning)'
+          });
+        }
+      }
+    }
+  });
+
+  // 2. New interview slots available
+  (availableSlots || []).forEach(function(s) {
+    var slotKey = 'slot_' + s.id;
+    if (!NOTIF_PREV_SNAP[slotKey]) {
+      NOTIF_PREV_SNAP[slotKey] = true;
+      var dateStr = s.dateTime || '';
+      changed |= pushNotif({
+        id: slotKey, type: 'slot_available', read: false, ts: Date.now(),
+        title: 'New Interview Slot Available',
+        sub: (s.topic || 'Interview') + (dateStr ? ' — ' + dateStr : ''),
+        icon: 'fa-solid fa-bullhorn',
+        iconBg: '#EFF6FF', iconColor: 'var(--primary)'
+      });
+    }
+  });
+
+  if (changed) renderNotifPanel();
+}
+
+// Called once on page load after data is ready
+function initNotifications() {
+  NOTIF_STORE_KEY = notifStoreKey();
+  loadNotifFromStorage();
+  renderNotifPanel();
+}
+
+// Poll every 30s to detect status changes
+function startNotifPolling() {
+  if (window.__notifPollingStarted) return;
+  window.__notifPollingStarted = true;
+  setInterval(async function() {
+    try {
+      var res = await secureFetch('/api/applications/my');
+      if (!res || !res.ok) return;
+      var apps = await res.json();
+      var slots = window.API_INTERVIEW_SLOTS || [];
+      syncNotificationsFromData(apps, slots);
+    } catch(e) { /* silent */ }
+  }, 30000);
+}
+
+function toggleNotif(){
+  var p = document.getElementById('notifPanel');
+  p.classList.toggle('open');
+  // Re-render timestamps when opened
+  if (p.classList.contains('open')) renderNotifPanel();
+}
 function closeNotif(){document.getElementById('notifPanel').classList.remove('open');}
-function markAllRead(){document.querySelectorAll('.notif-item.unread').forEach(function(i){i.classList.remove('unread');});document.getElementById('notifDot').style.display='none';closeNotif();showToast('All notifications marked as read');}
+function markAllRead(){
+  NOTIF_LIST.forEach(function(n){ n.read = true; });
+  saveNotifToStorage();
+  renderNotifPanel();
+  closeNotif();
+  showToast('All notifications marked as read');
+}
 document.addEventListener('click',function(e){if(!e.target.closest('.notif-wrap'))closeNotif();if(!e.target.closest('.user-menu-wrap'))closeUserMenu();});
 function toggleUserMenu(){document.getElementById('userDropdown').classList.toggle('open');}
 function closeUserMenu(){document.getElementById('userDropdown').classList.remove('open');}
