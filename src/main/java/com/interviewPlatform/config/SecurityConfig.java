@@ -42,6 +42,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/refresh").permitAll()
                 .requestMatchers(HttpMethod.POST, "/register").permitAll()
                 .requestMatchers(HttpMethod.POST, "/register/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/password-reset/**").permitAll()
 
                 // All public paths (GET pages)
                 .requestMatchers(
@@ -66,7 +67,8 @@ public class SecurityConfig {
                     "/interviewer-dashboard",
                     "/admin-dashboard",
                     "/admin-login",
-                    "/forgot-password"
+                    "/forgot-password",
+                    "/api/password-reset/**"
                 ).permitAll()
 
                 // API role-based — specific rules BEFORE generic catch-all
