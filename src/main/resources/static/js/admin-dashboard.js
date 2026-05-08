@@ -16,6 +16,8 @@ window.addEventListener('load', async function () {
     if (!await checkAuth('ADMIN')) return;
     loadDashboard();
     initBaseCharts();
+    // Reload dashboard data every 60 s so admin sees fresh requests/stats
+    setInterval(loadDashboard, 60000);
 });
 
 async function loadDashboard() {
@@ -769,8 +771,16 @@ async function confirmSchedule(reqId) {
 
     if (isReschedule && !newStart) { showToast('Please select a new start date/time', 'warn'); return; }
 
+    // Use the institute's requested startDate as the scheduled interview date.
+    // When rescheduling, use the new startDateTime entered by admin instead.
+    const req = allAdminRequestsCache.find(r => r.id === id);
+    const baseScheduledDate = isReschedule
+        ? (newStart ? new Date(newStart).toISOString() : null)
+        : (req && req.startDate ? new Date(req.startDate).toISOString() : null);
+
     const payload = {
         assignedInterviewerIds: selectedInterviewerIds,
+        scheduledDate: baseScheduledDate,
         ...(isReschedule && newStart ? { startDate: new Date(newStart).toISOString() } : {}),
         ...(isReschedule && newEnd   ? { endDate:   new Date(newEnd).toISOString()   } : {})
     };
@@ -874,7 +884,6 @@ async function viewApplicants(requestId) {
                     <th style="padding:8px;">CGPA</th>
                     <th style="padding:8px;">Class</th>
                     <th style="padding:8px;">Status</th>
-                    <th style="padding:8px;">Action</th>
                 </tr></thead><tbody>
                 ${apps.map(a => `<tr style="border-top:1px solid #E2E8F0;">
                     <td style="padding:8px;"><b>${a.studentName || '—'}</b></td>
@@ -883,20 +892,8 @@ async function viewApplicants(requestId) {
                     <td style="padding:8px;">${a.studentClass || '—'}</td>
                     <td style="padding:8px;">
                         <span class="badge ${a.applicationStatus === 'APPROVED' ? 'bg-success' : a.applicationStatus === 'REJECTED' ? 'bg-danger' : 'bg-pending'}">
-                            ${a.applicationStatus}
+                            ${a.applicationStatus === 'APPROVED' ? 'Registered' : a.applicationStatus}
                         </span>
-                    </td>
-                    <td style="padding:8px;">
-                        ${a.applicationStatus === 'PENDING'
-                            ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">
-                                <button class="btn btn-s btn-sm btn-approve" onclick="approveStudentApplication(${a.applicationId}, ${requestId})">
-                                    <i class="fa-solid fa-check"></i> Approve
-                                </button>
-                                <button class="btn btn-s btn-sm btn-reject" onclick="rejectStudentApplication(${a.applicationId}, ${requestId})">
-                                    <i class="fa-solid fa-xmark"></i> Reject
-                                </button>
-                              </div>`
-                            : '<span style="color:var(--muted);font-size:12px;">—</span>'}
                     </td>
                 </tr>`).join('')}
                 </tbody></table>`;
@@ -906,33 +903,6 @@ async function viewApplicants(requestId) {
     } catch (e) { showToast('Error loading applicants', 'error'); }
 }
 
-async function approveStudentApplication(applicationId, requestId) {
-    try {
-        const res = await secureFetch(`/api/applications/${applicationId}/approve`, { method: 'PUT' });
-        if (res && res.ok) {
-            showToast('Application approved');
-            await viewApplicants(requestId);
-            await loadAdminStats();
-        } else {
-            const errText = res ? await res.text() : '';
-            showToast(errText || 'Failed to approve', 'error');
-        }
-    } catch (e) { showToast('Error approving application', 'error'); }
-}
-
-async function rejectStudentApplication(applicationId, requestId) {
-    try {
-        const res = await secureFetch(`/api/applications/${applicationId}/reject`, { method: 'PUT' });
-        if (res && res.ok) {
-            showToast('Application rejected', 'warn');
-            await viewApplicants(requestId);
-            await loadAdminStats();
-        } else {
-            const errText = res ? await res.text() : '';
-            showToast(errText || 'Failed to reject', 'error');
-        }
-    } catch (e) { showToast('Error rejecting application', 'error'); }
-}
 
 /* ═══════════════════════════════════════
    SIDEBAR & NAVIGATION

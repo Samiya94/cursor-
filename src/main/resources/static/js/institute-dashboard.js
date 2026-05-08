@@ -1844,6 +1844,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   // 3. load dashboard API
   await loadDashboard();
 
+  // Reload every 60 s so institute sees updated interview statuses
+  setInterval(loadDashboard, 60000);
+
   // 4. UI setup
   initHeader();
   initBranding();
