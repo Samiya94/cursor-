@@ -983,7 +983,7 @@ async function applyFilters(){
 
   tbody.innerHTML='';
   if(!sched.length){
-    tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px;">
+    tbody.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:28px;">
       No interviews scheduled yet. <a href="javascript:void(0)" onclick="showView('schedule')" style="color:var(--primary);font-weight:700;">Schedule one →</a>
     </td></tr>`;
     renderChips(fS,fD,fDate,fQ);
@@ -1029,16 +1029,26 @@ async function applyFilters(){
         : '<span style="color:var(--muted);font-size:12px;">—</span>';
 
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><b>${deptName}</b></td>
-      <td>${coord}</td>
-      <td style="font-size:12.5px;color:var(--muted);">${exp}</td>
-      <td style="font-size:12.5px;color:var(--muted);">${slot}</td>
+    tr.innerHTML = `<td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:28px;height:28px;border-radius:7px;background:#EFF6FF;display:grid;place-items:center;flex-shrink:0;">
+            <i class="fa-solid fa-sitemap" style="color:var(--primary);font-size:11px;"></i>
+          </div>
+          <b style="font-size:13.5px;">${deptName}</b>
+        </div>
+      </td>
+      <td style="font-size:13px;color:var(--dark);font-weight:500;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <i class="fa-solid fa-clock" style="color:var(--secondary);font-size:11px;"></i>
+          ${slot}
+        </div>
+      </td>
       <td>${statusBadge(s)}</td>
       <td>${actionCell}</td>`;
     tbody.appendChild(tr);
   });
 
-  if(!visible) tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--muted);">
+  if(!visible) tbody.innerHTML=`<tr><td colspan="4" style="text-align:center;padding:28px;color:var(--muted);">
     No results match your filters. <a href="javascript:void(0)" onclick="resetFilters()" style="color:var(--primary);font-weight:700;">Reset filters</a>
   </td></tr>`;
 
@@ -1353,19 +1363,27 @@ function cancelStatus(){
 function promptConfirmRequest(requestId, deptName) {
   const iv = (dashboardState.interviews||[]).find(i => i.id === requestId);
   const slot = iv ? formatInterviewSlot(iv) : 'Not available';
-  const venue = iv?.scheduledVenue || 'TBD';
-  const interviewers = (iv?.assignedInterviewerNames||[]).join(', ') || 'Not Assigned';
-  
+
   _pendingConfirmRequestId = requestId;
   document.getElementById('statusModalTitle').textContent = 'Confirm Interview Slot';
   document.getElementById('statusModalText').innerHTML = `
-    <div style="text-align:left;margin-bottom:12px;">
-      <b>Department:</b> ${deptName}<br>
-      <b>Slot:</b> ${slot}<br>
-      <b>Venue:</b> ${venue}<br>
-      <b>Interviewers:</b> ${interviewers}
+    <div style="text-align:left;margin-bottom:14px;">
+      <div style="display:grid;gap:10px;">
+        <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:11px 14px;">
+          <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#15803D;margin-bottom:3px;display:flex;align-items:center;gap:5px;">
+            <i class="fa-solid fa-sitemap" style="font-size:10px;"></i> Department
+          </div>
+          <div style="font-weight:700;font-size:14px;color:#1F2937;">${deptName}</div>
+        </div>
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:11px 14px;">
+          <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#1D4ED8;margin-bottom:3px;display:flex;align-items:center;gap:5px;">
+            <i class="fa-solid fa-calendar-check" style="font-size:10px;"></i> Scheduled Slot
+          </div>
+          <div style="font-weight:700;font-size:14px;color:#1F2937;">${slot}</div>
+        </div>
+      </div>
     </div>
-    Are you sure you want to confirm this interview slot?`;
+    <p style="font-size:13px;color:#6B7280;">Are you sure you want to confirm this interview slot?</p>`;
   openOverlay('statusModal');
 }
 
@@ -1734,45 +1752,64 @@ function openInterviewViewModal(requestId) {
   const iv = (dashboardState.interviews||[]).find(i => i.id === requestId);
   if (!iv) return;
   const slot = formatInterviewSlot(iv);
+  const deptName = iv.departmentName || '—';
+  const statusHtml = statusBadge(iv.status);
+
   const modalHtml = `
     <div class="modal-overlay open" id="ivViewModal" onclick="if(event.target===this)document.getElementById('ivViewModal').remove()">
-      <div class="modal" style="max-width:480px;width:95%;">
-        <div class="modal-header">
-          <h3><i class="fa-solid fa-calendar-check"></i> Interview Details</h3>
-          <button class="modal-close" onclick="document.getElementById('ivViewModal').remove()">&times;</button>
-        </div>
-        <div class="modal-body" style="padding:20px;">
-          <div style="display:grid;gap:12px;">
-            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
-              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Department</div>
-              <div style="font-weight:700;">${iv.departmentName||'—'}</div>
+      <div class="modal" style="max-width:440px;width:95%;">
+        <div class="modal-header" style="border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:0;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:36px;height:36px;border-radius:9px;background:#EFF6FF;display:grid;place-items:center;flex-shrink:0;">
+              <i class="fa-solid fa-calendar-check" style="color:var(--primary);font-size:15px;"></i>
             </div>
-            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
-              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Scheduled Slot</div>
-              <div style="font-weight:700;">${slot}</div>
-            </div>
-            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
-              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Venue</div>
-              <div style="font-weight:700;">${iv.scheduledVenue||'TBD'}</div>
-            </div>
-            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
-              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Meeting Link</div>
-              <div style="font-weight:700;">${iv.meetingLink?`<a href="${iv.meetingLink}" target="_blank">${iv.meetingLink}</a>`:'N/A'}</div>
-            </div>
-            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
-              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Interviewers</div>
-              <div style="font-weight:700;">${(iv.assignedInterviewerNames||[]).join(', ')||'Not Assigned'}</div>
-            </div>
-            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
-              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Students Required</div>
-              <div style="font-weight:700;">${iv.numberOfStudentsRequired??'TBD'}</div>
-            </div>
-            <div style="background:#F8FAFC;border-radius:8px;padding:12px 14px;">
-              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Status</div>
-              <div>${statusBadge(iv.status)}</div>
+            <div>
+              <h3 style="font-size:15px;font-weight:800;color:var(--dark);line-height:1.2;">Interview Details</h3>
+              <p style="font-size:11.5px;color:var(--muted);margin-top:1px;">Confirmed interview slot information</p>
             </div>
           </div>
-          <button class="btn btn-ghost" style="margin-top:16px;width:100%;justify-content:center;" onclick="document.getElementById('ivViewModal').remove()">Close</button>
+          <button class="modal-close" onclick="document.getElementById('ivViewModal').remove()" style="background:var(--bg);border:none;width:30px;height:30px;border-radius:6px;cursor:pointer;display:grid;place-items:center;color:var(--muted);font-size:16px;transition:var(--transition);"
+            onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='var(--bg)'">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div style="padding:20px;display:grid;gap:12px;">
+
+          <div style="border-radius:var(--radius-sm);border:1.5px solid #BFDBFE;overflow:hidden;">
+            <div style="background:#EFF6FF;padding:8px 14px;border-bottom:1px solid #BFDBFE;display:flex;align-items:center;gap:6px;">
+              <i class="fa-solid fa-sitemap" style="color:var(--primary);font-size:11px;"></i>
+              <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--primary);">Department</span>
+            </div>
+            <div style="background:var(--card);padding:12px 14px;">
+              <span style="font-weight:700;font-size:15px;color:var(--dark);">${deptName}</span>
+            </div>
+          </div>
+
+          <div style="border-radius:var(--radius-sm);border:1.5px solid #BBF7D0;overflow:hidden;">
+            <div style="background:#F0FDF4;padding:8px 14px;border-bottom:1px solid #BBF7D0;display:flex;align-items:center;gap:6px;">
+              <i class="fa-solid fa-clock" style="color:#16A34A;font-size:11px;"></i>
+              <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#16A34A;">Scheduled Slot</span>
+            </div>
+            <div style="background:var(--card);padding:12px 14px;">
+              <span style="font-weight:700;font-size:14px;color:var(--dark);">${slot}</span>
+            </div>
+          </div>
+
+          <div style="border-radius:var(--radius-sm);border:1.5px solid var(--border);overflow:hidden;">
+            <div style="background:var(--bg);padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;">
+              <i class="fa-solid fa-circle-half-stroke" style="color:var(--muted);font-size:11px;"></i>
+              <span style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);">Status</span>
+            </div>
+            <div style="background:var(--card);padding:12px 14px;">
+              ${statusHtml}
+            </div>
+          </div>
+
+        </div>
+        <div style="padding:0 20px 20px;">
+          <button class="btn btn-ghost" style="width:100%;justify-content:center;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-weight:600;font-size:13.5px;" onclick="document.getElementById('ivViewModal').remove()">
+            <i class="fa-solid fa-xmark" style="font-size:11px;"></i> Close
+          </button>
         </div>
       </div>
     </div>`;
