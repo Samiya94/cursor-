@@ -50,10 +50,8 @@
       </div>
       <div class="notif-panel" id="notifPanel">
         <div class="notif-panel-header"><b style="font-size:13.5px;">Notifications</b><span style="font-size:12px;color:var(--secondary);cursor:pointer;" onclick="markAllRead()">Mark all read</span></div>
-        <div class="notif-item unread"><div class="notif-icon" style="background:#EFF6FF;color:var(--primary);"><i class="fa-solid fa-building"></i></div><div><div style="font-size:13px;font-weight:600;">New Institute Request</div><div style="font-size:12px;color:var(--muted);">Global Tech University • 10 min ago</div></div></div>
-        <div class="notif-item unread"><div class="notif-icon" style="background:#F0FDF4;color:var(--success);"><i class="fa-solid fa-user-check"></i></div><div><div style="font-size:13px;font-weight:600;">Interviewer Approved</div><div style="font-size:12px;color:var(--muted);">John Doe is now active • 1 hr ago</div></div></div>
-        <div class="notif-item"><div class="notif-icon" style="background:#FEF3C7;color:#92400E;"><i class="fa-solid fa-video"></i></div><div><div style="font-size:13px;font-weight:600;">Recording Ready</div><div style="font-size:12px;color:var(--muted);">Apex Institute session • 3 hr ago</div></div></div>
-        <div style="padding:10px 16px;text-align:center;border-top:1px solid #F9FAFB;"><span style="font-size:12px;color:var(--secondary);cursor:pointer;">View all</span></div>
+        <div id="notifList" style="min-height:60px;"><div style="padding:16px;text-align:center;color:var(--muted);font-size:13px;">Loading...</div></div>
+        <div style="padding:10px 16px;text-align:center;border-top:1px solid #F9FAFB;"><span style="font-size:12px;color:var(--secondary);cursor:pointer;" onclick="showPage('inst-req',null);closeNotifPanel()">View all requests</span></div>
       </div>
     </div>
     <div class="user-menu-wrap">
@@ -403,43 +401,22 @@
       <div class="detail-grid" id="processInstInfo"></div>
     </div>
 
-    <!-- Scheduling Fields -->
-    <div class="form-row" style="margin-bottom:12px;">
-      <div class="form-group">
-        <label>Scheduled Date &amp; Time <span style="color:var(--danger);">*</span></label>
-        <input type="datetime-local" id="schedDate">
-      </div>
-      <div class="form-group">
-        <label>Venue / Location</label>
-        <input type="text" id="schedVenue" placeholder="e.g. Online / Campus Hall A">
-      </div>
-    </div>
-    <div class="form-row" style="margin-bottom:12px;">
-      <div class="form-group">
-        <label>Meeting Link (if online)</label>
-        <input type="text" id="schedMeetLink" placeholder="https://meet.google.com/...">
-      </div>
-      <div class="form-group">
-        <label>Students Required</label>
-        <input type="number" id="schedStudentCount" min="1" value="10">
-      </div>
-    </div>
-
     <!-- Assign Interviewers -->
-    <div class="form-group">
-      <label>Assign Interviewers <span id="domainFilterNote" style="font-style:normal;color:var(--secondary);text-transform:none;font-weight:600;font-size:11px;"></span></label>
-      <div class="interviewer-checklist" id="interviewerChecklist"></div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;display:block;">Assign Interviewers <span id="domainFilterNote" style="font-style:normal;color:var(--secondary);text-transform:none;font-weight:600;font-size:11px;"></span></label>
+      <div class="interviewer-checklist" id="interviewerChecklist" style="max-height:200px;overflow-y:auto;border:1.5px solid #E2E8F0;border-radius:8px;padding:8px;background:#FAFBFC;"></div>
       <div id="noMatchMsg" class="no-match-msg" style="display:none;"><i class="fa-solid fa-circle-info"></i> No active interviewers match the requested domains.</div>
     </div>
 
     <!-- Reschedule Toggle -->
-    <div style="margin:12px 0;background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:8px;padding:12px 14px;">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;">
-        <input type="checkbox" id="rescheduleToggle" onclick="toggleReschedule()" style="accent-color:var(--primary);width:15px;height:15px;">
-        <i class="fa-solid fa-rotate" style="color:var(--warning);"></i> Reschedule Interview Window (change the requested dates)
+    <div style="margin:12px 0;">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;font-weight:600;padding:11px 14px;border-radius:8px;border:1.5px solid #E2E8F0;background:#F8FAFC;transition:all .2s;" id="rescheduleLabel">
+        <input type="checkbox" id="rescheduleToggle" onchange="toggleReschedule()" style="accent-color:var(--primary);width:16px;height:16px;cursor:pointer;">
+        <span>Reschedule Interview Window <span style="font-weight:400;color:var(--muted);font-size:12px;">(change the requested dates)</span></span>
       </label>
     </div>
-    <div id="rescheduleFields" style="display:none;">
+    <div id="rescheduleFields" style="display:none;background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:8px;padding:14px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--primary);margin-bottom:10px;">New Schedule Window</div>
       <div class="form-row">
         <div class="form-group"><label>New Start Date/Time</label><input type="datetime-local" id="startDateTime"></div>
         <div class="form-group"><label>New End Date/Time</label><input type="datetime-local" id="endDateTime"></div>

@@ -1142,6 +1142,29 @@ function uncheckExp(id){
   cb?.closest('.cb-item')?.classList.remove('checked');
   syncExpTags();
 }
+
+async function loadDomainsIntoGrid() {
+    const grid = document.getElementById('expertiseCbGrid');
+    if (!grid) return;
+    try {
+        const res = await fetch('/api/domains');
+        if (!res.ok) return;
+        const domains = await res.json();
+        if (!domains || !domains.length) return;
+        // Keep any existing custom items already in the grid
+        const existing = [...grid.querySelectorAll('input')].map(i => i.value.toLowerCase());
+        domains.forEach(name => {
+            if (existing.includes(name.toLowerCase())) return;
+            const id = 'exp_' + name.replace(/[^a-z0-9]/gi, '_');
+            const item = document.createElement('div');
+            item.className = 'cb-item';
+            item.setAttribute('onclick', "toggleCb(this)");
+            item.innerHTML = `<input type="checkbox" id="${id}" value="${name}" onchange="syncExpTags()"><label for="${id}">${name}</label>`;
+            grid.appendChild(item);
+        });
+    } catch(e) { console.error('loadDomainsIntoGrid error', e); }
+}
+
 function addCustomDomain(){
   const inp=document.getElementById('customDomainInput');
   const n=inp.value.trim(); if(!n)return;
@@ -1790,8 +1813,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   updateNotifBadge();
   renderNotifPanel();
 
-  // 5. load departments
-  
+  // 5. load domains from admin settings, then departments
+  await loadDomainsIntoGrid();
   await fetchDepartments();
 
   // 6. render everything

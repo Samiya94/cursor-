@@ -52,6 +52,7 @@ public class SecurityConfig {
                     "/refresh",
                     "/logout",
                     "/api/students/check-email",
+                    "/api/domains",
                     "/css/**",
                     "/js/**",
                     "/images/**",

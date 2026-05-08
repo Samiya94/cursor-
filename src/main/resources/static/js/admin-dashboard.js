@@ -25,6 +25,7 @@ async function loadDashboard() {
         loadAllInterviewRequests(),
         loadMonthlyChart(),
         loadRecentActivity(),
+        loadPlatformDomains(),
         loadAdminProfile()
     ]);
 }
@@ -346,7 +347,15 @@ async function rejectInterviewerById(id, name) {
 
 function toggleReschedule(){
     const fields = document.getElementById('rescheduleFields');
-    if (fields) fields.style.display = document.getElementById('rescheduleToggle').checked ? 'block' : 'none';
+    const toggle = document.getElementById('rescheduleToggle');
+    const label  = document.getElementById('rescheduleLabel');
+    const checked = toggle && toggle.checked;
+    if (fields) fields.style.display = checked ? 'block' : 'none';
+    if (label) {
+        label.style.background   = checked ? '#EFF6FF' : '#F8FAFC';
+        label.style.borderColor  = checked ? '#93C5FD' : '#E2E8F0';
+        label.style.color        = checked ? 'var(--primary)' : 'inherit';
+    }
 }
 /* ═══════════════════════════════════════
    ACTIVE INTERVIEWERS TABLE
@@ -419,8 +428,17 @@ async function getActiveInterviewersList() {
     try {
         const res = await secureFetch('/api/admin/interviewers/active');
         if (!res || !res.ok) return [];
-        return await res.json();
+        const data = await res.json();
+        // Normalize: ensure fullName is always resolved
+        return data.map(iv => ({
+            ...iv,
+            fullName: iv.fullName || iv.name
+                   || (iv.user && (iv.user.fullName || iv.user.name || iv.user.email))
+                   || 'Interviewer',
+            domain: iv.domain || 'General'
+        }));
     } catch (e) {
+        console.error('getActiveInterviewersList error:', e);
         return [];
     }
 }
@@ -547,7 +565,8 @@ async function loadAllInterviewRequests() {
         requests.forEach(req => {
             const statusClass = {
                 'PENDING': 'bg-pending', 'CONFIRMED': 'bg-success',
-                'RESCHEDULED': 'bg-blue', 'CANCELLED': 'bg-danger', 'AWAITING_CONFIRMATION': 'bg-purple'
+                'RESCHEDULED': 'bg-blue', 'CANCELLED': 'bg-danger',
+                'AWAITING_CONFIRMATION': 'bg-warning'
             }[req.status] || 'bg-pending';
             const statusLabel = {
                 'PENDING': 'Pending', 'CONFIRMED': 'Confirmed',
@@ -569,18 +588,9 @@ async function loadAllInterviewRequests() {
             row.setAttribute('data-end', endDate);
             row.setAttribute('data-contact', req.contactEmail || '');
 
-            const canAssign = (req.status === 'CONFIRMED' || req.status === 'RESCHEDULED');
             const actionBtn = req.status === 'PENDING'
-            ? `<button class="btn btn-s btn-sm" onclick="openProcessModal(${req.id})"><i class="fa-solid fa-gear"></i> Process</button>`
-            : `<button class="btn btn-info btn-sm" onclick="openRescheduleModal(${req.id})"><i class="fa-solid fa-rotate"></i> Reschedule</button>`;
-            const assignBtn = canAssign
-                ? `<button class="btn btn-s btn-sm" onclick="openAssignInterviewerModal(${req.id},'${req.instituteName || ''}','${req.departmentName || ''}','${(req.expertise || []).join(', ')}')\"><i class="fa-solid fa-user-check"></i> Assign Interviewers</button>`
+                ? `<button class="btn btn-s btn-sm" onclick="openProcessModal(${req.id})"><i class="fa-solid fa-gear"></i> Process</button>`
                 : '';
-           const instConfirmedBadge = (req.status === 'CONFIRMED' || req.status === 'AWAITING_CONFIRMATION')
-            ? (req.instituteConfirmed
-                ? `<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> Inst. Confirmed</span>`
-                : `<span class="badge bg-pending"><i class="fa-solid fa-clock"></i> Awaiting Confirmation</span>`)
-            : '';
 
             row.innerHTML = `
                 <td><div style="display:flex;align-items:center;gap:10px;">
@@ -593,10 +603,9 @@ async function loadAllInterviewRequests() {
                 <td>${expertiseTags || '—'}</td>
                 <td>${req.departmentName || '—'}</td>
                 <td style="font-size:12px;white-space:nowrap;">${startDate} – ${endDate}</td>
-                <td><span class="badge ${statusClass}">${statusLabel}</span>${instConfirmedBadge ? '<br/>' + instConfirmedBadge : ''}</td>
+                <td><span class="badge ${statusClass}">${statusLabel}</span></td>
                 <td><div style="display:flex;gap:5px;flex-wrap:wrap;">
                     ${actionBtn}
-                    ${assignBtn}
                     <button class="btn btn-info btn-sm" onclick="viewApplicants(${req.id})"><i class="fa-solid fa-users"></i> Applicants</button>
                 </div></td>`;
             tbody.appendChild(row);
@@ -663,12 +672,25 @@ async function openProcessModal(reqId) {
     if (!req) { showToast('Request not found', 'error'); return; }
 
     const ivs = await getActiveInterviewersList();
-    const requestedDomains = (req.expertise || []).map(d => d.toLowerCase());
-    const matchedIvs = ivs.filter(iv => {
-        const ivDomain = (iv.domain || '').toLowerCase();
-        return requestedDomains.some(d => ivDomain.includes(d) || d.includes(ivDomain));
-    });
-    const otherIvs = ivs.filter(iv => !matchedIvs.includes(iv));
+    const requestedDomains = (req.expertise || []).map(d => d.toLowerCase().trim());
+
+    const domainMatches = (ivDomain) => {
+        const d = (ivDomain || '').toLowerCase().trim();
+        if (!d) return false;
+        // 1. Exact match
+        if (requestedDomains.includes(d)) return true;
+        // 2. One fully contains the other
+        if (requestedDomains.some(r => r.includes(d) || d.includes(r))) return true;
+        // 3. Keyword overlap — split on non-alpha and check significant words (len > 2)
+        const ivWords = d.split(/[^a-z0-9]+/).filter(w => w.length > 2);
+        return requestedDomains.some(r => {
+            const rWords = r.split(/[^a-z0-9]+/).filter(w => w.length > 2);
+            return ivWords.some(w => rWords.includes(w));
+        });
+    };
+
+    const matchedIvs = ivs.filter(iv => domainMatches(iv.domain));
+    const otherIvs   = ivs.filter(iv => !matchedIvs.includes(iv));
 
     // Populate institute info section (read-only)
     const startDate = req.startDate ? new Date(req.startDate).toLocaleString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '—';
@@ -680,9 +702,9 @@ async function openProcessModal(reqId) {
         <div class="detail-item"><span>Department</span><b>${req.departmentName || '—'}</b></div>
         <div class="detail-item"><span>Domains Requested</span><b>${(req.expertise||[]).join(', ')||'—'}</b></div>
         <div class="detail-item"><span>Contact Email</span><b>${req.contactEmail || '—'}</b></div>
-        <div class="detail-item"><span>Preferred Window</span><b>${startDate} – ${endDate}</b></div>
+        <div class="detail-item"><span>Requested Dates</span><b>${startDate} – ${endDate}</b></div>
         <div class="detail-item" style="background:#EFF6FF;border:1.5px solid #BFDBFE;">
-          <span style="color:var(--primary);">Registered Students</span>
+          <span style="color:var(--primary);">Students Count</span>
           <b style="color:var(--primary);font-size:17px;">${studentCount}</b>
         </div>`;
 
@@ -691,46 +713,40 @@ async function openProcessModal(reqId) {
     if (studentCountInput && studentCount !== '—') studentCountInput.value = studentCount;
 
     // Populate interviewer checklist
-    const buildChecklist = (list, labelText) => list.map(iv => `
-        <label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;padding:6px 8px;border-radius:6px;background:${matchedIvs.includes(iv)?'#EFF6FF':'#F8FAFC'};cursor:pointer;">
-            <input type="checkbox" class="schedule-iv-cb" value="${iv.id}" style="margin-top:2px;accent-color:var(--primary);" ${matchedIvs.includes(iv)?'checked':''}>
-            <span style="font-size:13px;">${iv.fullName || 'Interviewer'} <span style="color:var(--muted);font-size:11.5px;">(${iv.domain || 'General'})</span></span>
-        </label>`).join('');
-
     const checklistEl = document.getElementById('interviewerChecklist');
     const noMatchEl = document.getElementById('noMatchMsg');
     const noteEl = document.getElementById('domainFilterNote');
 
+    const buildIvRow = (iv, isMatched) => `
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;background:${isMatched?'#EFF6FF':'#F8FAFC'};border:1.5px solid ${isMatched?'#BFDBFE':'#E2E8F0'};cursor:pointer;margin-bottom:6px;transition:background .15s;">
+            <input type="checkbox" class="schedule-iv-cb" value="${iv.id}" style="width:15px;height:15px;accent-color:var(--primary);flex-shrink:0;" ${isMatched?'checked':''}>
+            <span style="font-size:13px;font-weight:600;flex:1;">${iv.fullName || iv.name || (iv.user && (iv.user.fullName || iv.user.name)) || 'Interviewer'}</span>
+            <span style="font-size:11.5px;color:var(--secondary);background:${isMatched?'#DBEAFE':'#F1F5F9'};padding:2px 8px;border-radius:20px;font-weight:600;">${iv.domain || 'General'}</span>
+        </label>`;
+
     if (ivs.length) {
         let html = '';
         if (matchedIvs.length) {
-            html += `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">✓ Matching Domain</div>`;
-            html += buildChecklist(matchedIvs, 'Matching');
+            html += matchedIvs.map(iv => buildIvRow(iv, true)).join('');
         }
         if (otherIvs.length) {
-            html += `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:8px 0 6px;">Other Interviewers</div>`;
-            html += buildChecklist(otherIvs, 'Other');
+            if (matchedIvs.length) {
+                html += `<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:10px 0 6px;padding-top:6px;border-top:1px dashed #E2E8F0;">Other Interviewers</div>`;
+            }
+            html += otherIvs.map(iv => buildIvRow(iv, false)).join('');
         }
         checklistEl.innerHTML = html;
         checklistEl.style.display = 'block';
         noMatchEl.style.display = 'none';
         noteEl.textContent = matchedIvs.length
-            ? `— ${matchedIvs.length} matching for: ${(req.expertise||[]).join(', ')}`
-            : '';
+            ? `— ${matchedIvs.length} match${matchedIvs.length>1?'es':''} for: ${(req.expertise||[]).join(', ')}`
+            : '— no domain match, showing all';
     } else {
         checklistEl.innerHTML = '';
         checklistEl.style.display = 'none';
         noMatchEl.style.display = 'block';
         noteEl.textContent = '';
     }
-
-    // Reset scheduling fields
-    const schedDate = document.getElementById('schedDate');
-    const schedVenue = document.getElementById('schedVenue');
-    const schedMeetLink = document.getElementById('schedMeetLink');
-    if (schedDate) schedDate.value = '';
-    if (schedVenue) schedVenue.value = '';
-    if (schedMeetLink) schedMeetLink.value = '';
 
     const toggle = document.getElementById('rescheduleToggle');
     if (toggle) toggle.checked = false;
@@ -743,8 +759,6 @@ async function openProcessModal(reqId) {
 
 async function confirmSchedule(reqId) {
     const id = reqId || window._currentProcessReqId;
-    const dateVal = document.getElementById('schedDate')?.value;
-    if (!dateVal) { showToast('Please select a date and time', 'warn'); return; }
 
     const selectedInterviewerIds = [...document.querySelectorAll('.schedule-iv-cb:checked')]
         .map(cb => parseInt(cb.value)).filter(Number.isFinite);
@@ -753,12 +767,10 @@ async function confirmSchedule(reqId) {
     const newStart = document.getElementById('startDateTime')?.value;
     const newEnd   = document.getElementById('endDateTime')?.value;
 
+    if (isReschedule && !newStart) { showToast('Please select a new start date/time', 'warn'); return; }
+
     const payload = {
-        scheduledDate: new Date(dateVal).toISOString(),
-        scheduledVenue: document.getElementById('schedVenue')?.value || '',
-        meetingLink: document.getElementById('schedMeetLink')?.value || '',
         assignedInterviewerIds: selectedInterviewerIds,
-        numberOfStudentsRequired: parseInt(document.getElementById('schedStudentCount')?.value || '10'),
         ...(isReschedule && newStart ? { startDate: new Date(newStart).toISOString() } : {}),
         ...(isReschedule && newEnd   ? { endDate:   new Date(newEnd).toISOString()   } : {})
     };
@@ -842,59 +854,7 @@ async function confirmAssignInterviewer() {
     }
 }
 
-async function openRescheduleModal(reqId) {
-    document.getElementById('processInstInfo').innerHTML = `
-        <div style="margin-bottom:10px;"><b>Rescheduling Interview #${reqId}</b></div>
-        <div style="margin-top:10px;">
-            <label style="font-size:12px;font-weight:600;">New Date &amp; Time *</label>
-            <input type="datetime-local" id="schedDate" style="width:100%;margin-top:4px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
-        </div>
-        <div style="margin-top:10px;">
-            <label style="font-size:12px;font-weight:600;">Venue</label>
-            <input type="text" id="schedVenue" placeholder="e.g. Online / Campus Hall A" style="width:100%;margin-top:4px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
-        </div>
-        <div style="margin-top:10px;">
-            <label style="font-size:12px;font-weight:600;">Meeting Link</label>
-            <input type="text" id="schedMeetLink" placeholder="https://meet.google.com/..." style="width:100%;margin-top:4px;padding:8px;border:1px solid #E2E8F0;border-radius:6px;">
-        </div>
-        <div style="margin-top:16px;display:flex;gap:10px;">
-            <button class="btn btn-s" style="flex:1;justify-content:center;" onclick="confirmReschedule(${reqId})">
-                <i class="fa-solid fa-rotate"></i> Confirm Reschedule</button>
-            <button class="btn btn-outline" onclick="closeOverlay('processModal')">Cancel</button>
-        </div>`;
 
-    document.getElementById('interviewerChecklist').innerHTML = '';
-    document.getElementById('interviewerChecklist').style.display = 'none';
-    document.getElementById('noMatchMsg').style.display = 'none';
-    openOverlay('processModal');
-}
-
-async function confirmReschedule(reqId) {
-    const dateVal = document.getElementById('schedDate')?.value;
-    if (!dateVal) { showToast('Please select a new date', 'warn'); return; }
-
-    const payload = {
-        scheduledDate: new Date(dateVal).toISOString(),
-        scheduledVenue: document.getElementById('schedVenue')?.value || '',
-        meetingLink: document.getElementById('schedMeetLink')?.value || ''
-    };
-
-    try {
-        const res = await secureFetch(`/api/interview-requests/${reqId}/reschedule`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        if (res && res.ok) {
-            closeOverlay('processModal');
-            showToast('Interview rescheduled!');
-            await loadAllInterviewRequests();
-            await loadRecentActivity();
-        } else {
-            showToast('Failed to reschedule', 'error');
-        }
-    } catch (e) { showToast('Error', 'error'); }
-}
 
 /* ═══════════════════════════════════════
    APPLICANTS VIEWER
@@ -1022,7 +982,47 @@ function showPage(id, el) {
 ═══════════════════════════════════════ */
 function toggleUserMenu() { document.getElementById('userDropdown').classList.toggle('open'); }
 function closeUserMenu() { document.getElementById('userDropdown').classList.remove('open'); }
-function toggleNotif() { document.getElementById('notifPanel').classList.toggle('open'); }
+async function loadNotifications() {
+    const listEl = document.getElementById('notifList');
+    if (!listEl) return;
+    try {
+        const res = await secureFetch('/api/interview-requests/all');
+        if (!res || !res.ok) { listEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px;">No notifications.</div>'; return; }
+        const requests = await res.json();
+        const recent = [...requests].sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt)).slice(0,6);
+        const cfgMap = {
+            PENDING:     { bg:'#EFF6FF', color:'var(--primary)',  icon:'fa-building',      title:'New Institute Request' },
+            SCHEDULED:   { bg:'#F0FDF4', color:'var(--success)',  icon:'fa-calendar-check', title:'Interview Scheduled' },
+            RESCHEDULED: { bg:'#FEF3C7', color:'#92400E',         icon:'fa-rotate',         title:'Rescheduled' },
+            CONFIRMED:   { bg:'#F0FDF4', color:'var(--success)',  icon:'fa-circle-check',   title:'Institute Confirmed' },
+            CANCELLED:   { bg:'#FFF1F2', color:'var(--danger)',   icon:'fa-circle-xmark',   title:'Cancelled' }
+        };
+        const timeAgo = dt => {
+            const diff = Date.now() - new Date(dt);
+            if (diff < 60000) return 'just now';
+            if (diff < 3600000) return Math.floor(diff/60000) + ' min ago';
+            if (diff < 86400000) return Math.floor(diff/3600000) + ' hr ago';
+            return Math.floor(diff/86400000) + 'd ago';
+        };
+        listEl.innerHTML = recent.length ? recent.map(r => {
+            const cfg = cfgMap[r.status] || cfgMap.PENDING;
+            return `<div class="notif-item unread" style="cursor:pointer;" onclick="showPage('inst-req',null);closeNotifPanel()">
+                <div class="notif-icon" style="background:${cfg.bg};color:${cfg.color};"><i class="fa-solid ${cfg.icon}"></i></div>
+                <div><div style="font-size:13px;font-weight:600;">${cfg.title}</div>
+                <div style="font-size:12px;color:var(--muted);">${r.instituteName||'Unknown'} · ${r.departmentName||''} • ${timeAgo(r.updatedAt||r.createdAt)}</div></div>
+            </div>`;
+        }).join('') : '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px;">No recent activity.</div>';
+        const dot = document.getElementById('notifDot');
+        if (dot) dot.style.display = recent.some(r=>r.status==='PENDING') ? 'block' : 'none';
+    } catch(e) { console.error('Notifications error',e); }
+}
+
+function closeNotifPanel() { document.getElementById('notifPanel').classList.remove('open'); }
+function toggleNotif() {
+    const panel = document.getElementById('notifPanel');
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) loadNotifications();
+}
 function markAllRead() {
     document.querySelectorAll('.notif-item.unread').forEach(i => i.classList.remove('unread'));
     document.getElementById('notifDot').style.display = 'none';
@@ -1236,7 +1236,16 @@ function switchSettingsTab(tab, btn) {
     btn.classList.add('active');
     document.querySelectorAll('#settings .tab-content').forEach(c => c.classList.remove('active'));
     document.getElementById('settings-' + tab).classList.add('active');
-    if (tab === 'domains') renderDomainTags();
+    if (tab === 'domains') { loadPlatformDomains().then(renderDomainTags); }
+}
+
+async function loadPlatformDomains() {
+    try {
+        const res = await secureFetch('/api/domains');
+        if (res && res.ok) {
+            platformDomains = await res.json();
+        }
+    } catch(e) { console.error('loadPlatformDomains error', e); }
 }
 
 function renderDomainTags() {
@@ -1250,23 +1259,44 @@ function renderDomainTags() {
             </span>`).join('');
 }
 
-function addDomain() {
+async function addDomain() {
     const input = document.getElementById('newDomainInput');
     const val = input.value.trim();
     if (!val) { showToast('Enter a domain name', 'warn'); return; }
-    if (platformDomains.some(d => d.toLowerCase() === val.toLowerCase())) { showToast('Domain already exists', 'warn'); return; }
-    platformDomains.push(val);
-    input.value = '';
-    renderDomainTags();
-    showToast(`Domain "${val}" added`);
+    try {
+        const res = await secureFetch('/api/domains', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: val })
+        });
+        if (res && res.ok) {
+            platformDomains.push(val);
+            platformDomains.sort();
+            input.value = '';
+            renderDomainTags();
+            showToast(`Domain "${val}" added`);
+        } else {
+            showToast(await res.text() || 'Failed to add domain', 'error');
+        }
+    } catch(e) { showToast('Error adding domain', 'error'); }
 }
 
-function removeDomain(domain) {
-    if (confirm(`Remove domain "${domain}"?`)) {
-        platformDomains = platformDomains.filter(d => d !== domain);
-        renderDomainTags();
-        showToast(`Domain "${domain}" removed`, 'warn');
-    }
+async function removeDomain(domain) {
+    if (!confirm(`Remove domain "${domain}"?`)) return;
+    try {
+        const res = await secureFetch('/api/domains', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: domain })
+        });
+        if (res && res.ok) {
+            platformDomains = platformDomains.filter(d => d !== domain);
+            renderDomainTags();
+            showToast(`Domain "${domain}" removed`, 'warn');
+        } else {
+            showToast('Failed to remove domain', 'error');
+        }
+    } catch(e) { showToast('Error removing domain', 'error'); }
 }
 
 /* ═══════════════════════════════════════

@@ -1,3 +1,21 @@
+// ── Load domains from admin settings into interviewer registration select ──
+(async function loadDomainSelect() {
+    const select = document.getElementById('domainSelect');
+    if (!select) return;
+    try {
+        const res = await fetch('/api/domains');
+        if (!res.ok) throw new Error('failed');
+        const domains = await res.json();
+        select.innerHTML = '<option value="">Select Domain</option>'
+            + domains.map(d => `<option value="${d}">${d}</option>`).join('')
+            + '<option value="Other">Other</option>';
+    } catch(e) {
+        // fallback: keep the loading option but make it selectable
+        select.innerHTML = '<option value="">Select Domain</option><option value="Other">Other</option>';
+        console.error('Could not load domains', e);
+    }
+})();
+
 // Validate registration link (ONLY for TPO registration page)
 
 const params = new URLSearchParams(window.location.search);
