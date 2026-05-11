@@ -1,6 +1,7 @@
 package com.interviewPlatform.controllers;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -84,21 +85,33 @@ public class InterviewRequestController {
         // Admin: Schedule an interview
         @PreAuthorize("hasRole('ADMIN')")
         @PutMapping("/{id}/schedule")
-        public ResponseEntity<String> scheduleInterview(
+        public ResponseEntity<?> scheduleInterview(
                 @PathVariable Long id,
                 @RequestBody ScheduleInterviewDTO dto) {
-            interviewRequestService.scheduleInterview(id, dto);
-            return ResponseEntity.ok("Interview scheduled successfully");
+            try {
+                interviewRequestService.scheduleInterview(id, dto);
+                return ResponseEntity.ok(Map.of("message", "Interview scheduled successfully"));
+            } catch (RuntimeException e) {
+                String msg = e.getMessage();
+                return ResponseEntity.badRequest().body(Map.of("message",
+                        msg != null && !msg.isBlank() ? msg : "Scheduling failed."));
+            }
         }
 
         // Admin: Reschedule an interview
         @PreAuthorize("hasRole('ADMIN')")
         @PutMapping("/{id}/reschedule")
-        public ResponseEntity<String> rescheduleInterview(
+        public ResponseEntity<?> rescheduleInterview(
                 @PathVariable Long id,
                 @RequestBody ScheduleInterviewDTO dto) {
-            interviewRequestService.rescheduleInterview(id, dto);
-            return ResponseEntity.ok("Interview rescheduled successfully");
+            try {
+                interviewRequestService.rescheduleInterview(id, dto);
+                return ResponseEntity.ok(Map.of("message", "Interview rescheduled successfully"));
+            } catch (RuntimeException e) {
+                String msg = e.getMessage();
+                return ResponseEntity.badRequest().body(Map.of("message",
+                        msg != null && !msg.isBlank() ? msg : "Rescheduling failed."));
+            }
         }
 
         @PreAuthorize("hasRole('ADMIN')")

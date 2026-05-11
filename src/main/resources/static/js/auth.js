@@ -2,14 +2,42 @@ function getToken() {
     return localStorage.getItem("accessToken");
 }
 
+function decodeJwtPayload(token) {
+    if (!token || typeof token !== 'string') return null;
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    try {
+        let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const pad = base64.length % 4;
+        if (pad) base64 += '='.repeat(4 - pad);
+        return JSON.parse(atob(base64));
+    } catch {
+        return null;
+    }
+}
+
 function getUserRole() {
-    const user = JSON.parse(localStorage.getItem("user"));
-    return user?.role?.toUpperCase();
+    try {
+        const raw = localStorage.getItem("user");
+        if (!raw) return null;
+        const user = JSON.parse(raw);
+        const role = user?.role;
+        if (typeof role !== 'string') return null;
+        return role.trim().toUpperCase();
+    } catch {
+        return null;
+    }
 }
 
 function getUserEmail() {
-    const user = JSON.parse(localStorage.getItem("user"));
-    return user?.username;
+    try {
+        const raw = localStorage.getItem("user");
+        if (!raw) return null;
+        const user = JSON.parse(raw);
+        return user?.username;
+    } catch {
+        return null;
+    }
 }
 
 function authHeaders() {
@@ -22,38 +50,49 @@ function authHeaders() {
 // ✅ NEW: Check if a JWT token is expired without calling the server
 function isTokenExpired(token) {
     if (!token) return true;
-    try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        // exp is in seconds, Date.now() is in milliseconds
-        return payload.exp * 1000 < Date.now();
-    } catch (e) {
-        return true;
-    }
+    const payload = decodeJwtPayload(token);
+    if (!payload || typeof payload.exp !== 'number') return true;
+    // exp is in seconds, Date.now() is in milliseconds
+    return payload.exp * 1000 < Date.now();
+}
+
+function loginPathForRole(requiredRole) {
+    return requiredRole === 'ADMIN' ? '/admin-login' : '/login';
 }
 
 // ✅ UPDATED: Now tries to refresh before redirecting to login
 async function checkAuth(requiredRole) {
-    const token = getToken();
-    const role = getUserRole();
+    const loginPath = loginPathForRole(requiredRole);
+    let token = getToken();
 
-    // No token at all → go to login
+    // Access token missing but refresh may still be valid → recover session
     if (!token) {
-        window.location.href = "/login";
-        return false;
+        const refreshed = await refreshAccessToken();
+        if (!refreshed) {
+            window.location.href = loginPath;
+            return false;
+        }
+        token = getToken();
+        if (!token) {
+            window.location.href = loginPath;
+            return false;
+        }
     }
+
+    const role = getUserRole();
 
     // Token exists but is expired → try silent refresh first
     if (isTokenExpired(token)) {
         const refreshed = await refreshAccessToken();
         if (!refreshed) {
-            window.location.href = "/login";
+            window.location.href = loginPath;
             return false;
         }
     }
 
     // Role check
     if (requiredRole && role !== requiredRole) {
-        window.location.href = "/login";
+        window.location.href = loginPath;
         return false;
     }
 
@@ -126,6 +165,8 @@ async function secureFetch(url, options = {}) {
 
 function logout() {
     const token = getToken();
+    const role = getUserRole();
+    const loginHref = role === 'ADMIN' ? '/admin-login' : '/login';
     if (token) {
         fetch("/logout", {
             method: "POST",
@@ -133,5 +174,5 @@ function logout() {
         });
     }
     localStorage.clear();
-    window.location.href = "/login";
+    window.location.href = loginHref;
 }

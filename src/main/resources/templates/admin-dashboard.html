@@ -425,7 +425,7 @@
 
     <!-- Actions -->
     <div style="display:flex;gap:10px;margin-top:6px;">
-      <button class="btn btn-s" style="flex:1;justify-content:center;" onclick="confirmSchedule()">
+      <button type="button" class="btn btn-s" style="flex:1;justify-content:center;" id="processScheduleBtn" onclick="requestScheduleConfirmation()">
         <i class="fa-solid fa-calendar-check"></i> Confirm &amp; Schedule</button>
       <button class="btn btn-outline" onclick="closeOverlay('processModal')">Cancel</button>
     </div>
@@ -507,6 +507,22 @@
     <div style="display:flex;gap:8px;">
       <button class="btn btn-p" style="flex:1;justify-content:center;" onclick="closeOverlay('uploadModal');showToast('Recording uploaded successfully')"><i class="fa-solid fa-upload"></i> Upload</button>
       <button class="btn btn-outline" onclick="closeOverlay('uploadModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Schedule / Reschedule -->
+<div class="modal-overlay" id="scheduleConfirmModal" onclick="if(event.target===this)closeOverlay('scheduleConfirmModal')">
+  <div class="modal narrow" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-calendar-check" style="color:var(--secondary);margin-right:6px;"></i><span id="scheduleConfirmTitle">Confirm schedule</span></h3>
+      <div class="modal-close" onclick="closeOverlay('scheduleConfirmModal')"><i class="fa-solid fa-xmark"></i></div>
+    </div>
+    <p id="scheduleConfirmMessage" style="font-size:13.5px;color:var(--muted);line-height:1.55;margin:0 0 16px;white-space:pre-line;"></p>
+    <div id="scheduleConfirmError" style="display:none;font-size:13px;color:var(--danger);background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 12px;margin-bottom:14px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button type="button" class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeOverlay('scheduleConfirmModal')" id="scheduleConfirmCancelBtn">Cancel</button>
+      <button type="button" class="btn btn-s" style="flex:1;justify-content:center;" onclick="executePendingSchedule()" id="scheduleConfirmSubmitBtn"><i class="fa-solid fa-check"></i> Confirm</button>
     </div>
   </div>
 </div>

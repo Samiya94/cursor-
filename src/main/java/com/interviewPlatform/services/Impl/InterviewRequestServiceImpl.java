@@ -1,5 +1,9 @@
 package com.interviewPlatform.services.Impl;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -28,6 +32,32 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
     private final InterviewRequestRepository requestRepo;
     private final InstituteRepository instituteRepo;
     private final InterviewerRepository interviewerRepository;
+
+    private static LocalDateTime parseDateTimeOrNull(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String s = raw.trim();
+        if (s.isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(s);
+        } catch (DateTimeParseException ignored) {
+            // continue
+        }
+        try {
+            return OffsetDateTime.parse(s).toLocalDateTime();
+        } catch (DateTimeParseException ignored) {
+            // continue
+        }
+        try {
+            return ZonedDateTime.parse(s).toLocalDateTime();
+        } catch (DateTimeParseException ignored) {
+            // continue
+        }
+        throw new RuntimeException("Invalid date/time format: " + raw);
+    }
 
     private Institute getLoggedInInstitute() {
         String email = SecurityContextHolder
@@ -137,10 +167,20 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
         InterviewRequest req = requestRepo.findById(id)
             .orElseThrow(() -> new RuntimeException("Interview request not found"));
 
-        req.setScheduledDate(dto.scheduledDate());
-        req.setScheduledVenue(dto.scheduledVenue());
-        req.setMeetingLink(dto.meetingLink());
-        req.setNumberOfStudentsRequired(dto.numberOfStudentsRequired());
+        LocalDateTime scheduled = parseDateTimeOrNull(dto.scheduledDate());
+        if (scheduled == null && req.getStartDate() != null) {
+            scheduled = req.getStartDate();
+        }
+        req.setScheduledDate(scheduled);
+        if (dto.scheduledVenue() != null) {
+            req.setScheduledVenue(dto.scheduledVenue());
+        }
+        if (dto.meetingLink() != null) {
+            req.setMeetingLink(dto.meetingLink());
+        }
+        if (dto.numberOfStudentsRequired() != null) {
+            req.setNumberOfStudentsRequired(dto.numberOfStudentsRequired());
+        }
         req.setStatus(Status.AWAITING_CONFIRMATION);
         req.setInstituteConfirmed(false);
         req.setAssignedInterviewer(null);
@@ -165,13 +205,46 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
         InterviewRequest req = requestRepo.findById(id)
             .orElseThrow(() -> new RuntimeException("Interview request not found"));
 
-        req.setScheduledDate(dto.scheduledDate());
-        req.setScheduledVenue(dto.scheduledVenue());
-        req.setMeetingLink(dto.meetingLink());
+        LocalDateTime newStart = parseDateTimeOrNull(dto.startDate());
+        if (newStart != null) {
+            req.setStartDate(newStart);
+        }
+        LocalDateTime newEnd = parseDateTimeOrNull(dto.endDate());
+        if (newEnd != null) {
+            req.setEndDate(newEnd);
+        }
+
+        LocalDateTime scheduled = parseDateTimeOrNull(dto.scheduledDate());
+        if (scheduled == null && newStart != null) {
+            scheduled = newStart;
+        }
+        if (scheduled != null) {
+            req.setScheduledDate(scheduled);
+        }
+        if (dto.scheduledVenue() != null) {
+            req.setScheduledVenue(dto.scheduledVenue());
+        }
+        if (dto.meetingLink() != null) {
+            req.setMeetingLink(dto.meetingLink());
+        }
+        if (dto.numberOfStudentsRequired() != null) {
+            req.setNumberOfStudentsRequired(dto.numberOfStudentsRequired());
+        }
+
+        if (dto.assignedInterviewerIds() != null && !dto.assignedInterviewerIds().isEmpty()) {
+            req.setAssignedInterviewerIds(dto.assignedInterviewerIds());
+            Interviewer primary = interviewerRepository.findById(dto.assignedInterviewerIds().get(0))
+                    .orElseThrow(() -> new RuntimeException("Interviewer not found"));
+            req.setAssignedInterviewer(primary);
+        } else if (dto.assignedInterviewerId() != null) {
+            Interviewer primary = interviewerRepository.findById(dto.assignedInterviewerId())
+                    .orElseThrow(() -> new RuntimeException("Interviewer not found"));
+            req.setAssignedInterviewer(primary);
+            req.setAssignedInterviewerIds(java.util.List.of(dto.assignedInterviewerId()));
+        }
+
         req.setStatus(Status.RESCHEDULED);
         req.setInstituteConfirmed(false);
-        req.setAssignedInterviewer(null);
-        req.setAssignedInterviewerIds(null);
         requestRepo.save(req);
     }
 

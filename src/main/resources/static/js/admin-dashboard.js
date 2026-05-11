@@ -9,6 +9,17 @@ const reportChartsInited = { interviewer: false, institute: false, student: fals
 
 let platformDomains = [];
 
+/** Pending schedule PUT after UI confirmation modal */
+let _pendingSchedule = null;
+let _scheduleSubmitting = false;
+
+function toBackendLocalDateTime(dtLocalValue) {
+    if (!dtLocalValue) return null;
+    const s = String(dtLocalValue).trim();
+    if (s.length === 16) return `${s}:00`;
+    return s;
+}
+
 /* ═══════════════════════════════════════
    BOOT
 ═══════════════════════════════════════ */
@@ -662,6 +673,8 @@ async function loadAllInterviewRequests() {
 //     openOverlay('processModal');
 // }
 async function openProcessModal(reqId) {
+    assignInterviewerReqId = null;
+
     let req = allAdminRequestsCache.find(r => r.id === reqId);
     if (!req) {
         try {
@@ -753,47 +766,188 @@ async function openProcessModal(reqId) {
     const schedFields = document.getElementById('rescheduleFields');
     if (schedFields) schedFields.style.display = 'none';
 
+    window._currentProcessReqSummary = {
+        institute: req.instituteName || '—',
+        department: req.departmentName || '—'
+    };
     window._currentProcessReqId = reqId;
     openOverlay('processModal');
 }
 
-async function confirmSchedule(reqId) {
-    const id = reqId || window._currentProcessReqId;
+function requestScheduleConfirmation(reqId) {
+    const errBox = document.getElementById('scheduleConfirmError');
+    if (errBox) {
+        errBox.style.display = 'none';
+        errBox.textContent = '';
+    }
 
+    const id = reqId || window._currentProcessReqId;
+    if (id == null || id === '') {
+        showToast('No request selected.', 'warn');
+        return;
+    }
+
+    if (assignInterviewerReqId != null) {
+        showToast('Use “Confirm Assignment” in the panel above for this step.', 'warn');
+        return;
+    }
+
+    const hasScheduleBoxes = document.querySelectorAll('.schedule-iv-cb').length > 0;
     const selectedInterviewerIds = [...document.querySelectorAll('.schedule-iv-cb:checked')]
-        .map(cb => parseInt(cb.value)).filter(Number.isFinite);
+        .map(cb => parseInt(cb.value, 10)).filter(Number.isFinite);
+
+    if (hasScheduleBoxes && selectedInterviewerIds.length === 0) {
+        showToast('Please select at least one interviewer.', 'warn');
+        return;
+    }
 
     const isReschedule = document.getElementById('rescheduleToggle')?.checked;
     const newStart = document.getElementById('startDateTime')?.value;
-    const newEnd   = document.getElementById('endDateTime')?.value;
+    const newEnd = document.getElementById('endDateTime')?.value;
 
-    if (isReschedule && !newStart) { showToast('Please select a new start date/time', 'warn'); return; }
+    if (isReschedule && !newStart) {
+        showToast('Please select a new start date/time', 'warn');
+        return;
+    }
 
-    const payload = {
-        assignedInterviewerIds: selectedInterviewerIds,
-        ...(isReschedule && newStart ? { startDate: new Date(newStart).toISOString() } : {}),
-        ...(isReschedule && newEnd   ? { endDate:   new Date(newEnd).toISOString()   } : {})
-    };
+    let req = allAdminRequestsCache.find(r => r.id === id);
+
+    const payload = { assignedInterviewerIds: selectedInterviewerIds };
+
+    if (!isReschedule && req?.startDate) {
+        const sd = req.startDate;
+        if (typeof sd === 'string') {
+            payload.scheduledDate = sd;
+        } else if (sd) {
+            const d = new Date(sd);
+            if (!Number.isNaN(d.getTime())) payload.scheduledDate = d.toISOString();
+        }
+    }
+
+    if (isReschedule) {
+        const sd = toBackendLocalDateTime(newStart);
+        const ed = toBackendLocalDateTime(newEnd);
+        if (sd) payload.startDate = sd;
+        if (ed) payload.endDate = ed;
+    }
+
+    const endpoint = isReschedule
+        ? `/api/interview-requests/${id}/reschedule`
+        : `/api/interview-requests/${id}/schedule`;
+
+    const sum = window._currentProcessReqSummary || {};
+    const titleEl = document.getElementById('scheduleConfirmTitle');
+    const msgEl = document.getElementById('scheduleConfirmMessage');
+    if (titleEl) titleEl.textContent = isReschedule ? 'Confirm reschedule' : 'Confirm schedule';
+
+    const lines = [
+        isReschedule
+            ? 'You are about to reschedule this interview window. The institute must confirm again.'
+            : 'You are about to send this slot for institute confirmation.',
+        '',
+        `Institute: ${sum.institute || '—'}`,
+        `Department: ${sum.department || '—'}`,
+        `Interviewers assigned: ${selectedInterviewerIds.length}`
+    ];
+    if (isReschedule && newStart) {
+        const pretty = (v) =>
+            new Date(v.length === 16 ? `${v}:00` : v).toLocaleString('en-IN', {
+                dateStyle: 'medium',
+                timeStyle: 'short'
+            });
+        lines.push('', `New window start: ${pretty(newStart)}`);
+        if (newEnd) lines.push(`New window end: ${pretty(newEnd)}`);
+    }
+    lines.push('', 'Proceed?');
+
+    if (msgEl) msgEl.textContent = lines.join('\n');
+
+    _pendingSchedule = { endpoint, payload, isReschedule };
+    openOverlay('scheduleConfirmModal');
+}
+
+async function executePendingSchedule() {
+    if (!_pendingSchedule || _scheduleSubmitting) return;
+
+    const errBox = document.getElementById('scheduleConfirmError');
+    if (errBox) {
+        errBox.style.display = 'none';
+        errBox.textContent = '';
+    }
+
+    _scheduleSubmitting = true;
+    const submitBtn = document.getElementById('scheduleConfirmSubmitBtn');
+    const cancelBtn = document.getElementById('scheduleConfirmCancelBtn');
+    const origSubmitHtml = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
+    }
+    if (cancelBtn) cancelBtn.disabled = true;
+
+    const { endpoint, payload, isReschedule } = _pendingSchedule;
 
     try {
-        const endpoint = isReschedule
-            ? `/api/interview-requests/${id}/reschedule`
-            : `/api/interview-requests/${id}/schedule`;
         const res = await secureFetch(endpoint, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
         if (res && res.ok) {
+            closeOverlay('scheduleConfirmModal');
             closeOverlay('processModal');
-            showToast(isReschedule ? 'Rescheduled! Awaiting institute confirmation.' : 'Scheduled! Awaiting institute confirmation.');
+            _pendingSchedule = null;
+            showToast(
+                isReschedule
+                    ? 'Rescheduled! Awaiting institute confirmation.'
+                    : 'Scheduled! Awaiting institute confirmation.'
+            );
             await loadAllInterviewRequests();
             await loadAdminStats();
             await loadRecentActivity();
-        } else {
-            showToast(await res.text() || 'Failed to schedule', 'error');
+            return;
         }
-    } catch (e) { showToast('Error scheduling', 'error'); }
+
+        let msg = 'Could not save. Please try again.';
+        if (res) {
+            const text = ((await res.text()) || '').trim();
+            if (text) {
+                try {
+                    const j = JSON.parse(text);
+                    if (typeof j.message === 'string') msg = j.message;
+                    else if (typeof j.detail === 'string') msg = j.detail;
+                    else if (typeof j.title === 'string') msg = j.title;
+                    else if (typeof j.error === 'string') msg = j.error;
+                    else msg = text;
+                } catch {
+                    const plain = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                    if (plain) msg = plain;
+                }
+            }
+        } else {
+            msg = 'Session expired — please log in again.';
+        }
+        if (errBox) {
+            errBox.textContent = msg;
+            errBox.style.display = 'block';
+        }
+        showToast(msg, 'error');
+    } catch (e) {
+        console.error(e);
+        const msg = 'Network error — check your connection and try again.';
+        if (errBox) {
+            errBox.textContent = msg;
+            errBox.style.display = 'block';
+        }
+        showToast(msg, 'error');
+    } finally {
+        _scheduleSubmitting = false;
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origSubmitHtml;
+        }
+        if (cancelBtn) cancelBtn.disabled = false;
+    }
 }
 
 async function openAssignInterviewerModal(reqId, instituteName, dept, domains) {

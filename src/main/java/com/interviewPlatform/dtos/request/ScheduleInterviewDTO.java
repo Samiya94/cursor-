@@ -1,14 +1,18 @@
 package com.interviewPlatform.dtos.request;
 
-import java.time.LocalDateTime;
-
+/**
+ * Date/time fields are strings so the API accepts ISO local, offset, and Zulu forms
+ * from the browser without Jackson {@code LocalDateTime} parsing failures.
+ */
 public record ScheduleInterviewDTO(
-    LocalDateTime scheduledDate,
+    String scheduledDate,
     String scheduledVenue,
     String meetingLink,
     Long assignedInterviewerId,
     java.util.List<Long> assignedInterviewerIds,
-    Integer numberOfStudentsRequired
+    Integer numberOfStudentsRequired,
+    String startDate,
+    String endDate
 ) {
 
 }
