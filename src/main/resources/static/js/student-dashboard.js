@@ -211,7 +211,7 @@ function renderInterviewTable() {
 }
 
 function getStatusBadgeClass(s){var m={CONFIRMED:'bg-success',APPROVED:'bg-success',PENDING:'bg-pending',CANCELLED:'bg-danger',REJECTED:'bg-danger',RESCHEDULED:'bg-info',ACTIVE:'bg-info',INACTIVE:'bg-muted'};return m[s]||'bg-muted';}
-function formatStatus(s){var m={CONFIRMED:'Scheduled',APPROVED:'Approved',PENDING:'Pending',CANCELLED:'Cancelled',REJECTED:'Rejected',RESCHEDULED:'Rescheduled',ACTIVE:'Active',INACTIVE:'Inactive'};return m[s]||(s?s.charAt(0)+s.slice(1).toLowerCase():'Unknown');}
+function formatStatus(s){var m={CONFIRMED:'Scheduled',APPROVED:'Registered',PENDING:'Pending',CANCELLED:'Cancelled',REJECTED:'Rejected',RESCHEDULED:'Rescheduled',ACTIVE:'Active',INACTIVE:'Inactive'};return m[s]||(s?s.charAt(0)+s.slice(1).toLowerCase():'Unknown');}
 function mapStatusToFilter(s){if(s==='CONFIRMED'||s==='APPROVED')return 'scheduled';if(s==='PENDING')return 'pending';return 'completed';}
 
 async function cancelMyInterview(id, btn) {
@@ -490,8 +490,15 @@ function viewResume() {
 }
 
 function startRealtimeRefresh() {
-  // No automatic polling — data is loaded fresh on every login.
-  // The dashboard reflects the latest state when the student logs in.
+  // Reload all live data every 60 seconds so the dashboard stays current.
+  // Token is kept alive by auth.js proactive refresh — no redirect happens.
+  setInterval(async function() {
+    try {
+      await loadDashboardStats();
+      await loadMyApplicationsFromAPI();
+      await loadAvailableInterviewsFromAPI();
+    } catch(e) { /* silent — next tick will retry */ }
+  }, 60000);
 }
 
 function renderAvailableSlots() { renderSlotGrid('dashSlots'); renderSlotGrid('applyGrid'); }

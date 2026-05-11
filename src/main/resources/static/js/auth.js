@@ -1,3 +1,5 @@
+// ─── Token helpers ────────────────────────────────────────────────────────────
+
 function getToken() {
     return localStorage.getItem("accessToken");
 }
@@ -17,27 +19,13 @@ function decodeJwtPayload(token) {
 }
 
 function getUserRole() {
-    try {
-        const raw = localStorage.getItem("user");
-        if (!raw) return null;
-        const user = JSON.parse(raw);
-        const role = user?.role;
-        if (typeof role !== 'string') return null;
-        return role.trim().toUpperCase();
-    } catch {
-        return null;
-    }
+    const user = JSON.parse(localStorage.getItem("user"));
+    return user?.role?.toUpperCase();
 }
 
 function getUserEmail() {
-    try {
-        const raw = localStorage.getItem("user");
-        if (!raw) return null;
-        const user = JSON.parse(raw);
-        return user?.username;
-    } catch {
-        return null;
-    }
+    const user = JSON.parse(localStorage.getItem("user"));
+    return user?.username;
 }
 
 function authHeaders() {
@@ -47,52 +35,41 @@ function authHeaders() {
     };
 }
 
-// ✅ NEW: Check if a JWT token is expired without calling the server
+// Decode JWT expiry without a server call
 function isTokenExpired(token) {
     if (!token) return true;
-    const payload = decodeJwtPayload(token);
-    if (!payload || typeof payload.exp !== 'number') return true;
-    // exp is in seconds, Date.now() is in milliseconds
-    return payload.exp * 1000 < Date.now();
-}
-
-function loginPathForRole(requiredRole) {
-    return requiredRole === 'ADMIN' ? '/admin-login' : '/login';
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        // exp is in seconds, Date.now() is in milliseconds
+        return payload.exp * 1000 < Date.now();
+    } catch (e) {
+        return true;
+    }
 }
 
 // ✅ UPDATED: Now tries to refresh before redirecting to login
 async function checkAuth(requiredRole) {
-    const loginPath = loginPathForRole(requiredRole);
-    let token = getToken();
-
-    // Access token missing but refresh may still be valid → recover session
-    if (!token) {
-        const refreshed = await refreshAccessToken();
-        if (!refreshed) {
-            window.location.href = loginPath;
-            return false;
-        }
-        token = getToken();
-        if (!token) {
-            window.location.href = loginPath;
-            return false;
-        }
-    }
-
+    const token = getToken();
     const role = getUserRole();
+
+    // No token at all → go to login
+    if (!token) {
+        window.location.href = "/login";
+        return false;
+    }
 
     // Token exists but is expired → try silent refresh first
     if (isTokenExpired(token)) {
         const refreshed = await refreshAccessToken();
         if (!refreshed) {
-            window.location.href = loginPath;
+            window.location.href = "/login";
             return false;
         }
     }
 
     // Role check
     if (requiredRole && role !== requiredRole) {
-        window.location.href = loginPath;
+        window.location.href = "/login";
         return false;
     }
 
@@ -100,10 +77,18 @@ async function checkAuth(requiredRole) {
 }
 
 async function refreshAccessToken() {
+    // If a refresh is already in flight, wait for that one instead of firing another
+    if (_refreshPromise) return _refreshPromise;
+
+    _refreshPromise = _doRefresh().finally(() => { _refreshPromise = null; });
+    return _refreshPromise;
+}
+
+async function _doRefresh() {
     const refreshToken = localStorage.getItem("refreshToken");
     if (!refreshToken) return false;
 
-    // If refresh token itself is also expired, don't even try
+    // If the refresh token itself is expired, force logout immediately
     if (isTokenExpired(refreshToken)) {
         localStorage.clear();
         return false;
@@ -119,10 +104,11 @@ async function refreshAccessToken() {
         if (res.ok) {
             const data = await res.json();
             localStorage.setItem("accessToken", data.accessToken);
-            // Also update refreshToken if server returns a new one
             if (data.refreshToken) {
                 localStorage.setItem("refreshToken", data.refreshToken);
             }
+            // Re-arm the proactive renewal for the new token
+            _scheduleProactiveRefresh();
             return true;
         }
         return false;
@@ -131,8 +117,68 @@ async function refreshAccessToken() {
     }
 }
 
+// ─── Proactive renewal ────────────────────────────────────────────────────────
+// Silently refreshes the access token 2 minutes before it expires so that
+// no user-facing request ever hits an expired token mid-session.
+
+let _proactiveTimer = null;
+
+function _scheduleProactiveRefresh() {
+    if (_proactiveTimer) clearTimeout(_proactiveTimer);
+
+    const token = getToken();
+    const ms = msUntilExpiry(token);
+    if (ms <= 0) return; // already expired — secureFetch will handle it
+
+    // Refresh 2 minutes (120 000 ms) before expiry, minimum 5 seconds from now
+    const delay = Math.max(ms - 120_000, 5_000);
+
+    _proactiveTimer = setTimeout(async () => {
+        const refreshToken = localStorage.getItem("refreshToken");
+        if (!refreshToken || isTokenExpired(refreshToken)) {
+            // Refresh token gone or expired → send to login
+            logout();
+            return;
+        }
+        const ok = await refreshAccessToken();
+        if (!ok) logout();
+        // If ok, _doRefresh already called _scheduleProactiveRefresh for the new token
+    }, delay);
+}
+
+// ─── checkAuth ────────────────────────────────────────────────────────────────
+
+async function checkAuth(requiredRole) {
+    const token = getToken();
+    const role  = getUserRole();
+
+    if (!token) {
+        window.location.href = "/login";
+        return false;
+    }
+
+    if (isTokenExpired(token)) {
+        const refreshed = await refreshAccessToken();
+        if (!refreshed) {
+            window.location.href = "/login";
+            return false;
+        }
+    }
+
+    if (requiredRole && role !== requiredRole) {
+        window.location.href = "/login";
+        return false;
+    }
+
+    // Token is valid — arm proactive renewal so it stays valid throughout session
+    _scheduleProactiveRefresh();
+    return true;
+}
+
+// ─── secureFetch ─────────────────────────────────────────────────────────────
+
 async function secureFetch(url, options = {}) {
-    // ✅ Before every request, check if token is expired and refresh silently
+    // Proactively refresh if the token is expired or about to be
     if (isTokenExpired(getToken())) {
         const refreshed = await refreshAccessToken();
         if (!refreshed) {
@@ -148,7 +194,7 @@ async function secureFetch(url, options = {}) {
 
     let response = await fetch(url, options);
 
-    // ✅ Fallback: if server still returns 401, try refresh once more
+    // Server-side 401 fallback (clock skew, blacklisted token, etc.)
     if (response.status === 401) {
         const refreshed = await refreshAccessToken();
         if (refreshed) {
@@ -163,7 +209,10 @@ async function secureFetch(url, options = {}) {
     return response;
 }
 
+// ─── logout ──────────────────────────────────────────────────────────────────
+
 function logout() {
+    if (_proactiveTimer) { clearTimeout(_proactiveTimer); _proactiveTimer = null; }
     const token = getToken();
     const role = getUserRole();
     const loginHref = role === 'ADMIN' ? '/admin-login' : '/login';
