@@ -53,8 +53,7 @@ public class StudentApplicationServiceImpl implements StudentApplicationService 
         StudentApplication application = new StudentApplication();
         application.setStudent(student);
         application.setInterviewRequest(request);
-        // Auto-confirm: no admin approval needed after student applies to a CONFIRMED interview
-        application.setStatus(Status.APPROVED);
+        application.setStatus(Status.PENDING);
         applicationRepository.save(application);
     }
 

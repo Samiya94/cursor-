@@ -51,7 +51,6 @@ public class StudentDashboardController {
             .filter(a -> a.getStatus() == Status.APPROVED)
             .count();
 
-        // Applications are auto-approved on submit; pending count will always be 0
         long pendingCount = myApplications.stream()
             .filter(a -> a.getStatus() == Status.PENDING)
             .count();

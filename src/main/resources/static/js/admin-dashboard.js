@@ -27,8 +27,6 @@ window.addEventListener('load', async function () {
     if (!await checkAuth('ADMIN')) return;
     loadDashboard();
     initBaseCharts();
-    // Reload dashboard data every 60 s so admin sees fresh requests/stats
-    setInterval(loadDashboard, 60000);
 });
 
 async function loadDashboard() {
@@ -814,16 +812,82 @@ function requestScheduleConfirmation(reqId) {
 
     let req = allAdminRequestsCache.find(r => r.id === id);
 
-    const payload = {
-        assignedInterviewerIds: selectedInterviewerIds,
-        ...(isReschedule && newStart ? { startDate: new Date(newStart).toISOString() } : {}),
-        ...(isReschedule && newEnd   ? { endDate:   new Date(newEnd).toISOString()   } : {})
-    };
+    const payload = { assignedInterviewerIds: selectedInterviewerIds };
+
+    if (!isReschedule && req?.startDate) {
+        const sd = req.startDate;
+        if (typeof sd === 'string') {
+            payload.scheduledDate = sd;
+        } else if (sd) {
+            const d = new Date(sd);
+            if (!Number.isNaN(d.getTime())) payload.scheduledDate = d.toISOString();
+        }
+    }
+
+    if (isReschedule) {
+        const sd = toBackendLocalDateTime(newStart);
+        const ed = toBackendLocalDateTime(newEnd);
+        if (sd) payload.startDate = sd;
+        if (ed) payload.endDate = ed;
+    }
+
+    const endpoint = isReschedule
+        ? `/api/interview-requests/${id}/reschedule`
+        : `/api/interview-requests/${id}/schedule`;
+
+    const sum = window._currentProcessReqSummary || {};
+    const titleEl = document.getElementById('scheduleConfirmTitle');
+    const msgEl = document.getElementById('scheduleConfirmMessage');
+    if (titleEl) titleEl.textContent = isReschedule ? 'Confirm reschedule' : 'Confirm schedule';
+
+    const lines = [
+        isReschedule
+            ? 'You are about to reschedule this interview window. The institute must confirm again.'
+            : 'You are about to send this slot for institute confirmation.',
+        '',
+        `Institute: ${sum.institute || '—'}`,
+        `Department: ${sum.department || '—'}`,
+        `Interviewers assigned: ${selectedInterviewerIds.length}`
+    ];
+    if (isReschedule && newStart) {
+        const pretty = (v) =>
+            new Date(v.length === 16 ? `${v}:00` : v).toLocaleString('en-IN', {
+                dateStyle: 'medium',
+                timeStyle: 'short'
+            });
+        lines.push('', `New window start: ${pretty(newStart)}`);
+        if (newEnd) lines.push(`New window end: ${pretty(newEnd)}`);
+    }
+    lines.push('', 'Proceed?');
+
+    if (msgEl) msgEl.textContent = lines.join('\n');
+
+    _pendingSchedule = { endpoint, payload, isReschedule };
+    openOverlay('scheduleConfirmModal');
+}
+
+async function executePendingSchedule() {
+    if (!_pendingSchedule || _scheduleSubmitting) return;
+
+    const errBox = document.getElementById('scheduleConfirmError');
+    if (errBox) {
+        errBox.style.display = 'none';
+        errBox.textContent = '';
+    }
+
+    _scheduleSubmitting = true;
+    const submitBtn = document.getElementById('scheduleConfirmSubmitBtn');
+    const cancelBtn = document.getElementById('scheduleConfirmCancelBtn');
+    const origSubmitHtml = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving…';
+    }
+    if (cancelBtn) cancelBtn.disabled = true;
+
+    const { endpoint, payload, isReschedule } = _pendingSchedule;
 
     try {
-        const endpoint = isReschedule
-            ? `/api/interview-requests/${id}/reschedule`
-            : `/api/interview-requests/${id}/schedule`;
         const res = await secureFetch(endpoint, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -964,6 +1028,7 @@ async function viewApplicants(requestId) {
                     <th style="padding:8px;">CGPA</th>
                     <th style="padding:8px;">Class</th>
                     <th style="padding:8px;">Status</th>
+                    <th style="padding:8px;">Action</th>
                 </tr></thead><tbody>
                 ${apps.map(a => `<tr style="border-top:1px solid #E2E8F0;">
                     <td style="padding:8px;"><b>${a.studentName || '—'}</b></td>
@@ -972,8 +1037,20 @@ async function viewApplicants(requestId) {
                     <td style="padding:8px;">${a.studentClass || '—'}</td>
                     <td style="padding:8px;">
                         <span class="badge ${a.applicationStatus === 'APPROVED' ? 'bg-success' : a.applicationStatus === 'REJECTED' ? 'bg-danger' : 'bg-pending'}">
-                            ${a.applicationStatus === 'APPROVED' ? 'Registered' : a.applicationStatus}
+                            ${a.applicationStatus}
                         </span>
+                    </td>
+                    <td style="padding:8px;">
+                        ${a.applicationStatus === 'PENDING'
+                            ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <button class="btn btn-s btn-sm btn-approve" onclick="approveStudentApplication(${a.applicationId}, ${requestId})">
+                                    <i class="fa-solid fa-check"></i> Approve
+                                </button>
+                                <button class="btn btn-s btn-sm btn-reject" onclick="rejectStudentApplication(${a.applicationId}, ${requestId})">
+                                    <i class="fa-solid fa-xmark"></i> Reject
+                                </button>
+                              </div>`
+                            : '<span style="color:var(--muted);font-size:12px;">—</span>'}
                     </td>
                 </tr>`).join('')}
                 </tbody></table>`;
@@ -983,6 +1060,33 @@ async function viewApplicants(requestId) {
     } catch (e) { showToast('Error loading applicants', 'error'); }
 }
 
+async function approveStudentApplication(applicationId, requestId) {
+    try {
+        const res = await secureFetch(`/api/applications/${applicationId}/approve`, { method: 'PUT' });
+        if (res && res.ok) {
+            showToast('Application approved');
+            await viewApplicants(requestId);
+            await loadAdminStats();
+        } else {
+            const errText = res ? await res.text() : '';
+            showToast(errText || 'Failed to approve', 'error');
+        }
+    } catch (e) { showToast('Error approving application', 'error'); }
+}
+
+async function rejectStudentApplication(applicationId, requestId) {
+    try {
+        const res = await secureFetch(`/api/applications/${applicationId}/reject`, { method: 'PUT' });
+        if (res && res.ok) {
+            showToast('Application rejected', 'warn');
+            await viewApplicants(requestId);
+            await loadAdminStats();
+        } else {
+            const errText = res ? await res.text() : '';
+            showToast(errText || 'Failed to reject', 'error');
+        }
+    } catch (e) { showToast('Error rejecting application', 'error'); }
+}
 
 /* ═══════════════════════════════════════
    SIDEBAR & NAVIGATION
