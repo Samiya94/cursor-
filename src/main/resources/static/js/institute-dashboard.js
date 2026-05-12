@@ -110,7 +110,8 @@ function formatStatusLabel(raw) {
     CONFIRMED: 'Confirmed',
     RESCHEDULED: 'Rescheduled',
     CANCELLED: 'Cancelled',
-    AWAITING_CONFIRMATION: 'Awaiting Confirmation'
+    AWAITING_CONFIRMATION: 'Awaiting Confirmation',
+    REJECTED: 'Rejected'
   };
   return labels[value] || 'Pending';
 }
@@ -1016,17 +1017,27 @@ async function applyFilters(){
     const normalized = normalizeStatusValue(s);
 
     const showConfirm = (normalized === 'AWAITING_CONFIRMATION') && !d.instituteConfirmed;
+    const showRescheduleDecision = (normalized === 'RESCHEDULED') && !d.instituteConfirmed;
     const showViewDetails = (normalized === 'CONFIRMED') && d.instituteConfirmed;
 
     const actionCell = showConfirm
       ? `<button class="btn btn-s btn-sm" onclick="promptConfirmRequest(${d.id},'${deptName.replace(/'/g,"\\'")}')">
             <i class="fa-solid fa-check"></i> Confirm Slot
         </button>`
-      : showViewDetails
-        ? `<button class="btn btn-info btn-sm" onclick="openInterviewViewModal(${d.id})">
-            <i class="fa-solid fa-eye"></i> View Details
-          </button>`
-        : '<span style="color:var(--muted);font-size:12px;">—</span>';
+      : showRescheduleDecision
+        ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-s btn-sm" onclick="promptConfirmRescheduleRequest(${d.id},'${deptName.replace(/'/g,"\\'")}')">
+              <i class="fa-solid fa-circle-check"></i> Confirm
+            </button>
+            <button class="btn btn-ghost btn-sm" style="border:1.5px solid #FCA5A5;color:var(--danger);" onclick="promptRejectRescheduleRequest(${d.id},'${deptName.replace(/'/g,"\\'")}')">
+              <i class="fa-solid fa-circle-xmark"></i> Reject
+            </button>
+          </div>`
+        : showViewDetails
+          ? `<button class="btn btn-info btn-sm" onclick="openInterviewViewModal(${d.id})">
+              <i class="fa-solid fa-eye"></i> View Details
+            </button>`
+          : '<span style="color:var(--muted);font-size:12px;">—</span>';
 
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>
@@ -1077,8 +1088,8 @@ function resetFilters(){
 /* ═══════════════ STATUS BADGE ═══════════════ */
 function statusBadge(s){
   const label = formatStatusLabel(s);
-  const map = {Pending:'bg-pending',Confirmed:'bg-success',Rescheduled:'bg-purple',Cancelled:'bg-cancel','Awaiting Confirmation':'bg-info'};
-  const ico = {Pending:'fa-clock',Confirmed:'fa-circle-check',Rescheduled:'fa-rotate',Cancelled:'fa-ban','Awaiting Confirmation':'fa-hourglass-half'};
+  const map = {Pending:'bg-pending',Confirmed:'bg-success',Rescheduled:'bg-purple',Cancelled:'bg-cancel','Awaiting Confirmation':'bg-info',Rejected:'bg-cancel'};
+  const ico = {Pending:'fa-clock',Confirmed:'fa-circle-check',Rescheduled:'fa-rotate',Cancelled:'fa-ban','Awaiting Confirmation':'fa-hourglass-half',Rejected:'fa-circle-xmark'};
   return `<span class="badge ${map[label]||'bg-pending'}"><i class="fa-solid ${ico[label]||'fa-clock'}"></i> ${label}</span>`;
 }
 
@@ -1332,7 +1343,7 @@ function copyGenLink(){
 
 /* ═══════════════ STATUS CONFIRM ═══════════════ */
 let _pendStatus=null,_pendDropdown=null,_prevStatus=null,_newStatus=null;
-let _pendingConfirmRequestId = null;
+let _pendingInstituteAction = null; // { id, type: 'confirm-slot' | 'confirm-reschedule' | 'reject-reschedule' }
 function handleStatusChange(sel){
   _prevStatus=sel.dataset.previous||'Pending';
   _newStatus=sel.value;
@@ -1342,10 +1353,13 @@ function handleStatusChange(sel){
   openOverlay('statusModal');
 }
 function confirmStatus(){
-  if (_pendingConfirmRequestId) {
-    confirmInstituteRequest(_pendingConfirmRequestId);
-    _pendingConfirmRequestId = null;
+  if (_pendingInstituteAction) {
+    const { id, type } = _pendingInstituteAction;
+    _pendingInstituteAction = null;
     closeOverlay('statusModal');
+    if (type === 'confirm-slot') return confirmInstituteRequest(id);
+    if (type === 'confirm-reschedule') return confirmRescheduledRequest(id);
+    if (type === 'reject-reschedule') return rejectRescheduledRequest(id);
     return;
   }
   if(_pendDropdown) _pendDropdown.dataset.previous=_newStatus;
@@ -1354,7 +1368,7 @@ function confirmStatus(){
   closeOverlay('statusModal');
 }
 function cancelStatus(){
-  _pendingConfirmRequestId = null;
+  _pendingInstituteAction = null;
   if(_pendDropdown) _pendDropdown.value=_prevStatus;
   _pendStatus=null; _pendDropdown=null;
   closeOverlay('statusModal');
@@ -1364,7 +1378,7 @@ function promptConfirmRequest(requestId, deptName) {
   const iv = (dashboardState.interviews||[]).find(i => i.id === requestId);
   const slot = iv ? formatInterviewSlot(iv) : 'Not available';
 
-  _pendingConfirmRequestId = requestId;
+  _pendingInstituteAction = { id: requestId, type: 'confirm-slot' };
   document.getElementById('statusModalTitle').textContent = 'Confirm Interview Slot';
   document.getElementById('statusModalText').innerHTML = `
     <div style="text-align:left;margin-bottom:14px;">
@@ -1387,6 +1401,46 @@ function promptConfirmRequest(requestId, deptName) {
   openOverlay('statusModal');
 }
 
+function promptConfirmRescheduleRequest(requestId, deptName) {
+  const iv = (dashboardState.interviews||[]).find(i => i.id === requestId);
+  const slot = iv ? formatInterviewSlot(iv) : 'Not available';
+  _pendingInstituteAction = { id: requestId, type: 'confirm-reschedule' };
+  document.getElementById('statusModalTitle').textContent = 'Confirm Rescheduled Interview';
+  document.getElementById('statusModalText').innerHTML = `
+    <div style="text-align:left;margin-bottom:14px;">
+      <div style="display:grid;gap:10px;">
+        <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:8px;padding:11px 14px;">
+          <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6D28D9;margin-bottom:3px;display:flex;align-items:center;gap:5px;">
+            <i class="fa-solid fa-rotate" style="font-size:10px;"></i> Rescheduled Slot
+          </div>
+          <div style="font-weight:800;font-size:14px;color:#1F2937;">${slot}</div>
+          <div style="font-weight:700;font-size:12.5px;color:#6B7280;margin-top:3px;">${deptName}</div>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:#6B7280;">Confirm this rescheduled interview slot?</p>`;
+  openOverlay('statusModal');
+}
+
+function promptRejectRescheduleRequest(requestId, deptName) {
+  const iv = (dashboardState.interviews||[]).find(i => i.id === requestId);
+  const slot = iv ? formatInterviewSlot(iv) : 'Not available';
+  _pendingInstituteAction = { id: requestId, type: 'reject-reschedule' };
+  document.getElementById('statusModalTitle').textContent = 'Reject Rescheduled Interview';
+  document.getElementById('statusModalText').innerHTML = `
+    <div style="text-align:left;margin-bottom:14px;">
+      <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:11px 14px;">
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#B91C1C;margin-bottom:3px;display:flex;align-items:center;gap:5px;">
+          <i class="fa-solid fa-triangle-exclamation" style="font-size:10px;"></i> Reject Reschedule
+        </div>
+        <div style="font-weight:800;font-size:14px;color:#1F2937;">${slot}</div>
+        <div style="font-weight:700;font-size:12.5px;color:#6B7280;margin-top:3px;">${deptName}</div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:#6B7280;">Rejecting will mark this request as <b>Rejected</b>.</p>`;
+  openOverlay('statusModal');
+}
+
 async function confirmInstituteRequest(requestId) {
   try {
     const res = await secureFetch(`/api/interview-requests/${requestId}/confirm`, { method: 'PUT' });
@@ -1402,6 +1456,42 @@ async function confirmInstituteRequest(requestId) {
   } catch (e) {
     console.error(e);
     showToast('Error confirming request', 'error');
+  }
+}
+
+async function confirmRescheduledRequest(requestId) {
+  try {
+    const res = await secureFetch(`/api/interview-requests/${requestId}/confirm`, { method: 'PUT' });
+    if (!res || !res.ok) {
+      const msg = res ? await res.text() : 'Failed to confirm reschedule';
+      showToast(msg || 'Failed to confirm reschedule', 'error');
+      return;
+    }
+    showToast('Rescheduled interview confirmed.');
+    addNotification(`Rescheduled interview slot confirmed.`, 'success');
+    await fetchInterviewRequests();
+    await renderAll();
+  } catch (e) {
+    console.error(e);
+    showToast('Error confirming reschedule', 'error');
+  }
+}
+
+async function rejectRescheduledRequest(requestId) {
+  try {
+    const res = await secureFetch(`/api/interview-requests/${requestId}/reject-reschedule`, { method: 'PUT' });
+    if (!res || !res.ok) {
+      const msg = res ? await res.text() : 'Failed to reject reschedule';
+      showToast(msg || 'Failed to reject reschedule', 'error');
+      return;
+    }
+    showToast('Rescheduled interview rejected.', 'warn');
+    addNotification(`Rescheduled interview slot rejected.`, 'warn');
+    await fetchInterviewRequests();
+    await renderAll();
+  } catch (e) {
+    console.error(e);
+    showToast('Error rejecting reschedule', 'error');
   }
 }
 

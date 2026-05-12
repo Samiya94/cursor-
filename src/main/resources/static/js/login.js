@@ -163,7 +163,8 @@ async function handleLogin(event) {
 
         // 👤 Store user info
         localStorage.setItem("user", JSON.stringify({
-        username: data.username,
+        // Backend returns `email` (not `username`)
+        username: data.email ?? data.username ?? email,
         role: data.role
         }));
   // optional success message

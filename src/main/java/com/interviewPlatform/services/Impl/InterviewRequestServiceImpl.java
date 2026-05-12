@@ -150,9 +150,31 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
         }
 
         req.setInstituteConfirmed(true);
-        if (req.getStatus() == Status.PENDING || req.getStatus() == Status.AWAITING_CONFIRMATION) {
+        if (req.getStatus() == Status.PENDING
+                || req.getStatus() == Status.AWAITING_CONFIRMATION
+                || req.getStatus() == Status.RESCHEDULED) {
             req.setStatus(Status.CONFIRMED);
         }
+        requestRepo.save(req);
+    }
+
+    @Override
+    @Transactional
+    public void rejectRescheduleByInstitute(Long id) {
+        InterviewRequest req = requestRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+
+        Institute institute = getLoggedInInstitute();
+        if (req.getInstitute() == null || !req.getInstitute().getId().equals(institute.getId())) {
+            throw new RuntimeException("You are not allowed to update this request");
+        }
+
+        if (req.getStatus() != Status.RESCHEDULED) {
+            throw new RuntimeException("Only rescheduled requests can be rejected");
+        }
+
+        req.setInstituteConfirmed(false);
+        req.setStatus(Status.REJECTED);
         requestRepo.save(req);
     }
 

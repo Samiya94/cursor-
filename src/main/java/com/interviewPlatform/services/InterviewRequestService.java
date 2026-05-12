@@ -14,6 +14,7 @@ public interface InterviewRequestService {
     void updateStatus(Long id, Status status);
     void updateStatusByInstitute(Long id, Status status);
     void confirmByInstitute(Long id);
+    void rejectRescheduleByInstitute(Long id);
     void assignInterviewer(Long id, java.util.List<Long> interviewerIds);
     // NEW
     List<InterviewRequestResponseDTO> getAllRequests();

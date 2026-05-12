@@ -60,6 +60,13 @@ public class InterviewRequestController {
     }
 
     @PreAuthorize("hasRole('INSTITUTE')")
+    @PutMapping("/{id}/reject-reschedule")
+    public ResponseEntity<String> rejectReschedule(@PathVariable Long id) {
+        interviewRequestService.rejectRescheduleByInstitute(id);
+        return ResponseEntity.ok("Rescheduled request rejected");
+    }
+
+    @PreAuthorize("hasRole('INSTITUTE')")
     @PutMapping("/{id}/cancel")
     public ResponseEntity<String> cancelRequest(@PathVariable Long id){
         interviewRequestService.updateStatusByInstitute(id, Status.CANCELLED);

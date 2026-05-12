@@ -79,8 +79,6 @@ async function checkAuth(requiredRole) {
         }
     }
 
-    const role = getUserRole();
-
     // Token exists but is expired → try silent refresh first
     if (isTokenExpired(token)) {
         const refreshed = await refreshAccessToken();
@@ -88,6 +86,16 @@ async function checkAuth(requiredRole) {
             window.location.href = loginPath;
             return false;
         }
+    }
+
+    // Role check (read AFTER any refresh attempt so localStorage is up to date)
+    let role = getUserRole();
+
+    // If token exists but role info is missing (e.g., storage cleared partially),
+    // try one silent refresh to rehydrate `user` from server.
+    if (requiredRole && !role) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) role = getUserRole();
     }
 
     // Role check
@@ -103,11 +111,9 @@ async function refreshAccessToken() {
     const refreshToken = localStorage.getItem("refreshToken");
     if (!refreshToken) return false;
 
-    // If refresh token itself is also expired, don't even try
-    if (isTokenExpired(refreshToken)) {
-        localStorage.clear();
-        return false;
-    }
+    // If refresh token is expired, don't even try
+    // (avoid clearing all localStorage here; caller will redirect to login)
+    if (isTokenExpired(refreshToken)) return false;
 
     try {
         const res = await fetch("/refresh", {
@@ -122,6 +128,19 @@ async function refreshAccessToken() {
             // Also update refreshToken if server returns a new one
             if (data.refreshToken) {
                 localStorage.setItem("refreshToken", data.refreshToken);
+            }
+
+            // Keep `user` in sync so refresh+reload doesn't lose role/email
+            try {
+                const existingRaw = localStorage.getItem("user");
+                const existing = existingRaw ? JSON.parse(existingRaw) : {};
+                const nextUser = {
+                    username: data.email ?? data.username ?? existing?.username ?? null,
+                    role: data.role ?? existing?.role ?? null
+                };
+                localStorage.setItem("user", JSON.stringify(nextUser));
+            } catch {
+                // ignore storage/parse errors
             }
             return true;
         }

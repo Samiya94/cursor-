@@ -90,7 +90,7 @@ const data = await res.json();
 if (data.role !== 'ADMIN') { showError('Not an admin account.'); return; }
 localStorage.setItem('accessToken', data.accessToken);
 localStorage.setItem('refreshToken', data.refreshToken);
-localStorage.setItem('user', JSON.stringify({ username: data.username, role: data.role }));
+localStorage.setItem('user', JSON.stringify({ username: data.email ?? data.username ?? email, role: data.role }));
 window.location.href = '/admin-dashboard';
 } else {
 failedAttempts++; updateAttemptBar();
