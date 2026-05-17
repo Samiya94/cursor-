@@ -1,21 +1,13 @@
 const dashboardEl = document.getElementById("dashboard");
 async function loadDashboard() {
 
-  const token = localStorage.getItem("accessToken");
-
-  if (!token) {
-    dashboardEl.innerText = "Not logged in";
-    window.location.href = "/login";
-    return;
-  }
-
   try {
     // Use secureFetch so expired tokens are refreshed automatically
     const response = await secureFetch("/api/institute-dashboard", {
       method: "GET"
     });
 
-    if (!response) return; // secureFetch already redirected to login
+    if (!response) return; // secureFetch already handled redirect
 
     if (response.status === 401) {
       dashboardEl.innerText = "Session expired. Please login again.";
@@ -33,12 +25,10 @@ async function loadDashboard() {
       return;
     }
 
-    const data = await response.json();
-     dashboardState.departments = data;
-    dashboardEl.innerText = JSON.stringify(data, null, 2);
+    // /api/institute-dashboard returns plain text "Welcome Institute" — just verify access, don't parse as JSON
+    // The actual dashboard data is loaded by the sections below (departments, interviews, etc.)
   } catch (err) {
     console.error(err);
-    
   }
 }
 
@@ -254,7 +244,6 @@ function addSetupDept(){
 }
 function removeSetupDept(i){ setupDepts.splice(i,1); renderSetupTags(); }
 async function saveSetup(){
-  const token = localStorage.getItem("accessToken");
 
   if(!setupDepts.length){
     showToast('Add at least one department or skip.','warn');
@@ -264,11 +253,10 @@ async function saveSetup(){
   try {
     for (let name of setupDepts) {
 
-      const res = await fetch(API_BASE, {
+      const res = await secureFetch(API_BASE, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer " + token
         },
         body: JSON.stringify({
           name: name,
@@ -305,7 +293,6 @@ function checkSetup(){
 async function addDept(){
   const inp = document.getElementById('newDeptInput');
   const n = inp.value.trim();
-  const token= localStorage.getItem("accessToken");
 
   if(!n){
     showToast('Enter a department name.','warn');
@@ -313,11 +300,10 @@ async function addDept(){
   }
 
   try {
-    const res = await fetch(API_BASE, {
+    const res = await secureFetch(API_BASE, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
       },
       body: JSON.stringify({
         name: n,
@@ -354,13 +340,11 @@ async function addDept(){
 }
 
 async function fetchDepartments(){
-  const token = localStorage.getItem("accessToken");  
 
   try {
-    const res = await fetch(`${API_BASE}/institute/${getInstituteId()}`, {
+    const res = await secureFetch(`${API_BASE}/institute/${getInstituteId()}`, {
       method: "GET",
       headers: {
-        "Authorization": "Bearer " + token   
       }
     });
 
@@ -408,12 +392,10 @@ async function fetchDepartments(){
 }
 
 async function fetchCoordinators() {
-  const token = localStorage.getItem("accessToken");
 
   try {
-    const res = await fetch(`/api/institutes/${getInstituteId()}/mentors`, {
+    const res = await secureFetch(`/api/institutes/${getInstituteId()}/mentors`, {
       headers: {
-        "Authorization": "Bearer " + token
       }
     });
 
@@ -441,13 +423,11 @@ async function fetchCoordinators() {
 }
 
 async function deleteDeptFromBackend(id){
-  const token = localStorage.getItem("accessToken"); 
 
   try {
-    const res = await fetch(`${API_BASE}/${id}`, {
+    const res = await secureFetch(`${API_BASE}/${id}`, {
       method: "DELETE",
       headers: {
-        "Authorization": "Bearer " + token  
       }
     });
 
@@ -604,8 +584,7 @@ function loadDeptDetail(name,coord,initials,email,phone,desg,color){
     document.getElementById('det-pend').textContent = pending;
 
     // --- Fetch and set total registered students for this dept ---
-    const token = localStorage.getItem('accessToken');
-    fetch(`/departments/${dept.id}/students`, { headers: { 'Authorization': 'Bearer ' + token } })
+    secureFetch(`/departments/${dept.id}/students`)
       .then(r => r.ok ? r.json() : [])
       .then(students => {
         document.getElementById('det-total').textContent = students.length;
@@ -719,12 +698,11 @@ async function renderOverview(){
   if (ovStudentsEl) {
     ovStudentsEl.textContent = '…';
     (async () => {
-      const token = localStorage.getItem('accessToken');
       let totalStudents = 0;
       await Promise.all(departments.map(async dept => {
         if (!dept.id) return;
         try {
-          const r = await fetch(`/departments/${dept.id}/students`, { headers: { 'Authorization': 'Bearer ' + token } });
+          const r = await secureFetch(`/departments/${dept.id}/students`, {});
           if (r.ok) totalStudents += (await r.json()).length;
         } catch(e) {}
       }));
@@ -768,8 +746,7 @@ async function renderOverview(){
   await Promise.all(departments.map(async (dept) => {
     if (dept.id) {
       try {
-        const token = localStorage.getItem('accessToken');
-        const r = await fetch(`/departments/${dept.id}/students`, { headers: { 'Authorization': 'Bearer ' + token } });
+        const r = await secureFetch(`/departments/${dept.id}/students`, {});
         studentCounts[dept.name] = r.ok ? (await r.json()).length : 0;
       } catch(e) { studentCounts[dept.name] = 0; }
     } else { studentCounts[dept.name] = 0; }
@@ -936,12 +913,9 @@ function populateDeptFilter(){
 // dashboardState.interviews = await fetchInterviewRequests();
 
 async function fetchInterviewRequests() {
-  const token = localStorage.getItem("accessToken");
 
   try {
-    const res = await fetch("/api/interview-requests", {
-      headers: { "Authorization": "Bearer " + token }
-    });
+    const res = await secureFetch("/api/interview-requests", {});
 
     if (!res.ok) throw new Error("Failed");
 
@@ -1130,13 +1104,11 @@ function uncheckDept(id){
   syncDeptTags();
 }
 async function updateStatus(id, status) {
-  const token = localStorage.getItem("accessToken");
   const normalizedStatus = normalizeStatusValue(status);
 
-  await fetch(`/api/interview-requests/${id}/status?status=${encodeURIComponent(normalizedStatus)}`, {
+  await secureFetch(`/api/interview-requests/${id}/status?status=${encodeURIComponent(normalizedStatus)}`, {
     method: "PUT",
     headers: {
-      "Authorization": "Bearer " + token
     }
   });
 
@@ -1168,7 +1140,7 @@ async function loadDomainsIntoGrid() {
     const grid = document.getElementById('expertiseCbGrid');
     if (!grid) return;
     try {
-        const res = await fetch('/api/domains');
+        const res = await secureFetch('/api/domains');
         if (!res.ok) return;
         const domains = await res.json();
         if (!domains || !domains.length) return;
@@ -1206,7 +1178,6 @@ function getSelectedExp(){   return [...document.querySelectorAll('#expertiseCbG
 async function handleSchedSubmit(e){
   e.preventDefault();
 
-  const token = localStorage.getItem("accessToken");
 
   const depts = getSelectedDepts();
   const exp = getSelectedExp();
@@ -1238,11 +1209,10 @@ async function handleSchedSubmit(e){
         registeredStudentsCount: await getRegisteredStudentCountForDept(dept)
       };
 
-      const res = await fetch("/api/interview-requests", {
+      const res = await secureFetch("/api/interview-requests", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer " + token
         },
         body: JSON.stringify(payload)
       });
@@ -1291,7 +1261,6 @@ async function handleSchedSubmit(e){
 }
 /* ═══════════════ REGISTRATION LINK ═══════════════ */
 async function genRegLink(){
-  const token = localStorage.getItem("accessToken");
 
   if (!token) {
     showToast("Please login again", "error");
@@ -1300,10 +1269,9 @@ async function genRegLink(){
   }
 
   try {
-    const res = await fetch(`/register/institutes/${getInstituteId()}/registration-link`, {
+    const res = await secureFetch(`/register/institutes/${getInstituteId()}/registration-link`, {
       method: "GET",
       headers: {
-        "Authorization": "Bearer " + token
       }
     });
 
@@ -1794,10 +1762,7 @@ async function getRegisteredStudentCountForDept(deptName) {
   try {
     const dept = departments.find(d => d.name === deptName);
     if (!dept || !dept.id) return 0;
-    const token = localStorage.getItem("accessToken");
-    const res = await fetch(`/departments/${dept.id}/students`, {
-      headers: { "Authorization": "Bearer " + token }
-    });
+    const res = await secureFetch(`/departments/${dept.id}/students`, {});
     if (!res.ok) return 0;
     const students = await res.json();
     return students.length;
@@ -1805,14 +1770,11 @@ async function getRegisteredStudentCountForDept(deptName) {
 }
 
 async function loadDeptStudents(deptId, containerId) {
-  const token = localStorage.getItem("accessToken");
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = '<p style="color:var(--muted);font-size:12px;">Loading students...</p>';
   try {
-    const res = await fetch(`/departments/${deptId}/students`, {
-      headers: { "Authorization": "Bearer " + token }
-    });
+    const res = await secureFetch(`/departments/${deptId}/students`, {});
     if (!res.ok) throw new Error("Failed");
     const students = await res.json();
     if (!students.length) {
@@ -1952,12 +1914,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function renderDeptChart() {
-  const token = localStorage.getItem("accessToken");
 
   try {
-    const res = await fetch(`/departments/stats/${getInstituteId()}`, {
+    const res = await secureFetch(`/departments/stats/${getInstituteId()}`, {
       headers: {
-        "Authorization": "Bearer " + token
       }
     });
 

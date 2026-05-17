@@ -16,6 +16,7 @@ import com.interviewPlatform.dtos.response.AuthResponse;
 import com.interviewPlatform.entities.BlacklistedToken;
 import com.interviewPlatform.entities.User;
 import com.interviewPlatform.repositories.BlackListedTokenRepository;
+import com.interviewPlatform.repositories.RefreshTokenRepository;
 import com.interviewPlatform.services.UserService;
 import com.interviewPlatform.services.Impl.JWTService;
 
@@ -23,20 +24,19 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-
 @RequiredArgsConstructor
 public class AuthController {
    
     private final UserService userService;
     private final JWTService jwtService;
     private final BlackListedTokenRepository blackListedTokenRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
 
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody RegisterRequest request){
         userService.registerUser(request);
         return ResponseEntity.ok("User registered successfully");
-
     }
 
     @PostMapping("/login")
@@ -59,23 +59,28 @@ public class AuthController {
         String refreshToken = request.get("refreshToken");
 
         try {
-            String email = jwtService.extractUserName(refreshToken);
-
-            //  1. Check token type
+            // 1. Validate token type
             if (!jwtService.isRefreshToken(refreshToken)) {
                 return ResponseEntity.status(401).body(null);
             }
 
-            // 2.Check expiry
+            // 2. Check expiry
             if (jwtService.isTokenExpired(refreshToken)) {
-                return ResponseEntity.status(401)
-                        .body(null);
+                return ResponseEntity.status(401).body(null);
             }
 
-            // 3.Generate new access token
+            // 3. Validate refresh token exists in DB (prevents use of old/invalidated refresh tokens)
+            boolean tokenExistsInDb = refreshTokenRepository.findByToken(refreshToken).isPresent();
+            if (!tokenExistsInDb) {
+                return ResponseEntity.status(401).body(null);
+            }
+
+            String email = jwtService.extractUserName(refreshToken);
+
+            // 4. Generate new access token
             String newAccessToken = jwtService.generateAccessToken(email);
 
-            //4. Fetch user
+            // 5. Fetch user for role
             User user = userService.findByEmail(email);
 
             AuthResponse response = new AuthResponse(
@@ -94,21 +99,28 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<String> logout(HttpServletRequest request){
-        String authHeader=request.getHeader("Authorization");
+        String authHeader = request.getHeader("Authorization");
 
-        if(authHeader != null && authHeader.startsWith("Bearer ")){
-            String token=authHeader.substring(7);
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
 
-            BlacklistedToken blacklistedToken=new BlacklistedToken();
+            // Blacklist the access token
+            BlacklistedToken blacklistedToken = new BlacklistedToken();
             blacklistedToken.setToken(token);
             blacklistedToken.setExpiryDate(jwtService.extractExpiration(token));
-
             blackListedTokenRepository.save(blacklistedToken);
+
+            // Also delete refresh token from DB so it can't be used to get new access tokens
+            try {
+                String email = jwtService.extractUserName(token);
+                refreshTokenRepository.deleteByUsername(email);
+            } catch (Exception ignored) {
+                // token may already be expired; still proceed with blacklisting
+            }
 
             return ResponseEntity.ok("Logged out successfully");
         }
 
         return ResponseEntity.badRequest().body("No Token Found");
     }
-
 }

@@ -146,6 +146,43 @@ public class AdminController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/interviewers/{id}")
+    public ResponseEntity<?> getInterviewerById(@PathVariable Long id) {
+        return interviewerRepository.findById(id)
+            .<ResponseEntity<?>>map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/interviewers/{id}/deactivate")
+    public ResponseEntity<String> deactivateInterviewer(@PathVariable Long id) {
+        Interviewer interviewer = interviewerRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Interviewer not found"));
+        interviewer.getUser().setStatus(Status.INACTIVE);
+        userRepository.save(interviewer.getUser());
+        return ResponseEntity.ok("Interviewer deactivated");
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/interviewers/{id}/activate")
+    public ResponseEntity<String> activateInterviewer(@PathVariable Long id) {
+        Interviewer interviewer = interviewerRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Interviewer not found"));
+        interviewer.getUser().setStatus(Status.ACTIVE);
+        userRepository.save(interviewer.getUser());
+        return ResponseEntity.ok("Interviewer activated");
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/interviewers/{id}")
+    public ResponseEntity<String> deleteInterviewer(@PathVariable Long id) {
+        Interviewer interviewer = interviewerRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Interviewer not found"));
+        interviewerRepository.delete(interviewer);
+        return ResponseEntity.ok("Interviewer deleted");
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/interview-requests")
     public ResponseEntity<?> getAllRequests() {
         return ResponseEntity.ok(interviewRequestRepository.findAll());

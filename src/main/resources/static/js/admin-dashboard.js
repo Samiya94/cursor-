@@ -262,6 +262,11 @@ async function loadPendingInterviewers() {
                 row.setAttribute('data-loc', iv.location || '');
                 row.setAttribute('data-resume', iv.resumeUrl || '');
                 row.setAttribute('data-id', iv.id || '');
+                row.setAttribute('data-jobtitle', iv.jobTitle || '');
+                row.setAttribute('data-company', iv.company || '');
+                row.setAttribute('data-qualification', iv.qualification || '');
+                row.setAttribute('data-skills', (iv.skills || []).join(','));
+                row.setAttribute('data-interview-exp', iv.interviewExperience || '');
                 row.innerHTML = `
                     <td><div style="display:flex;align-items:center;gap:10px;">
                         <div style="width:34px;height:34px;border-radius:50%;background:#EFF6FF;color:var(--primary);display:grid;place-items:center;font-weight:800;font-size:12px;">${initials}</div>
@@ -296,29 +301,48 @@ function openRegProfileModal(row) {
     const name = d.name || '—';
     const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
     const resumeUrl = d.resume || '';
+    const resumeFileName = resumeUrl ? resumeUrl.split('/').pop() : '';
     const resumeBlock = resumeUrl
-        ? `<div style="display:flex;align-items:center;gap:10px;background:#111827;padding:10px 14px;border-radius:8px;">
-             <i class="fa-solid fa-file-pdf" style="color:#ef4444;font-size:1.4rem;flex-shrink:0;"></i>
-             <span style="color:#fff;font-size:13px;flex:1;">${name.replace(' ', '_')}_Resume.pdf</span>
-             <a href="${resumeUrl}" target="_blank" class="btn btn-s btn-sm"><i class="fa-solid fa-eye"></i> View</a>
+        ? `<div style="display:flex;flex-direction:column;gap:8px;">
+             <div style="display:flex;align-items:center;gap:10px;background:#111827;padding:10px 14px;border-radius:8px;">
+               <i class="fa-solid fa-file-pdf" style="color:#ef4444;font-size:1.4rem;flex-shrink:0;"></i>
+               <span style="color:#fff;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${resumeFileName || 'Resume.pdf'}</span>
+             </div>
+             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+               <a href="${resumeUrl}" target="_blank" class="btn btn-s btn-sm" style="justify-content:center;"><i class="fa-solid fa-eye"></i> View Full</a>
+               <button class="btn btn-outline btn-sm" style="justify-content:center;background:#1f2937;color:#fff;border-color:#374151;" onclick="downloadResume('${resumeUrl}','${resumeFileName}')"><i class="fa-solid fa-download"></i> Download</button>
+             </div>
            </div>`
         : `<div style="color:var(--muted);font-size:13px;padding:8px 0;"><i class="fa-solid fa-circle-info"></i> No resume uploaded</div>`;
 
     document.getElementById('regProfileContent').innerHTML = `
         <div class="profile-banner">
             <div class="profile-banner-avatar">${initials}</div>
-            <div><h3 style="font-size:15px;">${name}</h3><p style="font-size:12.5px;opacity:.8;">${d.domain || '—'} · ${d.exp || '—'} exp</p></div>
+            <div>
+                <h3 style="font-size:15px;">${name}</h3>
+                <p style="font-size:12.5px;opacity:.8;">${d.jobtitle || d.domain || '—'}${d.company ? ' · ' + d.company : ''} · ${d.exp || '—'} yrs exp</p>
+            </div>
         </div>
         <div class="detail-grid">
             <div class="detail-item"><span>Email</span><b>${d.email || '—'}</b></div>
             <div class="detail-item"><span>Phone</span><b>${d.phone || '—'}</b></div>
             <div class="detail-item"><span>Location</span><b>${d.loc || '—'}</b></div>
-            <div class="detail-item"><span>LinkedIn</span><b><a href="${d.linkedin || '#'}" target="_blank" style="color:var(--secondary);">View Profile</a></b></div>
+            <div class="detail-item"><span>LinkedIn</span><b>${d.linkedin && d.linkedin !== '#' ? `<a href="${d.linkedin}" target="_blank" style="color:var(--secondary);">View Profile</a>` : '—'}</b></div>
+            ${d.qualification ? `<div class="detail-item"><span>Qualification</span><b>${d.qualification}</b></div>` : ''}
+            ${d.domain ? `<div class="detail-item"><span>Domain</span><b>${d.domain}</b></div>` : ''}
         </div>
-        <div style="background:#F8FAFC;border-radius:8px;padding:12px;margin-bottom:10px;">
+        ${d.bio ? `<div style="background:#F8FAFC;border-radius:8px;padding:12px;margin-bottom:10px;">
             <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:5px;">Bio</div>
-            <p style="font-size:13px;line-height:1.6;">${d.bio || 'No bio provided.'}</p>
-        </div>
+            <p style="font-size:13px;line-height:1.6;">${d.bio}</p>
+        </div>` : ''}
+        ${d.skills ? `<div style="background:#F8FAFC;border-radius:8px;padding:12px;margin-bottom:10px;">
+            <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Skills</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;">${d.skills.split(',').filter(Boolean).map(s => `<span class="req-tag">${s.trim()}</span>`).join('')}</div>
+        </div>` : ''}
+        ${d.interviewexp ? `<div style="background:#F0F9FF;border-radius:8px;padding:12px;border-left:3px solid var(--secondary);margin-bottom:10px;">
+            <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:5px;">Interview Experience</div>
+            <p style="font-size:13px;line-height:1.6;">${d.interviewexp}</p>
+        </div>` : ''}
         <div style="background:#F8FAFC;border-radius:8px;padding:12px;">
             <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:8px;">CV / Resume</div>
             ${resumeBlock}
@@ -409,6 +433,13 @@ async function loadActiveInterviewers() {
             row.setAttribute('data-interviews', '0');
             row.setAttribute('data-rating', '—');
             row.setAttribute('data-id', iv.id);
+            row.setAttribute('data-resume', iv.resumeUrl || '');
+            row.setAttribute('data-linkedin', iv.linkedin || '');
+            row.setAttribute('data-jobtitle', iv.jobTitle || '');
+            row.setAttribute('data-company', iv.company || '');
+            row.setAttribute('data-qualification', iv.qualification || '');
+            row.setAttribute('data-skills', (iv.skills || []).join(','));
+            row.setAttribute('data-interview-exp', iv.interviewExperience || '');
             row.innerHTML = `
                 <td><div style="display:flex;align-items:center;gap:10px;">
                     <div style="width:34px;height:34px;border-radius:50%;background:#EFF6FF;color:var(--primary);display:grid;place-items:center;font-weight:800;font-size:12px;flex-shrink:0;">${initials}</div>
@@ -420,7 +451,8 @@ async function loadActiveInterviewers() {
                 <td><span class="badge ${isActive ? 'bg-success' : 'bg-danger'} status-badge">${isActive ? 'Active' : 'Inactive'}</span></td>
                 <td><div style="display:flex;gap:5px;flex-wrap:wrap;">
                     <button class="btn btn-info btn-sm" onclick="openPlatformProfileModalFromRow(this.closest('tr'))"><i class="fa-solid fa-eye"></i> View</button>
-                    <button class="btn btn-deactivate btn-sm" onclick="toggleInterviewerStatus(this.closest('tr'))"><i class="fa-solid fa-pause"></i> Deactivate</button>
+                    <button class="btn ${isActive ? 'btn-deactivate' : 'btn-activate'} btn-sm" onclick="toggleInterviewerStatus(this.closest('tr'))"><i class="fa-solid fa-${isActive ? 'pause' : 'play'}"></i> ${isActive ? 'Deactivate' : 'Activate'}</button>
+                    <button class="btn btn-delete-int btn-sm" onclick="deleteInterviewerRow(this.closest('tr'),'${name.replace(/'/g, "\\'")}')"><i class="fa-solid fa-trash"></i></button>
                 </div></td>`;
             tbody.appendChild(row);
         });
@@ -1237,6 +1269,8 @@ function syncInterviewerCards() {
         const domain = row.dataset.domain || '';
         const loc = row.dataset.loc || '—';
         const exp = row.dataset.exp || '—';
+        const rating = row.dataset.rating || '—';
+        const interviews = row.dataset.interviews || '0';
         const status = row.getAttribute('data-status') || 'active';
         const isActive = status === 'active';
         const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2);
@@ -1246,9 +1280,17 @@ function syncInterviewerCards() {
             <div class="int-card-avatar" style="background:${isActive ? '#EFF6FF' : '#FEE2E2'};color:${isActive ? 'var(--primary)' : '#991B1B'};">${initials}</div>
             <h4>${name}</h4>
             <p>${domain} · ${loc}</p>
-            <div style="margin-top:8px;"><span class="badge ${isActive ? 'bg-success' : 'bg-danger'}">${isActive ? 'Active' : 'Inactive'}</span></div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+                <span class="badge ${isActive ? 'bg-success' : 'bg-danger'}">${isActive ? 'Active' : 'Inactive'}</span>
+                <span style="color:#EAB308;font-weight:700;font-size:12px;">★ ${rating}</span>
+            </div>
             <div class="int-card-stats">
-                <div class="int-stat"><div class="num">${exp}</div><div class="lbl">Exp (yrs)</div></div>
+                <div class="int-stat"><div class="num">${interviews}</div><div class="lbl">Interviews</div></div>
+                <div class="int-stat"><div class="num">${exp}yr</div><div class="lbl">Exp</div></div>
+            </div>
+            <div style="display:flex;gap:5px;margin-top:10px;">
+                <button class="btn btn-info btn-sm" style="flex:1;justify-content:center;" onclick="openPlatformProfileModalFromRow(document.querySelector('#platformInterviewerTable [data-name=\\'${name.replace(/'/g, "\\'")}\\']'))"><i class="fa-solid fa-eye"></i> View</button>
+                <button class="btn ${isActive ? 'btn-deactivate' : 'btn-activate'} btn-sm" style="flex:1;justify-content:center;" onclick="toggleInterviewerStatus(document.querySelector('#platformInterviewerTable [data-name=\\'${name.replace(/'/g, "\\'")}\\']'))"><i class="fa-solid fa-${isActive ? 'pause' : 'play'}"></i> ${isActive ? 'Deactivate' : 'Activate'}</button>
             </div>`;
         container.appendChild(card);
     });
@@ -1257,20 +1299,50 @@ function syncInterviewerCards() {
 /* ═══════════════════════════════════════
    INTERVIEWER STATUS TOGGLE
 ═══════════════════════════════════════ */
-function toggleInterviewerStatus(row) {
+async function toggleInterviewerStatus(row) {
     const current = row.getAttribute('data-status');
     const isActive = current === 'active';
-    const newStatus = isActive ? 'inactive' : 'active';
-    row.setAttribute('data-status', newStatus);
-    const badge = row.querySelector('.status-badge');
-    if (badge) { badge.className = 'badge ' + (isActive ? 'bg-danger' : 'bg-success') + ' status-badge'; badge.innerText = isActive ? 'Inactive' : 'Active'; }
-    const toggleBtn = row.querySelector('.btn-deactivate,.btn-activate');
-    if (toggleBtn) {
-        toggleBtn.className = 'btn ' + (isActive ? 'btn-activate' : 'btn-deactivate') + ' btn-sm';
-        toggleBtn.innerHTML = isActive ? '<i class="fa-solid fa-play"></i> Activate' : '<i class="fa-solid fa-pause"></i> Deactivate';
-    }
-    showToast(`${row.dataset.name || ''} ${isActive ? 'deactivated' : 'activated'}`, isActive ? 'warn' : 'success');
-    syncInterviewerCards();
+    const id = row.getAttribute('data-id');
+    const name = row.dataset.name || '';
+    const endpoint = isActive ? `/api/admin/interviewers/${id}/deactivate` : `/api/admin/interviewers/${id}/activate`;
+    try {
+        const res = await secureFetch(endpoint, { method: 'PUT' });
+        if (!res || !res.ok) { showToast('Failed to update status', 'error'); return; }
+        const newStatus = isActive ? 'inactive' : 'active';
+        row.setAttribute('data-status', newStatus);
+        const badge = row.querySelector('.status-badge');
+        if (badge) { badge.className = 'badge ' + (isActive ? 'bg-danger' : 'bg-success') + ' status-badge'; badge.innerText = isActive ? 'Inactive' : 'Active'; }
+        const toggleBtn = row.querySelector('.btn-deactivate,.btn-activate');
+        if (toggleBtn) {
+            toggleBtn.className = 'btn ' + (isActive ? 'btn-activate' : 'btn-deactivate') + ' btn-sm';
+            toggleBtn.innerHTML = isActive ? '<i class="fa-solid fa-play"></i> Activate' : '<i class="fa-solid fa-pause"></i> Deactivate';
+        }
+        showToast(`${name} ${isActive ? 'deactivated' : 'activated'}`, isActive ? 'warn' : 'success');
+        syncInterviewerCards();
+    } catch (e) { showToast('Error updating status', 'error'); }
+}
+
+/* ═══════════════════════════════════════
+   DELETE INTERVIEWER
+═══════════════════════════════════════ */
+function deleteInterviewerRow(row, name) {
+    const id = row.getAttribute('data-id');
+    deleteCallback = async () => {
+        try {
+            const res = await secureFetch(`/api/admin/interviewers/${id}`, { method: 'DELETE' });
+            if (res && res.ok) {
+                row.remove();
+                showToast(`${name} deleted`, 'warn');
+                syncInterviewerCards();
+                loadAdminStats();
+            } else {
+                showToast('Failed to delete interviewer', 'error');
+            }
+        } catch (e) { showToast('Error deleting interviewer', 'error'); }
+    };
+    document.getElementById('deleteMsg').innerText = `Delete interviewer "${name}"? This cannot be undone.`;
+    document.getElementById('deleteConfirmBtn').onclick = () => { closeOverlay('deleteModal'); deleteCallback && deleteCallback(); };
+    openOverlay('deleteModal');
 }
 
 /* ═══════════════════════════════════════
@@ -1279,18 +1351,33 @@ function toggleInterviewerStatus(row) {
 function openPlatformProfileModalFromRow(row) {
     if (!row) return;
     const d = {
+        id: row.getAttribute('data-id') || '',
         name: row.dataset.name || '—', domain: row.dataset.domain || '—',
         interviews: row.dataset.interviews || '0', rating: row.dataset.rating || '—',
         email: row.dataset.email || '—', exp: row.dataset.exp || '—',
         location: row.dataset.loc || '—', phone: row.dataset.phone || '—',
         bio: row.dataset.bio || '—', status: row.getAttribute('data-status') || 'active',
+        resume: row.getAttribute('data-resume') || '',
+        linkedin: row.getAttribute('data-linkedin') || '',
+        jobTitle: row.getAttribute('data-jobtitle') || '',
+        company: row.getAttribute('data-company') || '',
+        qualification: row.getAttribute('data-qualification') || '',
+        skills: row.getAttribute('data-skills') || '',
+        interviewExp: row.getAttribute('data-interview-exp') || '',
     };
     const initials = d.name.split(' ').map(n => n[0]).join('').slice(0, 2);
     const isActive = d.status === 'active';
     document.getElementById('platformProfileContent').innerHTML = `
         <div class="profile-banner">
             <div class="profile-banner-avatar">${initials}</div>
-            <div><h3 style="font-size:15px;">${d.name}</h3><p style="font-size:12.5px;opacity:.8;">${d.domain}</p></div>
+            <div>
+                <h3 style="font-size:15px;">${d.name}</h3>
+                <p style="font-size:12.5px;opacity:.8;">${d.jobTitle || d.domain}${d.company ? ' · ' + d.company : ''}</p>
+            </div>
+            <div style="margin-left:auto;text-align:right;">
+                <div style="font-size:20px;font-weight:800;">★ ${d.rating}</div>
+                <div style="font-size:11px;opacity:.8;">Rating</div>
+            </div>
         </div>
         <div class="detail-grid">
             <div class="detail-item"><span>Email</span><b>${d.email}</b></div>
@@ -1298,12 +1385,203 @@ function openPlatformProfileModalFromRow(row) {
             <div class="detail-item"><span>Location</span><b>${d.location}</b></div>
             <div class="detail-item"><span>Experience</span><b>${d.exp} yrs</b></div>
         </div>
-        <div style="margin-top:10px;background:#F8FAFC;border-radius:9px;padding:12px;">
-            <p style="font-size:13px;color:var(--muted);">${d.bio}</p>
+        <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <div style="flex:1;text-align:center;background:#F8FAFC;border-radius:9px;padding:11px;">
+                <div style="font-size:1.3rem;font-weight:800;color:var(--primary);">${d.interviews}</div>
+                <div style="font-size:11.5px;color:var(--muted);">Interviews</div>
+            </div>
+            <div style="flex:1;text-align:center;background:#F8FAFC;border-radius:9px;padding:11px;">
+                <div style="font-size:1.3rem;font-weight:800;color:var(--success);">—%</div>
+                <div style="font-size:11.5px;color:var(--muted);">Completion</div>
+            </div>
+            <div style="flex:1;text-align:center;background:#F8FAFC;border-radius:9px;padding:11px;">
+                <div style="font-size:1.3rem;font-weight:800;color:var(--warning);">★ ${d.rating}</div>
+                <div style="font-size:11.5px;color:var(--muted);">Avg Rating</div>
+            </div>
         </div>
-        <div style="margin-top:10px;"><span class="badge ${isActive ? 'bg-success' : 'bg-danger'}">${isActive ? 'Active' : 'Inactive'}</span></div>`;
-    document.getElementById('fullProfileBtn').onclick = () => closeOverlay('platformProfileModal');
+        <div style="margin-top:6px;"><span class="badge ${isActive ? 'bg-success' : 'bg-danger'}" style="font-size:12px;">${isActive ? 'Active' : 'Inactive'}</span></div>`;
+    document.getElementById('fullProfileBtn').onclick = () => {
+        closeOverlay('platformProfileModal');
+        openFullProfileModal(d);
+    };
     openOverlay('platformProfileModal');
+}
+
+/* ═══════════════════════════════════════
+   FULL INTERVIEWER PROFILE MODAL
+═══════════════════════════════════════ */
+function openFullProfileModal(d) {
+    const initials = d.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const isActive = d.status === 'active';
+    const skillsArr = d.skills ? d.skills.split(',').filter(Boolean) : [];
+    const skillsHtml = skillsArr.length
+        ? skillsArr.map(s => `<span class="req-tag">${s.trim()}</span>`).join('')
+        : '<span style="color:var(--muted);font-size:12px;">No skills listed</span>';
+
+    const resumeUrl = d.resume || '';
+    const resumeFileName = resumeUrl ? resumeUrl.split('/').pop() : '';
+
+    const resumeSection = resumeUrl ? `
+        <div class="cv-preview-box">
+            <div class="cv-file-row">
+                <i class="fa-solid fa-file-pdf" style="color:#ef4444;font-size:1.3rem;flex-shrink:0;"></i>
+                <span>${resumeFileName || 'Resume.pdf'}</span>
+                <button class="btn btn-warn btn-sm" onclick="downloadResume('${resumeUrl}','${resumeFileName}')">
+                    <i class="fa-solid fa-download"></i>
+                </button>
+            </div>
+            <div class="cv-preview-frame" onclick="viewResume('${resumeUrl}')">
+                <i class="fa-solid fa-file-lines"></i>
+                <p>Click to preview CV</p>
+                <span style="font-size:11px;margin-top:4px;">PDF Viewer</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:4px;">
+                <button class="btn btn-s btn-sm" style="justify-content:center;" onclick="viewResume('${resumeUrl}')">
+                    <i class="fa-solid fa-eye"></i> View Full
+                </button>
+                <button class="btn btn-outline btn-sm" style="justify-content:center;background:#1f2937;color:#fff;border-color:#374151;" onclick="downloadResume('${resumeUrl}','${resumeFileName}')">
+                    <i class="fa-solid fa-download"></i> Download
+                </button>
+            </div>
+        </div>` : `
+        <div class="cv-preview-box">
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;gap:10px;color:rgba(255,255,255,.4);">
+                <i class="fa-solid fa-file-circle-xmark" style="font-size:2.5rem;"></i>
+                <p style="font-size:13px;">No resume uploaded</p>
+            </div>
+        </div>`;
+
+    document.getElementById('fullProfileContent').innerHTML = `
+        <div class="profile-banner" style="margin-bottom:16px;">
+            <div class="profile-banner-avatar">${initials}</div>
+            <div>
+                <h3 style="font-size:15px;">${d.name}</h3>
+                <p style="opacity:.8;font-size:12.5px;">${d.jobTitle || d.domain}${d.company ? ' · ' + d.company : ''}${d.location ? ' · ' + d.location : ''}</p>
+                <p style="opacity:.7;font-size:11.5px;margin-top:3px;">${d.email}</p>
+            </div>
+            <div style="margin-left:auto;text-align:right;">
+                <div style="font-size:1.6rem;font-weight:800;">★ ${d.rating}</div>
+                <div style="font-size:11px;opacity:.8;">Overall</div>
+            </div>
+        </div>
+        <div class="full-profile-layout">
+            <!-- LEFT: info, stats, bio, skills -->
+            <div class="full-profile-left">
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+                    <div style="text-align:center;background:#F8FAFC;border-radius:9px;padding:10px;">
+                        <div style="font-size:1.2rem;font-weight:800;color:var(--primary);">${d.interviews}</div>
+                        <div style="font-size:11px;color:var(--muted);">Interviews</div>
+                    </div>
+                    <div style="text-align:center;background:#F8FAFC;border-radius:9px;padding:10px;">
+                        <div style="font-size:1.2rem;font-weight:800;color:var(--success);">—%</div>
+                        <div style="font-size:11px;color:var(--muted);">Completion</div>
+                    </div>
+                    <div style="text-align:center;background:#F8FAFC;border-radius:9px;padding:10px;">
+                        <div style="font-size:1.2rem;font-weight:800;color:var(--secondary);">${d.exp ? d.exp + ' yr' : '—'}</div>
+                        <div style="font-size:11px;color:var(--muted);">Experience</div>
+                    </div>
+                    <div style="text-align:center;background:#F8FAFC;border-radius:9px;padding:10px;">
+                        <div style="font-size:1.2rem;font-weight:800;color:var(--warning);">★ ${d.rating}</div>
+                        <div style="font-size:11px;color:var(--muted);">Avg Rating</div>
+                    </div>
+                </div>
+
+                <div style="background:#F8FAFC;border-radius:9px;padding:12px;">
+                    <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:8px;">About</div>
+                    <p style="font-size:13px;line-height:1.65;color:var(--dark);">${d.bio || 'No bio provided.'}</p>
+                </div>
+
+                ${d.interviewExp ? `<div style="background:#F0F9FF;border-radius:9px;padding:12px;border-left:3px solid var(--secondary);">
+                    <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:6px;">Interview Experience</div>
+                    <p style="font-size:13px;line-height:1.6;color:var(--dark);">${d.interviewExp}</p>
+                </div>` : ''}
+
+                <div>
+                    <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Skills & Domain</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:5px;">${skillsHtml}</div>
+                </div>
+
+                <div>
+                    <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Quick Actions</div>
+                    <div style="display:flex;gap:7px;">
+                        <button class="btn btn-p" style="flex:1;justify-content:center;" onclick="window.location.href='mailto:${d.email}'">
+                            <i class="fa-solid fa-envelope"></i> Email
+                        </button>
+                        ${d.linkedin ? `<button class="btn btn-info" style="flex:1;justify-content:center;" onclick="window.open('${d.linkedin}','_blank')">
+                            <i class="fa-brands fa-linkedin"></i> LinkedIn
+                        </button>` : ''}
+                    </div>
+                </div>
+            </div>
+            <!-- RIGHT: resume, contact -->
+            <div class="full-profile-right">
+                <div>
+                    <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:8px;">CV / Resume</div>
+                    ${resumeSection}
+                </div>
+                <div>
+                    <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Contact & Details</div>
+                    <div style="background:#F8FAFC;border-radius:9px;padding:12px;display:flex;flex-direction:column;gap:9px;">
+                        <div style="display:flex;gap:10px;align-items:center;font-size:13px;">
+                            <i class="fa-solid fa-envelope" style="color:var(--primary);width:16px;flex-shrink:0;"></i>
+                            <span>${d.email}</span>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center;font-size:13px;">
+                            <i class="fa-solid fa-phone" style="color:var(--secondary);width:16px;flex-shrink:0;"></i>
+                            <span>${d.phone || '—'}</span>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center;font-size:13px;">
+                            <i class="fa-solid fa-map-marker-alt" style="color:var(--danger);width:16px;flex-shrink:0;"></i>
+                            <span>${d.location || '—'}</span>
+                        </div>
+                        ${d.qualification ? `<div style="display:flex;gap:10px;align-items:center;font-size:13px;">
+                            <i class="fa-solid fa-graduation-cap" style="color:var(--warning);width:16px;flex-shrink:0;"></i>
+                            <span>${d.qualification}</span>
+                        </div>` : ''}
+                        ${d.linkedin ? `<div style="display:flex;gap:10px;align-items:center;font-size:13px;">
+                            <i class="fa-brands fa-linkedin" style="color:#0A66C2;width:16px;flex-shrink:0;"></i>
+                            <a href="${d.linkedin}" target="_blank" style="color:var(--secondary);">${d.linkedin.replace(/^https?:\/\//,'')}</a>
+                        </div>` : ''}
+                        <div style="display:flex;gap:10px;align-items:center;font-size:13px;">
+                            <i class="fa-solid fa-circle" style="color:${isActive ? 'var(--success)' : 'var(--danger)'};width:16px;flex-shrink:0;font-size:9px;"></i>
+                            <span class="badge ${isActive ? 'bg-success' : 'bg-danger'}">${isActive ? 'Active' : 'Inactive'}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class="btn btn-outline btn-block" style="margin-top:16px;" onclick="closeOverlay('fullProfileModal')">
+            <i class="fa-solid fa-xmark"></i> Close
+        </button>`;
+    openOverlay('fullProfileModal');
+}
+
+/* Resume viewer and downloader */
+function viewResume(url) {
+    if (!url) { showToast('No resume available', 'warn'); return; }
+    window.open(url, '_blank');
+}
+
+async function downloadResume(url, filename) {
+    if (!url) { showToast('No resume available', 'warn'); return; }
+    try {
+        showToast('Downloading resume…');
+        const res = await secureFetch(url);
+        if (!res || !res.ok) throw new Error('Fetch failed');
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename || 'resume.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+        showToast('Resume downloaded');
+    } catch (e) {
+        // Fallback: open in new tab
+        window.open(url, '_blank');
+        showToast('Opening resume in new tab');
+    }
 }
 
 /* ═══════════════════════════════════════
