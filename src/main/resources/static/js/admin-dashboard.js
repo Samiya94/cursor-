@@ -258,7 +258,7 @@ async function loadPendingInterviewers() {
                 row.setAttribute('data-phone', iv.phone || '');
                 row.setAttribute('data-email', email);
                 row.setAttribute('data-bio', iv.bio || '');
-                row.setAttribute('data-linkedin', iv.linkedin || '#');
+                row.setAttribute('data-linkedin', iv.linkedin || '');
                 row.setAttribute('data-loc', iv.location || '');
                 row.setAttribute('data-resume', iv.resumeUrl || '');
                 row.setAttribute('data-id', iv.id || '');
@@ -296,6 +296,13 @@ async function loadPendingInterviewers() {
     } catch (e) { console.error('Pending interviewers error:', e); }
 }
 
+function ensureUrl(url) {
+    if (!url || url === '#') return '';
+    url = url.trim();
+    if (!/^https?:\/\//i.test(url)) return 'https://' + url;
+    return url;
+}
+
 function openRegProfileModal(row) {
     const d = row.dataset;
     const name = d.name || '—';
@@ -327,7 +334,7 @@ function openRegProfileModal(row) {
             <div class="detail-item"><span>Email</span><b>${d.email || '—'}</b></div>
             <div class="detail-item"><span>Phone</span><b>${d.phone || '—'}</b></div>
             <div class="detail-item"><span>Location</span><b>${d.loc || '—'}</b></div>
-            <div class="detail-item"><span>LinkedIn</span><b>${d.linkedin && d.linkedin !== '#' ? `<a href="${d.linkedin}" target="_blank" style="color:var(--secondary);">View Profile</a>` : '—'}</b></div>
+            <div class="detail-item"><span>LinkedIn</span><b>${ensureUrl(d.linkedin) ? `<a href="${ensureUrl(d.linkedin)}" target="_blank" rel="noopener noreferrer" style="color:var(--secondary);">View Profile</a>` : '—'}</b></div>
             ${d.qualification ? `<div class="detail-item"><span>Qualification</span><b>${d.qualification}</b></div>` : ''}
             ${d.domain ? `<div class="detail-item"><span>Domain</span><b>${d.domain}</b></div>` : ''}
         </div>
@@ -1507,7 +1514,7 @@ function openFullProfileModal(d) {
                         <button class="btn btn-p" style="flex:1;justify-content:center;" onclick="window.location.href='mailto:${d.email}'">
                             <i class="fa-solid fa-envelope"></i> Email
                         </button>
-                        ${d.linkedin ? `<button class="btn btn-info" style="flex:1;justify-content:center;" onclick="window.open('${d.linkedin}','_blank')">
+                        ${ensureUrl(d.linkedin) ? `<button class="btn btn-info" style="flex:1;justify-content:center;" onclick="window.open('${ensureUrl(d.linkedin)}','_blank')">
                             <i class="fa-brands fa-linkedin"></i> LinkedIn
                         </button>` : ''}
                     </div>
@@ -1538,9 +1545,9 @@ function openFullProfileModal(d) {
                             <i class="fa-solid fa-graduation-cap" style="color:var(--warning);width:16px;flex-shrink:0;"></i>
                             <span>${d.qualification}</span>
                         </div>` : ''}
-                        ${d.linkedin ? `<div style="display:flex;gap:10px;align-items:center;font-size:13px;">
+                        ${ensureUrl(d.linkedin) ? `<div style="display:flex;gap:10px;align-items:center;font-size:13px;">
                             <i class="fa-brands fa-linkedin" style="color:#0A66C2;width:16px;flex-shrink:0;"></i>
-                            <a href="${d.linkedin}" target="_blank" style="color:var(--secondary);">${d.linkedin.replace(/^https?:\/\//,'')}</a>
+                            <a href="${ensureUrl(d.linkedin)}" target="_blank" rel="noopener noreferrer" style="color:var(--secondary);">${d.linkedin.replace(/^https?:\/\//,'')}</a>
                         </div>` : ''}
                         <div style="display:flex;gap:10px;align-items:center;font-size:13px;">
                             <i class="fa-solid fa-circle" style="color:${isActive ? 'var(--success)' : 'var(--danger)'};width:16px;flex-shrink:0;font-size:9px;"></i>
