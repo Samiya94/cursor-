@@ -267,11 +267,30 @@ nav {
 
 /* input with icon */
 .input-icon-wrap { position:relative; }
-.input-icon-wrap i {
+.input-icon-wrap > i.fa-lock {
   position:absolute; left:12px; top:50%; transform:translateY(-50%);
-  font-size:13px; color:var(--muted); pointer-events:none;
+  font-size:13px; color:var(--muted); pointer-events:none; z-index:1;
 }
-.input-icon-wrap input { padding-left:35px; }
+/* override the generic .field input padding for icon-wrapped inputs */
+.input-icon-wrap input {
+  padding-left:35px !important;
+}
+.input-icon-wrap input.has-toggle {
+  padding-right:38px !important;
+}
+
+/* eye toggle button — sits inside the input border */
+.input-icon-wrap .pw-toggle {
+  position:absolute;
+  right:0; top:0; bottom:0;
+  width:38px;
+  display:flex; align-items:center; justify-content:center;
+  background:none; border:none; padding:0; margin:0;
+  color:var(--muted); font-size:13px; cursor:pointer;
+  transition:color .2s;
+  z-index:2;
+}
+.input-icon-wrap .pw-toggle:hover { color:var(--primary); }
 
 /* hint text */
 .field-hint { font-size:11px; color:var(--muted); margin-top:2px; }

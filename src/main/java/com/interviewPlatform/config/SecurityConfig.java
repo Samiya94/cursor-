@@ -44,6 +44,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/register/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/password-reset/**").permitAll()
 
+                // GET /api/domains is public (used on registration pages), but POST/DELETE require ADMIN
+                .requestMatchers(HttpMethod.GET, "/api/domains").permitAll()
+
                 // All public paths (GET pages)
                 .requestMatchers(
                     "/",
@@ -53,7 +56,6 @@ public class SecurityConfig {
                     "/refresh",
                     "/logout",
                     "/api/students/check-email",
-                    "/api/domains",
                     "/css/**",
                     "/js/**",
                     "/images/**",

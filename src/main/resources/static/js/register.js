@@ -46,6 +46,15 @@ if(instId && token){
 
 }
 /* ── Tab Switch ── */
+/* ── TOGGLE PASSWORD VISIBILITY ── */
+function togglePw(inputId, iconId) {
+  const input = document.getElementById(inputId);
+  const icon  = document.getElementById(iconId);
+  const isHidden = input.type === 'password';
+  input.type     = isHidden ? 'text' : 'password';
+  icon.className = isHidden ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+}
+
 function switchTab(role){
   document.querySelectorAll('.tab-btn').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+role).classList.add('active');
