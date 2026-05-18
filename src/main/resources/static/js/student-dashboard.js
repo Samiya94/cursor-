@@ -161,9 +161,8 @@ function fillDashboardStatCards() {
 
   var bannerSub = document.querySelector('.wb-left p');
   if(bannerSub) {
-    var up  = MY_INTERVIEWS.filter(function(i){ return i.status==='CONFIRMED'||i.status==='APPROVED'; }).length;
-    var pnd = MY_INTERVIEWS.filter(function(i){ return i.status==='PENDING'; }).length;
-    bannerSub.textContent = 'You have ' + up + ' upcoming interview(s) and ' + pnd + ' pending request(s).';
+    var up  = MY_INTERVIEWS.filter(function(i){ return i.status==='APPROVED'; }).length;
+    bannerSub.textContent = 'You have ' + up + ' confirmed interview' + (up !== 1 ? 's' : '') + '.';
   }
 }
 
@@ -212,7 +211,7 @@ function renderInterviewTable() {
 
 function getStatusBadgeClass(s){var m={CONFIRMED:'bg-success',APPROVED:'bg-success',PENDING:'bg-pending',CANCELLED:'bg-danger',REJECTED:'bg-danger',RESCHEDULED:'bg-info',ACTIVE:'bg-info',INACTIVE:'bg-muted'};return m[s]||'bg-muted';}
 function formatStatus(s){var m={CONFIRMED:'Scheduled',APPROVED:'Approved',PENDING:'Pending',CANCELLED:'Cancelled',REJECTED:'Rejected',RESCHEDULED:'Rescheduled',ACTIVE:'Active',INACTIVE:'Inactive'};return m[s]||(s?s.charAt(0)+s.slice(1).toLowerCase():'Unknown');}
-function mapStatusToFilter(s){if(s==='CONFIRMED'||s==='APPROVED')return 'scheduled';if(s==='PENDING')return 'pending';return 'completed';}
+function mapStatusToFilter(s){if(s==='APPROVED')return 'scheduled';return 'completed';}
 
 async function cancelMyInterview(id, btn) {
   if (!confirm('Cancel this interview request?')) return;
@@ -377,27 +376,35 @@ function renderUpcomingInterviewCard() {
       return new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime();
     });
 
-  var pending = items.filter(function(iv) { return iv.status === 'PENDING'; });
-
-  var pick = futureApproved[0] || pending[0] || null;
+  var pick = futureApproved[0] || null;
   if (!pick) {
-    box.innerHTML = '<span style="color:var(--muted);font-size:13px;">No upcoming interview found.</span>';
+    box.innerHTML = '<span style="color:var(--muted);font-size:13px;">No upcoming interview scheduled.</span>';
     return;
   }
 
-  var isPending = pick.status === 'PENDING';
-  var badgeText = isPending ? 'Pending' : 'Scheduled';
-  var badgeClass = isPending ? 'bg-muted' : 'bg-success';
+  var venueHtml = '';
+  if (pick.scheduledVenue) {
+    venueHtml = '<span><i class="fa-solid fa-location-dot" style="color:var(--accent);width:16px;"></i> ' + escHtml(pick.scheduledVenue) + '</span>';
+  }
+  var linkHtml = '';
+  if (pick.meetingLink) {
+    linkHtml = '<a href="' + escHtml(pick.meetingLink) + '" target="_blank" rel="noopener" ' +
+      'style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:7px 14px;' +
+      'background:var(--accent,#0ea5e9);color:#fff;border-radius:8px;font-size:12.5px;font-weight:600;text-decoration:none;">' +
+      '<i class="fa-solid fa-video"></i> Join Interview</a>';
+  }
 
   box.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
     '<b style="font-size:14px;">' + escHtml(pick.topic) + '</b>' +
-    '<span class="badge ' + badgeClass + '">' + badgeText + '</span>' +
+    '<span class="badge bg-success">Confirmed</span>' +
     '</div>' +
     '<div style="font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">' +
     '<span><i class="fa-solid fa-user" style="color:var(--accent);width:16px;"></i> ' + escHtml(pick.contactPerson || 'Interviewer') + '</span>' +
     '<span><i class="fa-solid fa-calendar" style="color:var(--accent);width:16px;"></i> ' + escHtml(pick.dateTime) + '</span>' +
-    '</div>';
+    venueHtml +
+    '</div>' +
+    linkHtml;
 }
 
 function renderProfileStats() {
@@ -623,11 +630,12 @@ async function applyToInterview(interviewRequestId, topic) {
         });
         if (res.ok) {
             appliedSlots[interviewRequestId] = true;
-            showToast('Applied for ' + topic + '!');
+            showToast('You\'re confirmed for ' + topic + '! Check your email for details.');
             renderAPISlotGrid('dashSlots');
             renderAPISlotGrid('applyGrid');
-            await loadMyApplicationsFromAPI();
-            // Trigger notification sync so "Application Submitted" appears
+            // Reload dashboard stats so upcoming interview card & interview list refresh immediately
+            await loadDashboardStats();
+            // Sync notifications
             try {
               var applyRes = await secureFetch('/api/applications/my');
               if (applyRes && applyRes.ok) syncNotificationsFromData(await applyRes.json(), window.API_INTERVIEW_SLOTS || []);
@@ -1135,8 +1143,8 @@ function syncNotificationsFromData(apps, availableSlots) {
       if (app.applicationStatus === 'APPROVED') {
         changed |= pushNotif({
           id: key, type: 'app_approved', read: false, ts: Date.now(),
-          title: 'Interview Scheduled',
-          sub: dept + (dateStr ? ' confirmed — ' + dateStr : ' confirmed'),
+          title: 'Interview Confirmed',
+          sub: dept + (dateStr ? ' — ' + dateStr : ' — check your email for details'),
           icon: 'fa-solid fa-calendar-check',
           iconBg: '#F0FDFA', iconColor: 'var(--accent)'
         });
@@ -1148,21 +1156,6 @@ function syncNotificationsFromData(apps, availableSlots) {
           icon: 'fa-solid fa-circle-xmark',
           iconBg: '#FEF2F2', iconColor: 'var(--danger)'
         });
-      } else if (app.applicationStatus === 'PENDING' && !prev) {
-        // First time we see a pending app (initial load) — only notify if applied in last 5 minutes
-        var appliedAt = app.appliedAt ? new Date(app.appliedAt).getTime() : 0;
-        if (Date.now() - appliedAt < 5 * 60 * 1000) {
-          changed |= pushNotif({
-            id: key, type: 'app_pending', read: false, ts: appliedAt || Date.now(),
-            title: 'Application Submitted',
-            sub: dept + ' — under review',
-            icon: 'fa-solid fa-paper-plane',
-            iconBg: '#EFF6FF', iconColor: 'var(--primary)'
-          });
-        } else {
-          // Just snapshot it silently so future changes are detected
-          NOTIF_PREV_SNAP['app_' + app.applicationId] = app.applicationStatus;
-        }
       }
     }
 

@@ -154,7 +154,7 @@ async function fetchInstituteDetails() {
         loggedInstitute = {
             id: data.id,
             instituteName: data.instituteName,
-            email: data.email || '',
+            email: data.user?.email || data.email || '',
             city: data.city,
             website: data.website || ''
         };
@@ -1262,7 +1262,7 @@ async function handleSchedSubmit(e){
 /* ═══════════════ REGISTRATION LINK ═══════════════ */
 async function genRegLink(){
 
-  if (!token) {
+  if (!getToken()) {
     showToast("Please login again", "error");
     window.location.href = "/login";
     return;

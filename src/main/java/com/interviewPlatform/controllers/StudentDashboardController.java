@@ -46,14 +46,12 @@ public class StudentDashboardController {
         List<StudentApplication> myApplications =
             applicationRepository.findByStudentId(student.getId());
 
-        // Student dashboard values are derived from the logged-in student's applications.
+        // interviewsTaken = interviews the student is confirmed for (APPROVED)
         long interviewsTaken = myApplications.stream()
             .filter(a -> a.getStatus() == Status.APPROVED)
             .count();
 
-        long pendingCount = myApplications.stream()
-            .filter(a -> a.getStatus() == Status.PENDING)
-            .count();
+        long pendingCount = 0; // no more pending — all are auto-approved now
 
         long confirmedCount = interviewsTaken;
 
@@ -62,6 +60,7 @@ public class StudentDashboardController {
         Double bestScore = cgpa != null ? Math.min(10.0, cgpa + 0.5) : 0.0;
 
         List<StudentDashboardStatsDTO.StudentInterviewItemDTO> interviewItems = myApplications.stream()
+            .filter(a -> a.getStatus() == Status.APPROVED)
             .map(app -> {
                 InterviewRequest req = app.getInterviewRequest();
                 var scheduled = req.getScheduledDate() != null ? req.getScheduledDate() : req.getStartDate();
@@ -72,10 +71,12 @@ public class StudentDashboardController {
                     req.getDepartmentName() != null ? req.getDepartmentName() : "Interview",
                     req.getExpertise() != null ? String.join(", ", req.getExpertise()) : "",
                     dateTime,
-                    app.getStatus() != null ? app.getStatus().name() : "PENDING",
+                    app.getStatus() != null ? app.getStatus().name() : "APPROVED",
                     req.getContactPerson() != null ? req.getContactPerson() : "",
                     req.getRemarks() != null ? req.getRemarks() : "",
-                    scheduled
+                    scheduled,
+                    req.getMeetingLink() != null ? req.getMeetingLink() : "",
+                    req.getScheduledVenue() != null ? req.getScheduledVenue() : ""
                 );
             })
             .sorted((a, b) -> {

@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import com.interviewPlatform.entities.Institute;
@@ -204,8 +205,7 @@ public class AdminController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/profile")
-    public ResponseEntity<String> updateAdminProfile(
-            org.springframework.security.core.Authentication auth,
+    public ResponseEntity<String> updateAdminProfile(Authentication auth,
             @RequestBody Map<String, String> body) {
         // Admin profile fields (fullName/phone) are not stored in User entity yet.
         // This endpoint is a placeholder for future extension.

@@ -55,15 +55,7 @@ public class StudentApplicationController {
         return ResponseEntity.ok(applicationService.getApplicantsForInterview(interviewRequestId));
     }
 
-    // Admin approves a student
-    @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/{applicationId}/approve")
-    public ResponseEntity<String> approve(@PathVariable Long applicationId) {
-        applicationService.updateApplicationStatus(applicationId, Status.APPROVED);
-        return ResponseEntity.ok("Application approved");
-    }
-
-    // Admin rejects a student
+    // Admin can still manually reject a confirmed student if needed (e.g. no-show, disqualified)
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{applicationId}/reject")
     public ResponseEntity<String> reject(@PathVariable Long applicationId) {

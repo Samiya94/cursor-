@@ -30,6 +30,8 @@ public record StudentDashboardStatsDTO(
         String status,
         String contactPerson,
         String remarks,
-        java.time.LocalDateTime scheduledDate
+        java.time.LocalDateTime scheduledDate,
+        String meetingLink,
+        String scheduledVenue
     ) {}
 }
