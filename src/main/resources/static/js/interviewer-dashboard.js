@@ -69,6 +69,38 @@ async function loadInterviewerProfile() {
       setText('headerAvatarText', initials);
       setText('profilePicText', initials);
     }
+
+    // Populate the Resume / CV card with the interviewer's own uploaded resume
+    const cvViewBtn = document.getElementById('cvViewBtn');
+    const cvNameEl  = document.getElementById('cvName');
+    const cvDateEl  = document.getElementById('cvDate');
+    if (iv.resumeUrl) {
+      const rawFile = iv.resumeFileName || iv.resumeUrl;
+      const friendlyName = decodeURIComponent(rawFile.split('/').pop().replace(/^\d+_/, ''));
+      if (cvNameEl) cvNameEl.textContent = friendlyName;
+      if (cvDateEl && iv.createdAt) {
+        cvDateEl.textContent = 'Uploaded ' + new Date(iv.createdAt).toLocaleDateString();
+      } else if (cvDateEl) {
+        cvDateEl.textContent = 'Uploaded during registration';
+      }
+      if (cvViewBtn) {
+        cvViewBtn.disabled = false;
+        cvViewBtn.onclick = function () {
+          const absUrl = iv.resumeUrl.startsWith('http') ? iv.resumeUrl : window.location.origin + iv.resumeUrl;
+          document.getElementById('resumeViewerTitle').textContent = (iv.fullName || 'Interviewer') + ' — ' + friendlyName;
+          document.getElementById('resumeDownloadLink').href = absUrl;
+          const obj   = document.getElementById('resumeViewerObject');
+          const frame = document.getElementById('resumeViewerFrame');
+          if (obj)   obj.data    = absUrl;
+          if (frame) frame.src   = absUrl;
+          openOverlay('resumeViewerModal');
+        };
+      }
+    } else {
+      if (cvNameEl) cvNameEl.textContent = 'No CV uploaded';
+      if (cvDateEl) cvDateEl.textContent = '—';
+      if (cvViewBtn) cvViewBtn.disabled = true;
+    }
   } catch (e) { console.error('Profile error:', e); }
 }
 

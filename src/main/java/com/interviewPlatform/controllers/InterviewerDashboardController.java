@@ -121,6 +121,10 @@ public class InterviewerDashboardController {
         m.put("createdAt", iv.getCreatedAt());
         m.put("email", iv.getUser() != null ? iv.getUser().getEmail() : null);
         m.put("status", iv.getUser() != null && iv.getUser().getStatus() != null ? iv.getUser().getStatus().name() : null);
+        // resumeUrl is stored as a full path e.g. "/uploads/resumes/filename.pdf" — use it directly
+        String rawResume = iv.getResumeUrl();
+        m.put("resumeUrl", (rawResume != null && !rawResume.isBlank()) ? rawResume : null);
+        m.put("resumeFileName", rawResume);
         return ResponseEntity.ok(m);
     }
 }
