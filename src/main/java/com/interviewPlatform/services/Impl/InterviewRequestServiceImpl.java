@@ -7,6 +7,9 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.ArrayList;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,14 +27,20 @@ import com.interviewPlatform.repositories.InterviewerRepository;
 import com.interviewPlatform.services.InterviewRequestService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InterviewRequestServiceImpl implements InterviewRequestService {
 
     private final InterviewRequestRepository requestRepo;
     private final InstituteRepository instituteRepo;
     private final InterviewerRepository interviewerRepository;
+    private final JavaMailSender mailSender;
+
+    @Value("${app.mail.from:${spring.mail.username:no-reply@interview-platform.local}}")
+    private String fromEmail;
 
     private static LocalDateTime parseDateTimeOrNull(String raw) {
         if (raw == null) {
@@ -219,6 +228,10 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
             req.setAssignedInterviewerIds(java.util.List.of(dto.assignedInterviewerId()));
         }
         requestRepo.save(req);
+        // Notify assigned interviewers by email
+        if (req.getAssignedInterviewerIds() != null && !req.getAssignedInterviewerIds().isEmpty()) {
+            notifyInterviewersOfAssignment(req, req.getAssignedInterviewerIds());
+        }
     }
 
     @Override
@@ -287,6 +300,8 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
         req.setAssignedInterviewer(interviewer);
         req.setAssignedInterviewerIds(ids);
         requestRepo.save(req);
+        // Notify newly assigned interviewers by email
+        notifyInterviewersOfAssignment(req, ids);
     }
 
     @Override
@@ -295,6 +310,48 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
             instituteId,
             java.util.List.of(Status.CONFIRMED, Status.RESCHEDULED, Status.AWAITING_CONFIRMATION)
         ).stream().map(this::mapToDTO).toList();
+    }
+
+    /** Send assignment notification email to every assigned interviewer. */
+    private void notifyInterviewersOfAssignment(InterviewRequest req, List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return;
+        List<Interviewer> interviewers = interviewerRepository.findAllById(ids);
+        for (Interviewer iv : interviewers) {
+            try {
+                String toEmail = iv.getUser() != null ? iv.getUser().getEmail() : null;
+                if (toEmail == null || toEmail.isBlank()) continue;
+
+                String institute  = req.getInstitute() != null ? req.getInstitute().getInstituteName() : "—";
+                String dept       = req.getDepartmentName() != null ? req.getDepartmentName() : "—";
+                String scheduled  = req.getScheduledDate() != null
+                    ? req.getScheduledDate().toString().replace("T", " at ")
+                    : (req.getStartDate() != null ? req.getStartDate().toString().replace("T", " at ") : "TBD");
+                String venue      = req.getScheduledVenue() != null ? req.getScheduledVenue() : "—";
+                String meetLink   = req.getMeetingLink()    != null ? req.getMeetingLink()    : "—";
+
+                StringBuilder body = new StringBuilder();
+                body.append("Dear ").append(iv.getFullName() != null ? iv.getFullName() : "Interviewer").append(",\n\n");
+                body.append("You have been assigned to conduct an interview. Here are the details:\n\n");
+                body.append("  Institute  : ").append(institute).append("\n");
+                body.append("  Department : ").append(dept).append("\n");
+                body.append("  Date/Time  : ").append(scheduled).append("\n");
+                body.append("  Venue      : ").append(venue).append("\n");
+                body.append("  Meeting    : ").append(meetLink).append("\n\n");
+                body.append("Please log in to your Interviewer Dashboard to view your full schedule,\n");
+                body.append("student list, and meeting details.\n\n");
+                body.append("Best regards,\nInterview Platform Team");
+
+                SimpleMailMessage msg = new SimpleMailMessage();
+                msg.setTo(toEmail);
+                msg.setFrom(fromEmail);
+                msg.setSubject("You've been assigned an interview — " + dept + " @ " + institute);
+                msg.setText(body.toString());
+                mailSender.send(msg);
+                log.info("Assignment email sent to interviewer {}", toEmail);
+            } catch (Exception e) {
+                log.error("Failed to send assignment email to interviewer {}: {}", iv.getId(), e.getMessage());
+            }
+        }
     }
 
     private InterviewRequestResponseDTO mapToDTO(InterviewRequest req) {

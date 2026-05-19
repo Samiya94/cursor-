@@ -21,6 +21,7 @@ window.addEventListener('DOMContentLoaded', async function () {
 async function refreshInterviewerDashboard() {
   await loadInterviewerProfile();
   await loadAssignedInterviews();
+  renderSlotAlertBanner();
   renderNotifications();
   renderScheduleTables();
   renderHistory();
@@ -117,6 +118,10 @@ async function loadAssignedInterviews() {
     APP.scheduleStudents = APP.interviews.flatMap(iv => (APP.studentsByInterview[iv.id] || []).map(s => normalizeStudent(iv, s)));
     chooseCurrentLiveStudent();
     renderProfileStats();
+    renderSlotAlertBanner();
+    renderNotifications();
+    renderScheduleTables();
+    renderLiveStudent();
   } catch (e) { console.error('Assigned interviews error:', e); }
 }
 
@@ -157,38 +162,237 @@ function chooseCurrentLiveStudent() {
   APP.currentLiveStudent = candidates[0] || null;
 }
 
+// ── Returns a live countdown string like "in 2h 15m" or "15m ago" ──
+function countdownLabel(date) {
+  if (!date) return '';
+  const diff = date.getTime() - Date.now();
+  const abs  = Math.abs(diff);
+  const mins = Math.floor(abs / 60000);
+  const hrs  = Math.floor(mins / 60);
+  const days = Math.floor(hrs  / 24);
+  if (days > 0)      return diff > 0 ? `in ${days}d ${hrs % 24}h`   : `${days}d ago`;
+  if (hrs  > 0)      return diff > 0 ? `in ${hrs}h ${mins % 60}m`   : `${hrs}h ago`;
+  if (mins > 0)      return diff > 0 ? `in ${mins}m`                : `${mins}m ago`;
+  return diff > 0 ? 'starting now' : 'just now';
+}
+
+// ── Venue / link cell helper ──
+function venueCell(iv) {
+  if (iv && iv.meetingLink) {
+    return `<a href="${iv.meetingLink}" target="_blank" rel="noopener" class="btn btn-s btn-sm" style="font-size:11px;padding:3px 8px;"><i class="fa-solid fa-video"></i> Join</a>`;
+  }
+  if (iv && iv.scheduledVenue) return `<span style="font-size:12px;">${iv.scheduledVenue}</span>`;
+  return '<span style="color:var(--muted);font-size:12px;">TBD</span>';
+}
+
+// ── Alert banner on Live view: today's slot OR next upcoming slot ──
+function renderSlotAlertBanner() {
+  const banner = document.getElementById('slotAlertBanner');
+  if (!banner) return;
+  const now  = new Date();
+  const todayStr = now.toDateString();
+
+  // Interviews with a scheduledDate (interview-level, not student-level)
+  const interviewSlots = APP.interviews.map(iv => ({
+    iv,
+    date: iv.scheduledDate ? new Date(iv.scheduledDate) : null
+  })).filter(x => x.date);
+
+  // Sort by date ascending
+  interviewSlots.sort((a, b) => a.date - b.date);
+
+  const todaySlots   = interviewSlots.filter(x => x.date.toDateString() === todayStr);
+  const futureSlots  = interviewSlots.filter(x => x.date > now);
+  const nextSlot     = todaySlots[0] || futureSlots[0];
+
+  if (!nextSlot) { banner.style.display = 'none'; return; }
+
+  const { iv, date } = nextSlot;
+  const isToday  = date.toDateString() === todayStr;
+  const bgColor  = isToday ? '#FFF7ED' : '#F0F9FF';
+  const border   = isToday ? '#FB923C' : '#38BDF8';
+  const icon     = isToday ? 'fa-fire' : 'fa-calendar-check';
+  const iconCol  = isToday ? '#EA580C' : '#0284C7';
+  const label    = isToday ? 'TODAY' : date.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+  const timeFmt  = date.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+  const countdown = countdownLabel(date);
+  const confirmed = iv.instituteConfirmed;
+  const meetBtn  = iv.meetingLink
+    ? `<a href="${iv.meetingLink}" target="_blank" rel="noopener" class="btn btn-s btn-sm" style="white-space:nowrap;"><i class="fa-solid fa-video"></i> Join Meeting</a>`
+    : (iv.scheduledVenue ? `<span style="font-size:12px;color:#374151;"><i class="fa-solid fa-map-pin" style="margin-right:4px;"></i>${iv.scheduledVenue}</span>` : '');
+  const confirmedBadge = confirmed
+    ? `<span class="badge bg-success" style="font-size:11px;"><i class="fa-solid fa-circle-check"></i> Institute Confirmed</span>`
+    : `<span class="badge bg-pending" style="font-size:11px;"><i class="fa-solid fa-clock"></i> Awaiting Confirmation</span>`;
+
+  banner.style.display = 'block';
+  banner.innerHTML = `
+    <div style="background:${bgColor};border:1.5px solid ${border};border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div style="width:40px;height:40px;background:${border};border-radius:10px;display:grid;place-items:center;flex-shrink:0;">
+        <i class="fa-solid ${icon}" style="color:#fff;font-size:1.1rem;"></i>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.05em;color:${iconCol};text-transform:uppercase;margin-bottom:3px;">
+          ${isToday ? '🔥 Interview ' : '📅 Upcoming — '}${label} · ${timeFmt}
+          <span style="font-weight:600;color:#6B7280;margin-left:8px;">(${countdown})</span>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:#111827;">${iv.departmentName || 'Interview'} &nbsp;@&nbsp; ${iv.instituteName || '—'}</div>
+        <div style="margin-top:5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          ${confirmedBadge}
+          ${meetBtn}
+        </div>
+      </div>
+      <button onclick="showView('schedule')" class="btn btn-outline btn-sm" style="white-space:nowrap;flex-shrink:0;">
+        <i class="fa-solid fa-calendar-alt"></i> View Full Schedule
+      </button>
+    </div>`;
+}
+
+// ── Bell notifications — one card per interview slot ──
 function renderNotifications() {
   const list = document.getElementById('notifList');
   if (!list) return;
-  const upcoming = APP.scheduleStudents.filter(s => !isCompleted(s.key) && (s.status === 'APPROVED' || s.status === 'PENDING'));
+
+  const now     = new Date();
+  const todayStr = now.toDateString();
+
+  // Deduplicate by interview id — show upcoming/unconfirmed slots
+  const upcoming = APP.interviews.filter(iv => {
+    const d = iv.scheduledDate ? new Date(iv.scheduledDate) : null;
+    return d && d >= now; // future or today
+  }).sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+
   list.innerHTML = '';
+
   if (!upcoming.length) {
-    list.innerHTML = '<div class="notif-item"><div><div style="font-size:13px;">No pending student assignments.</div></div></div>';
+    list.innerHTML = '<div class="notif-item"><div><div style="font-size:13px;color:var(--muted);">No upcoming interview slots.</div></div></div>';
     document.getElementById('notifDot').style.display = 'none';
     setText('notifFooterText', 'No new notifications');
     return;
   }
-  upcoming.slice(0, 4).forEach(s => {
-    list.innerHTML += `<div class="notif-item unread"><div class="notif-icon" style="background:#EFF6FF;color:var(--primary);"><i class="fa-solid fa-user-check"></i></div><div><div style="font-size:13px;font-weight:600;">Student Assigned</div><div style="font-size:12px;color:var(--muted);">${s.name} · ${s.scheduledText}</div></div></div>`;
+
+  upcoming.slice(0, 5).forEach(iv => {
+    const d = new Date(iv.scheduledDate);
+    const isToday = d.toDateString() === todayStr;
+    const timeFmt = d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+    const dateFmt = isToday ? 'Today' : d.toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+    const confirmed = iv.instituteConfirmed;
+    const bgIcon   = isToday ? '#FFF7ED' : '#EFF6FF';
+    const colIcon  = isToday ? '#EA580C' : 'var(--primary)';
+    const icon     = isToday ? 'fa-fire' : 'fa-calendar-check';
+    const students = APP.studentsByInterview[iv.id] ? APP.studentsByInterview[iv.id].length : iv.studentCount || 0;
+    const confirmedBit = confirmed
+      ? `<i class="fa-solid fa-circle-check" style="color:var(--success);font-size:10px;margin-right:3px;"></i> Confirmed`
+      : `<i class="fa-solid fa-clock" style="color:#92400E;font-size:10px;margin-right:3px;"></i> Awaiting confirmation`;
+
+    list.innerHTML += `
+      <div class="notif-item unread" onclick="showView('schedule')" style="cursor:pointer;">
+        <div class="notif-icon" style="background:${bgIcon};color:${colIcon};flex-shrink:0;">
+          <i class="fa-solid ${icon}"></i>
+        </div>
+        <div style="min-width:0;">
+          <div style="font-size:13px;font-weight:700;">${isToday ? '🔥 Interview TODAY' : 'Upcoming Interview'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${iv.departmentName || '—'} @ ${iv.instituteName || '—'}</div>
+          <div style="font-size:11.5px;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;">
+            <span><i class="fa-regular fa-clock" style="margin-right:3px;"></i>${dateFmt}, ${timeFmt} (${countdownLabel(d)})</span>
+            <span>· ${students} student${students !== 1 ? 's' : ''}</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${confirmedBit}</div>
+        </div>
+      </div>`;
   });
-  setText('notifFooterText', upcoming.length + ' pending assignment(s)');
+
+  setText('notifFooterText', upcoming.length + ' upcoming slot' + (upcoming.length !== 1 ? 's' : ''));
   document.getElementById('notifDot').style.display = '';
+}
+
+// ── Helper: build venue/link cell for a student row (pass the parent interview) ──
+function getInterviewForStudent(s) {
+  return APP.interviews.find(iv => iv.id === s.interviewId) || null;
 }
 
 function renderScheduleTables() {
   setText('scheduleTodayBadge', new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }));
-  const todayBody = document.getElementById('scheduleTodayBody');
-  const weekBody = document.getElementById('scheduleWeekBody');
+  const todayBody  = document.getElementById('scheduleTodayBody');
+  const weekBody   = document.getElementById('scheduleWeekBody');
+  const futureBody = document.getElementById('scheduleFutureBody');
   if (!todayBody || !weekBody) return;
 
-  const now = new Date();
-  const today = APP.scheduleStudents.filter(s => s.scheduledDate && s.scheduledDate.toDateString() === now.toDateString());
+  const now     = new Date();
+  const todayStr = now.toDateString();
   const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + 7);
-  const week = APP.scheduleStudents.filter(s => s.scheduledDate && s.scheduledDate > now && s.scheduledDate <= weekEnd);
 
-  todayBody.innerHTML = today.length ? today.map((s, idx) => `<tr><td><div style="display:flex;align-items:center;gap:10px;"><div style="width:34px;height:34px;border-radius:8px;background:#DBEAFE;color:#1E40AF;display:grid;place-items:center;font-weight:800;font-size:12px;">${s.initials}</div><div><b style="font-size:13px;">${s.name}</b><div style="font-size:12px;color:var(--muted);">${s.email || '—'}</div></div></div></td><td><span class="badge bg-info">${s.domain}</span></td><td>${s.institute}</td><td style="white-space:nowrap;">${s.scheduledDate ? s.scheduledDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'TBD'}</td><td>${s.instituteConfirmed ? '<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> Confirmed</span>' : '<span class="badge bg-pending"><i class="fa-solid fa-clock"></i> Awaiting</span>'}</td><td><span class="badge ${isCompleted(s.key) ? 'bg-success' : 'bg-pending'}">${isCompleted(s.key) ? 'Completed' : 'Upcoming'}</span></td><td><button class="btn btn-info btn-sm" onclick="openStudentModal(${idx}, true)"><i class="fa-solid fa-eye"></i> View</button></td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">No students assigned for today.</td></tr>';
+  const today  = APP.scheduleStudents.filter(s => s.scheduledDate && s.scheduledDate.toDateString() === todayStr);
+  const week   = APP.scheduleStudents.filter(s => s.scheduledDate && s.scheduledDate > now && s.scheduledDate <= weekEnd);
 
-  weekBody.innerHTML = week.length ? week.map((s, idx) => `<tr><td>${s.scheduledDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td><td>${s.name}</td><td><span class="badge bg-info">${s.domain}</span></td><td>${s.institute}</td><td>${s.scheduledDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</td><td>${s.instituteConfirmed ? '<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> Confirmed</span>' : '<span class="badge bg-pending"><i class="fa-solid fa-clock"></i> Awaiting</span>'}</td></tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">No students scheduled this week.</td></tr>';
+  todayBody.innerHTML = today.length
+    ? today.map((s, idx) => {
+        const iv = getInterviewForStudent(s);
+        return `<tr>
+          <td><div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:34px;height:34px;border-radius:8px;background:#DBEAFE;color:#1E40AF;display:grid;place-items:center;font-weight:800;font-size:12px;">${s.initials}</div>
+            <div><b style="font-size:13px;">${s.name}</b><div style="font-size:12px;color:var(--muted);">${s.email || '—'}</div></div>
+          </div></td>
+          <td><span class="badge bg-info">${s.domain}</span></td>
+          <td>${s.institute}</td>
+          <td style="white-space:nowrap;font-weight:600;">${s.scheduledDate ? s.scheduledDate.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }) : 'TBD'}
+            <div style="font-size:11px;color:var(--muted);font-weight:400;">${s.scheduledDate ? countdownLabel(s.scheduledDate) : ''}</div>
+          </td>
+          <td>${venueCell(iv)}</td>
+          <td>${s.instituteConfirmed ? '<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> Confirmed</span>' : '<span class="badge bg-pending"><i class="fa-solid fa-clock"></i> Awaiting</span>'}</td>
+          <td><span class="badge ${isCompleted(s.key) ? 'bg-success' : 'bg-pending'}">${isCompleted(s.key) ? 'Completed' : 'Upcoming'}</span></td>
+          <td><button class="btn btn-info btn-sm" onclick="openStudentModal(${idx}, true)"><i class="fa-solid fa-eye"></i> View</button></td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px;">No students assigned for today.</td></tr>';
+
+  weekBody.innerHTML = week.length
+    ? week.map((s, idx) => {
+        const iv = getInterviewForStudent(s);
+        return `<tr>
+          <td><b>${s.scheduledDate.toLocaleDateString('en-IN', { day:'2-digit', month:'short' })}</b></td>
+          <td>${s.name}</td>
+          <td><span class="badge bg-info">${s.domain}</span></td>
+          <td>${s.institute}</td>
+          <td style="white-space:nowrap;">${s.scheduledDate.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })}
+            <div style="font-size:11px;color:var(--muted);">${countdownLabel(s.scheduledDate)}</div>
+          </td>
+          <td>${venueCell(iv)}</td>
+          <td>${s.instituteConfirmed ? '<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> Confirmed</span>' : '<span class="badge bg-pending"><i class="fa-solid fa-clock"></i> Awaiting</span>'}</td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">No students scheduled this week.</td></tr>';
+
+  // Future slots — interview-level (grouped per interview, not per student)
+  if (futureBody) {
+    const futureInterviews = APP.interviews
+      .filter(iv => iv.scheduledDate && new Date(iv.scheduledDate) > now)
+      .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+
+    const setText2 = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setText2('futureSlotsCount', futureInterviews.length + ' slot' + (futureInterviews.length !== 1 ? 's' : ''));
+
+    futureBody.innerHTML = futureInterviews.length
+      ? futureInterviews.map(iv => {
+          const d = new Date(iv.scheduledDate);
+          const students = APP.studentsByInterview[iv.id] ? APP.studentsByInterview[iv.id].length : iv.studentCount || 0;
+          const statusBadge = iv.status === 'CONFIRMED'
+            ? `<span class="badge bg-success">Confirmed</span>`
+            : iv.status === 'AWAITING_CONFIRMATION'
+              ? `<span class="badge bg-pending">Awaiting</span>`
+              : `<span class="badge bg-info">${iv.status || '—'}</span>`;
+          return `<tr>
+            <td><b>${d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' })}</b>
+              <div style="font-size:11px;color:var(--muted);">${d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })} · ${countdownLabel(d)}</div>
+            </td>
+            <td><span class="badge bg-info">${iv.departmentName || '—'}</span></td>
+            <td>${iv.instituteName || '—'}</td>
+            <td><span class="badge bg-pending" style="background:#F3F4F6;color:#374151;">${students} student${students !== 1 ? 's' : ''}</span></td>
+            <td>${venueCell(iv)}</td>
+            <td>${statusBadge}</td>
+          </tr>`;
+        }).join('')
+      : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">No future slots assigned.</td></tr>';
+  }
 }
 
 function renderLiveStudent() {

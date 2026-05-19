@@ -79,6 +79,10 @@
 
 <!-- ═══ LIVE SESSION ═══ -->
 <section id="view-live" class="content-body active">
+
+  <!-- ── TODAY / UPCOMING SLOT BANNER ── -->
+  <div id="slotAlertBanner" style="display:none;margin-bottom:18px;"></div>
+
   <div class="step-bar">
     <div class="step active" id="step1"><div class="step-num">1</div><div class="step-label">Student Info</div></div>
     <div class="step-divider" id="div1"></div>
@@ -214,10 +218,10 @@
 <!-- ═══ SCHEDULE ═══ -->
 <section id="view-schedule" class="content-body">
   <div class="data-card">
-    <div class="card-header"><h4>Today's Assigned Students</h4><span class="badge bg-info" style="font-size:12px;padding:5px 12px;" id="scheduleTodayBadge">—</span></div>
+    <div class="card-header"><h4>Today's Slots</h4><span class="badge bg-info" style="font-size:12px;padding:5px 12px;" id="scheduleTodayBadge">—</span></div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Student</th><th>Domain</th><th>Institute</th><th>Scheduled Time</th><th>Inst. Confirmed</th><th>Status</th><th>Action</th></tr></thead>
+        <thead><tr><th>Student</th><th>Department</th><th>Institute</th><th>Time</th><th>Venue / Link</th><th>Inst. Confirmed</th><th>Status</th><th>Action</th></tr></thead>
         <tbody id="scheduleTodayBody"></tbody>
       </table>
     </div>
@@ -226,8 +230,17 @@
     <div class="card-header"><h4>Upcoming This Week</h4></div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Date</th><th>Student</th><th>Domain</th><th>Institute</th><th>Time</th><th>Inst. Confirmed</th></tr></thead>
+        <thead><tr><th>Date</th><th>Student</th><th>Department</th><th>Institute</th><th>Time</th><th>Venue / Link</th><th>Inst. Confirmed</th></tr></thead>
         <tbody id="scheduleWeekBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="data-card">
+    <div class="card-header"><h4>All Future Slots</h4><span id="futureSlotsCount" class="badge bg-pending" style="font-size:12px;padding:5px 12px;"></span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Department</th><th>Institute</th><th>Students</th><th>Venue / Link</th><th>Status</th></tr></thead>
+        <tbody id="scheduleFutureBody"></tbody>
       </table>
     </div>
   </div>

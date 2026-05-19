@@ -47,6 +47,9 @@ public class InterviewerDashboardController {
             m.put("instituteName",
                 r.getInstitute() != null ? r.getInstitute().getInstituteName() : "");
             m.put("scheduledDate", r.getScheduledDate());
+            m.put("startDate", r.getStartDate());
+            m.put("endDate", r.getEndDate());
+            m.put("expertise", r.getExpertise());
             m.put("scheduledVenue", r.getScheduledVenue());
             m.put("meetingLink", r.getMeetingLink());
             m.put("status", r.getStatus().name());
