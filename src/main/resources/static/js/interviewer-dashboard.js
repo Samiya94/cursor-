@@ -176,6 +176,14 @@ function countdownLabel(date) {
   return diff > 0 ? 'starting now' : 'just now';
 }
 
+// ── Renders a <span> whose text is updated every second by the ticker ──
+function countdownSpan(date, extraStyle) {
+  if (!date) return '';
+  const ts  = date instanceof Date ? date.getTime() : new Date(date).getTime();
+  const st  = extraStyle ? ` style="${extraStyle}"` : '';
+  return `<span data-countdown-ts="${ts}"${st}>${countdownLabel(date instanceof Date ? date : new Date(date))}</span>`;
+}
+
 // ── Venue / link cell helper ──
 function venueCell(iv) {
   if (iv && iv.meetingLink) {
@@ -215,7 +223,6 @@ function renderSlotAlertBanner() {
   const iconCol  = isToday ? '#EA580C' : '#0284C7';
   const label    = isToday ? 'TODAY' : date.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
   const timeFmt  = date.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
-  const countdown = countdownLabel(date);
   const confirmed = iv.instituteConfirmed;
   const meetBtn  = iv.meetingLink
     ? `<a href="${iv.meetingLink}" target="_blank" rel="noopener" class="btn btn-s btn-sm" style="white-space:nowrap;"><i class="fa-solid fa-video"></i> Join Meeting</a>`
@@ -233,7 +240,7 @@ function renderSlotAlertBanner() {
       <div style="flex:1;min-width:0;">
         <div style="font-size:11px;font-weight:800;letter-spacing:.05em;color:${iconCol};text-transform:uppercase;margin-bottom:3px;">
           ${isToday ? '🔥 Interview ' : '📅 Upcoming — '}${label} · ${timeFmt}
-          <span style="font-weight:600;color:#6B7280;margin-left:8px;">(${countdown})</span>
+          <span style="font-weight:600;color:#6B7280;margin-left:8px;">(${countdownSpan(date)})</span>
         </div>
         <div style="font-size:14px;font-weight:700;color:#111827;">${iv.departmentName || 'Interview'} &nbsp;@&nbsp; ${iv.instituteName || '—'}</div>
         <div style="margin-top:5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -293,7 +300,7 @@ function renderNotifications() {
           <div style="font-size:13px;font-weight:700;">${isToday ? '🔥 Interview TODAY' : 'Upcoming Interview'}</div>
           <div style="font-size:12px;color:var(--muted);margin-top:2px;">${iv.departmentName || '—'} @ ${iv.instituteName || '—'}</div>
           <div style="font-size:11.5px;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;">
-            <span><i class="fa-regular fa-clock" style="margin-right:3px;"></i>${dateFmt}, ${timeFmt} (${countdownLabel(d)})</span>
+            <span><i class="fa-regular fa-clock" style="margin-right:3px;"></i>${dateFmt}, ${timeFmt} (${countdownSpan(d)})</span>
             <span>· ${students} student${students !== 1 ? 's' : ''}</span>
           </div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">${confirmedBit}</div>
@@ -335,7 +342,7 @@ function renderScheduleTables() {
           <td><span class="badge bg-info">${s.domain}</span></td>
           <td>${s.institute}</td>
           <td style="white-space:nowrap;font-weight:600;">${s.scheduledDate ? s.scheduledDate.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }) : 'TBD'}
-            <div style="font-size:11px;color:var(--muted);font-weight:400;">${s.scheduledDate ? countdownLabel(s.scheduledDate) : ''}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:400;">${s.scheduledDate ? countdownSpan(s.scheduledDate) : ''}</div>
           </td>
           <td>${venueCell(iv)}</td>
           <td>${s.instituteConfirmed ? '<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> Confirmed</span>' : '<span class="badge bg-pending"><i class="fa-solid fa-clock"></i> Awaiting</span>'}</td>
@@ -354,7 +361,7 @@ function renderScheduleTables() {
           <td><span class="badge bg-info">${s.domain}</span></td>
           <td>${s.institute}</td>
           <td style="white-space:nowrap;">${s.scheduledDate.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })}
-            <div style="font-size:11px;color:var(--muted);">${countdownLabel(s.scheduledDate)}</div>
+            <div style="font-size:11px;color:var(--muted);">${countdownSpan(s.scheduledDate)}</div>
           </td>
           <td>${venueCell(iv)}</td>
           <td>${s.instituteConfirmed ? '<span class="badge bg-success"><i class="fa-solid fa-circle-check"></i> Confirmed</span>' : '<span class="badge bg-pending"><i class="fa-solid fa-clock"></i> Awaiting</span>'}</td>
@@ -382,7 +389,7 @@ function renderScheduleTables() {
               : `<span class="badge bg-info">${iv.status || '—'}</span>`;
           return `<tr>
             <td><b>${d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' })}</b>
-              <div style="font-size:11px;color:var(--muted);">${d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })} · ${countdownLabel(d)}</div>
+              <div style="font-size:11px;color:var(--muted);">${d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })} · ${countdownSpan(d)}</div>
             </td>
             <td><span class="badge bg-info">${iv.departmentName || '—'}</span></td>
             <td>${iv.instituteName || '—'}</td>
@@ -477,7 +484,36 @@ function renderProfileReviews() {
 function startRealtimeRefresh() {
   if (APP.realtimeStarted) return;
   APP.realtimeStarted = true;
+
+  // Full server refresh every 30s (picks up new assignments etc.)
   setInterval(refreshInterviewerDashboard, 30000);
+
+  // 1-second live ticker — updates countdown text in-place + auto-advances slot
+  setInterval(function () {
+    // 1. Tick every countdown label already in the DOM
+    document.querySelectorAll('[data-countdown-ts]').forEach(el => {
+      const ts = parseInt(el.getAttribute('data-countdown-ts'), 10);
+      el.textContent = countdownLabel(new Date(ts));
+    });
+
+    // 2. Check if the currently-shown slot has passed — if so, pick the next one
+    const interviews = APP.interviews || [];
+    const now = new Date();
+    const upcoming = interviews
+      .filter(iv => iv.scheduledDate && new Date(iv.scheduledDate) > now)
+      .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+
+    // Re-render banner only when the "next" slot changes (avoid DOM thrash every second)
+    const nextId = upcoming.length ? upcoming[0].id : null;
+    if (nextId !== APP._lastBannerSlotId) {
+      APP._lastBannerSlotId = nextId;
+      renderSlotAlertBanner();
+      renderNotifications();
+      renderScheduleTables();
+      chooseCurrentLiveStudent();
+      renderLiveStudent();
+    }
+  }, 1000);
 }
 
 function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
