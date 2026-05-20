@@ -24,6 +24,24 @@
 
     
 <!-- LOGOUT MODAL -->
+<!-- Profile Reminder Modal -->
+<div class="modal-overlay" id="profileReminderModal">
+  <div class="modal narrow" style="text-align:center;">
+    <div class="modal-header" style="border-bottom:none;padding-bottom:0;justify-content:center;position:relative;">
+      <div id="prModalIcon" style="width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font-size:22px;margin:0 auto 10px;"></div>
+    </div>
+    <div class="modal-body" style="padding-top:6px;">
+      <h3 id="prModalTitle" style="font-size:16px;font-weight:800;margin-bottom:8px;"></h3>
+      <p id="prModalMsg" style="font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:0;"></p>
+    </div>
+    <div class="modal-footer" style="justify-content:center;padding-top:10px;">
+      <button class="btn" id="prModalOkBtn" style="min-width:120px;justify-content:center;" onclick="acknowledgeProfileReminder()">
+        <i class="fa-solid fa-check"></i> OK, Got it!
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="logoutModal" onclick="if(event.target===this)closeOverlay('logoutModal')">
     <div class="logout-modal">
       <h3>Confirm Logout</h3>

@@ -532,7 +532,98 @@ function buildSlotCardHTML(s) {
       :'<button class="btn btn-s" style="width:100%;justify-content:center;margin-top:2px;" onclick="applySlotById('+s.id+',\''+escHtml(s.topic)+'\',\''+escHtml(s.dateTime)+'\',\''+escHtml(s.contactPerson||'')+'\')"><i class="fa-solid fa-check"></i> Apply</button>');
 }
 
+// ── Profile Reminder Modal ────────────────────────────────────────────────────
+var profileReminderAcknowledged = false;
+
+function isProfileComplete() {
+  var s = STUDENT;
+  var hasBasicInfo = !!(s.firstName && s.lastName && s.phone && s.department && s.year && s.degree);
+  var hasResume    = !!(STUDENT_RESUME && STUDENT_RESUME.url);
+  return { hasBasicInfo: hasBasicInfo, hasResume: hasResume, complete: hasBasicInfo && hasResume };
+}
+
+function showProfileReminderModal(onOk) {
+  var status = isProfileComplete();
+  var icon   = document.getElementById('prModalIcon');
+  var title  = document.getElementById('prModalTitle');
+  var msg    = document.getElementById('prModalMsg');
+  var okBtn  = document.getElementById('prModalOkBtn');
+
+  // If resume is missing — HARD BLOCK: OK redirects to profile, apply never fires
+  if (!status.hasResume) {
+    var bothMissing = !status.hasBasicInfo;
+    icon.style.background = '#FEF2F2';
+    icon.style.color      = '#DC2626';
+    icon.innerHTML        = bothMissing
+      ? '<i class="fa-solid fa-triangle-exclamation"></i>'
+      : '<i class="fa-solid fa-file-arrow-up"></i>';
+    title.textContent = bothMissing ? 'Profile incomplete & no resume!' : 'Resume required to apply!';
+    msg.innerHTML = bothMissing
+      ? 'You cannot apply for an interview without completing your profile and uploading a resume.<br><br>' +
+        '<ul style="text-align:left;margin:10px 0 0 18px;font-size:13px;line-height:1.9;">' +
+        '<li>Fill in your basic details (name, phone, year, degree)</li>' +
+        '<li>Upload your latest resume (PDF)</li>' +
+        '</ul>' +
+        '<br><span style="font-size:12.5px;color:var(--muted);">Click <b>Go to Profile</b> to complete your setup.</span>'
+      : 'You cannot apply for an interview without uploading a resume.<br><br>' +
+        'Interviewers <b>require a resume</b> to review your application. ' +
+        'Please upload your latest PDF resume from <b>My Profile → Resume</b>.<br><br>' +
+        '<span style="font-size:12.5px;color:var(--muted);">Once uploaded, you\'ll be able to apply instantly.</span>';
+    okBtn.style.background = '#DC2626';
+    okBtn.innerHTML        = '<i class="fa-solid fa-user-pen"></i> Go to Profile';
+    // OK takes the student to profile, does NOT proceed to apply
+    window._prOnOk = function() { showView('profile'); };
+
+  } else {
+    // Resume exists — first-time reminder only, then allow apply
+    if (status.complete) {
+      icon.style.background = '#EFF6FF';
+      icon.style.color      = '#1E3A8A';
+      icon.innerHTML        = '<i class="fa-solid fa-circle-check"></i>';
+      title.textContent     = 'Good to go — just double-check!';
+      msg.innerHTML         =
+        'Your profile is complete and resume is uploaded! 🎉<br><br>' +
+        'Before applying, quickly verify that your <b>details are accurate</b> — ' +
+        'correct name, department, phone, and that your latest resume is on file.<br><br>' +
+        '<span style="color:var(--muted);font-size:12.5px;">Interviewers see exactly what\'s on your profile.</span>';
+      okBtn.style.background = 'var(--primary)';
+    } else {
+      // Resume uploaded but profile info incomplete — warn, but still let them apply
+      icon.style.background = '#FFF7ED';
+      icon.style.color      = '#EA580C';
+      icon.innerHTML        = '<i class="fa-solid fa-user-pen"></i>';
+      title.textContent     = 'Almost there — profile incomplete!';
+      msg.innerHTML         =
+        'Your resume is uploaded, but some <b>profile fields are missing</b> (name, phone, year or degree).<br><br>' +
+        'We recommend completing your profile so interviewers can identify you correctly. ' +
+        'You may still apply now, but please update your profile soon.<br><br>' +
+        '<span style="font-size:12.5px;color:var(--muted);">Click OK to proceed with your application.</span>';
+      okBtn.style.background = '#EA580C';
+    }
+    okBtn.innerHTML = '<i class="fa-solid fa-check"></i> OK, Got it!';
+    window._prOnOk  = onOk || null;
+  }
+
+  document.getElementById('profileReminderModal').classList.add('open');
+}
+
+function acknowledgeProfileReminder() {
+  // Only mark acknowledged if resume is present (otherwise it's a hard block)
+  var status = isProfileComplete();
+  if (status.hasResume) profileReminderAcknowledged = true;
+  document.getElementById('profileReminderModal').classList.remove('open');
+  if (typeof window._prOnOk === 'function') {
+    window._prOnOk();
+    window._prOnOk = null;
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function applySlotById(id, topic, dateTime, contactPerson) {
+  if (!profileReminderAcknowledged) {
+    showProfileReminderModal(function() { applySlotById(id, topic, dateTime, contactPerson); });
+    return;
+  }
   appliedSlots[id] = true;
   renderAvailableSlots();
   var tbody = document.getElementById('intTableBody');
@@ -623,6 +714,10 @@ function renderAPISlotGrid(containerId, slotsOverride) {
 }
 
 async function applyToInterview(interviewRequestId, topic) {
+    if (!profileReminderAcknowledged) {
+        showProfileReminderModal(function() { applyToInterview(interviewRequestId, topic); });
+        return;
+    }
     try {
         var res = await secureFetch('/api/applications/' + interviewRequestId + '/apply', {
             method: 'POST',
