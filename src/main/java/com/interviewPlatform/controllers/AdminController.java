@@ -6,7 +6,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +26,9 @@ import com.interviewPlatform.repositories.StudentRepository;
 import com.interviewPlatform.repositories.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
@@ -33,6 +39,10 @@ public class AdminController {
     private final InterviewerRepository interviewerRepository;
     private final StudentRepository studentRepository;
     private final InterviewRequestRepository interviewRequestRepository;
+    private final JavaMailSender mailSender;
+
+    @Value("${app.mail.from:${spring.mail.username:no-reply@interview-platform.local}}")
+    private String fromEmail;
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/stats")
@@ -132,7 +142,42 @@ public class AdminController {
         User user = interviewer.getUser();
         user.setStatus(Status.ACTIVE);
         userRepository.save(user);
+
+        // Send approval email to the interviewer
+        sendApprovalEmail(user.getEmail(), interviewer.getFullName());
+
         return ResponseEntity.ok("Interviewer approved successfully");
+    }
+
+    private void sendApprovalEmail(String email, String fullName) {
+        String name = (fullName != null && !fullName.isBlank()) ? fullName : "Interviewer";
+        String firstName = name.split(" ")[0];
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(email);
+        message.setFrom(fromEmail);
+        message.setSubject("🎉 You're approved — Welcome to Interview Platform!");
+        message.setText(
+            "Hi " + firstName + ",\n\n"
+            + "Great news! Your interviewer account has been reviewed and approved by our admin team.\n\n"
+            + "You can now log in to your dashboard and start taking interviews:\n"
+            + "👉 http://localhost:8080/login\n\n"
+            + "Here's what you can do next:\n"
+            + "  • Complete your profile if you haven't already\n"
+            + "  • Check your assigned interviews from your dashboard\n"
+            + "  • View student profiles before each session\n\n"
+            + "If you have any questions, feel free to reach out to the admin team.\n\n"
+            + "Welcome aboard!\n"
+            + "— Interview Platform Team"
+        );
+
+        try {
+            mailSender.send(message);
+            log.info("Approval email sent to interviewer: {}", email);
+        } catch (MailException e) {
+            // Log the failure but don't block the approval — status is already saved
+            log.error("Failed to send approval email to {}: {}", email, e.getMessage());
+        }
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -191,7 +236,7 @@ public class AdminController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/profile")
-    public ResponseEntity<Map<String, Object>> getAdminProfile(org.springframework.security.core.Authentication auth) {
+    public ResponseEntity<Map<String, Object>> getAdminProfile(Authentication auth) {
         User user = userRepository.findByEmail(auth.getName())
             .orElseThrow(() -> new RuntimeException("Admin not found"));
         java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();

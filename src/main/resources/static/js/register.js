@@ -45,6 +45,7 @@ if(instId && token){
   });
 
 }
+
 /* ── Tab Switch ── */
 /* ── TOGGLE PASSWORD VISIBILITY ── */
 function togglePw(inputId, iconId) {
@@ -136,6 +137,69 @@ function checkStrength(inputId, barId, textId){
   txt.style.color=l.bg;
 }
 
+/* ── Interviewer Success Screen ── */
+function showInterviewerSuccess(name) {
+  const panel = document.getElementById('panel-interviewer');
+  if (!panel) return;
+
+  // Extract first name for personalised greeting
+  const firstName = (name || '').split(' ')[0] || 'there';
+
+  panel.innerHTML = `
+    <div style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 48px 32px;
+      gap: 0;
+    ">
+      <!-- animated tick circle -->
+      <div style="
+        width: 72px; height: 72px; border-radius: 50%;
+        background: #DCFCE7; display: flex; align-items: center;
+        justify-content: center; margin-bottom: 20px;
+        animation: popIn .4s cubic-bezier(.175,.885,.32,1.275) both;
+      ">
+        <i class="fa-solid fa-circle-check" style="font-size:36px; color:#16A34A;"></i>
+      </div>
+
+      <h2 style="font-size:22px; font-weight:800; color:var(--dark,#0F172A); margin-bottom:8px;">
+        You're registered, ${firstName}!
+      </h2>
+
+      <p style="font-size:15px; color:#64748B; margin-bottom:28px; max-width:360px; line-height:1.6;">
+        Your application has been received. Our admin team will review your profile and
+        <strong style="color:var(--dark,#0F172A);">notify you by email</strong> once your account is approved.
+      </p>
+
+      <a href="/login" style="
+        display:inline-flex; align-items:center; gap:8px;
+        background:var(--primary,#1E3A8A); color:#fff;
+        padding:12px 28px; border-radius:8px;
+        font-size:14px; font-weight:700; text-decoration:none;
+        transition: opacity .2s;
+      " onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        <i class="fa-solid fa-right-to-bracket"></i> Go to Login
+      </a>
+
+
+
+    </div>
+
+    <style>
+      @keyframes popIn {
+        0%   { transform: scale(0.5); opacity: 0; }
+        100% { transform: scale(1);   opacity: 1; }
+      }
+    </style>
+  `;
+
+  // Scroll to the success card smoothly
+  panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 /* ── Form Submit ── */
 async function handleSubmit(e, role){
   e.preventDefault();
@@ -186,6 +250,10 @@ async function handleSubmit(e, role){
       if(response.ok){
         showToast('Institute registered successfully!','success');
         form.reset();
+        // Institute has no approval step — redirect to login after toast
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 2000);
       }
 
     }
@@ -196,6 +264,11 @@ async function handleSubmit(e, role){
     if(role === 'interviewer'){
 
       const formData = new FormData(form);
+
+      // Capture name before we do anything else (form.reset() will clear it)
+      const fullName = form.querySelector('input[name="fullName"]')
+                         ? form.querySelector('input[name="fullName"]').value.trim()
+                         : '';
 
       // Skills fix
       const skills = Array.from(document.querySelectorAll('#skills-tags-wrap .tag-chip'))
@@ -213,19 +286,15 @@ async function handleSubmit(e, role){
       });
 
       if(response.ok){
-        showToast('Interviewer registered successfully!','success');
-        form.reset();
+        // Replace the form with the approval-pending success screen
+        // No auto-redirect — let the interviewer read and then click Go to Login
+        showInterviewerSuccess(fullName);
       } else {
         const errorText = await response.text();
         showToast(errorText || 'Interviewer registration failed.','error');
         return;
       }
     }
-
-    // Redirect
-    setTimeout(() => {
-      window.location.href = "/login";
-    }, 2000);
 
   } catch (error) {
     console.error(error);
