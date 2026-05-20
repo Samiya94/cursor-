@@ -44,8 +44,14 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/register/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/password-reset/**").permitAll()
 
-                // GET /api/domains is public (used on registration pages), but POST/DELETE require ADMIN
+                // GET /api/domains is public (used on registration pages)
                 .requestMatchers(HttpMethod.GET, "/api/domains").permitAll()
+
+                // FIX: POST and DELETE /api/domains must be explicitly restricted to ADMIN
+                // Without these rules they fall through to the generic /api/** catch-all
+                // which only checks "authenticated" — bypassing the role check entirely.
+                .requestMatchers(HttpMethod.POST, "/api/domains").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/domains").hasRole("ADMIN")
 
                 // All public paths (GET pages)
                 .requestMatchers(
