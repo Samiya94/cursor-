@@ -153,7 +153,9 @@ function normalizeStudent(interview, student) {
 
 function chooseCurrentLiveStudent() {
   const now = Date.now();
-  const candidates = APP.scheduleStudents.filter(s => s.status === 'APPROVED' || s.status === 'PENDING');
+  const candidates = APP.scheduleStudents.filter(s =>
+    (s.status === 'APPROVED' || s.status === 'PENDING') && !isCompleted(s.key)
+  );
   candidates.sort((a, b) => {
     const ad = a.scheduledDate ? a.scheduledDate.getTime() : Number.MAX_SAFE_INTEGER;
     const bd = b.scheduledDate ? b.scheduledDate.getTime() : Number.MAX_SAFE_INTEGER;
@@ -556,18 +558,33 @@ function submitEvalAndNext() {
   clearInterval(APP.timerInterval);
   APP.seconds = 0;
   setText('liveClock', '00:00:00');
+
+  // Reset all eval form fields for next student
+  document.getElementById('overallPerformance').value = '';
+  document.getElementById('strengthsField').value = '';
+  document.getElementById('remarksField').value = '';
+  setText('evalDuration', '00:00:00');
+
   document.getElementById('startBtn').disabled = false;
   document.getElementById('endBtn').disabled = true;
+
+  // Advance to next student (completed key is now set, so chooseCurrentLiveStudent skips them)
   chooseCurrentLiveStudent();
   renderLiveStudent();
   renderHistory();
   renderProfileStats();
   renderProfileReviews();
+
   document.getElementById('phase-eval').classList.remove('active');
   document.getElementById('phase-live').classList.remove('active');
   document.getElementById('phase-info').classList.add('active');
   setStep(1);
-  showToast('Evaluation submitted and history updated.');
+
+  if (APP.currentLiveStudent) {
+    showToast('Evaluation submitted! Next up: ' + APP.currentLiveStudent.name);
+  } else {
+    showToast('Evaluation submitted. All students for today are done! 🎉');
+  }
 }
 
 function openStudentModal(idx, fromToday) {
