@@ -32,6 +32,10 @@ public class StudentApplication {
 
     private LocalDateTime appliedAt;
 
+    // ── NEW: Path to the interview video uploaded by the interviewer ──
+    // Stored as a relative path e.g. "interview-videos/1234_student_interview.mp4"
+    private String videoUrl;
+
     @PrePersist
     public void onCreate() {
         this.appliedAt = LocalDateTime.now();

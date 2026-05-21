@@ -1,13 +1,20 @@
 package com.interviewPlatform.controllers;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.interviewPlatform.entities.Interviewer;
 import com.interviewPlatform.entities.StudentApplication;
@@ -26,7 +33,10 @@ public class InterviewerDashboardController {
     private final InterviewRequestRepository interviewRequestRepository;
     private final StudentApplicationRepository applicationRepository;
 
-    // Interviewer sees interviews they are assigned to
+    @Value("${file.upload.dir:uploads/}")
+    private String uploadDir;
+
+    // ── Interviewer sees interviews they are assigned to ──
     @PreAuthorize("hasRole('INTERVIEWER')")
     @GetMapping("/assigned-interviews")
     public ResponseEntity<?> getAssignedInterviews(Authentication auth) {
@@ -61,7 +71,7 @@ public class InterviewerDashboardController {
         return ResponseEntity.ok(result);
     }
 
-    // Interviewer sees the list of students for a specific interview
+    // ── Interviewer sees the list of students for a specific interview ──
     @PreAuthorize("hasRole('INTERVIEWER')")
     @GetMapping("/assigned-interviews/{id}/students")
     public ResponseEntity<?> getStudentsForInterview(@PathVariable Long id, Authentication auth) {
@@ -87,21 +97,103 @@ public class InterviewerDashboardController {
             m.put("studentClass", a.getStudent().getStudentClass());
             m.put("applicationStatus", a.getStatus().name());
             m.put("appliedAt", a.getAppliedAt());
-            // Include resume info so interviewers can view student resumes
+            // Resume info
             String resumeFileName = a.getStudent().getResumeUrl();
             m.put("resumeFileName", resumeFileName);
             m.put("resumeUrl", (resumeFileName != null && !resumeFileName.isBlank())
                 ? "/uploads/" + resumeFileName : null);
-            // Include extra profile info for the live interview panel
+            // Extra profile info
             m.put("skills", a.getStudent().getSkills());
             m.put("about", a.getStudent().getAbout());
             m.put("profilePhotoUrl", a.getStudent().getProfilePhotoUrl());
+            // ── NEW: include video URL if a video has been uploaded for this student ──
+            String videoUrl = a.getVideoUrl();
+            m.put("videoUrl", (videoUrl != null && !videoUrl.isBlank())
+                ? "/uploads/" + videoUrl : null);
             return m;
         }).toList();
         return ResponseEntity.ok(result);
     }
 
-    // Interviewer profile
+    // ── NEW: Upload interview video for a specific student application ──
+    @PreAuthorize("hasRole('INTERVIEWER')")
+    @PostMapping("/assigned-interviews/{interviewId}/students/{applicationId}/upload-video")
+    public ResponseEntity<?> uploadInterviewVideo(
+            @PathVariable Long interviewId,
+            @PathVariable Long applicationId,
+            @RequestParam("video") MultipartFile videoFile,
+            Authentication auth) {
+
+        // 1. Verify the interviewer is assigned to this interview
+        Interviewer interviewer = interviewerRepository.findByUserEmail(auth.getName())
+            .orElseThrow(() -> new RuntimeException("Interviewer not found"));
+
+        var req = interviewRequestRepository.findById(interviewId)
+            .orElseThrow(() -> new RuntimeException("Interview request not found"));
+
+        boolean allowed = (req.getAssignedInterviewer() != null && req.getAssignedInterviewer().getId().equals(interviewer.getId()))
+                || (req.getAssignedInterviewerIds() != null && req.getAssignedInterviewerIds().contains(interviewer.getId()));
+        if (!allowed) {
+            return ResponseEntity.status(403).body("You are not assigned to this interview");
+        }
+
+        // 2. Find the student application and confirm it belongs to this interview
+        StudentApplication application = applicationRepository.findById(applicationId)
+            .orElseThrow(() -> new RuntimeException("Student application not found"));
+
+        if (!application.getInterviewRequest().getId().equals(interviewId)) {
+            return ResponseEntity.status(400).body("Application does not belong to this interview");
+        }
+
+        // 3. Validate the uploaded file is a video
+        String originalFilename = videoFile.getOriginalFilename();
+        if (originalFilename == null || originalFilename.isBlank()) {
+            return ResponseEntity.badRequest().body("Invalid file name");
+        }
+        String ext = originalFilename.substring(originalFilename.lastIndexOf('.') + 1).toLowerCase();
+        List<String> allowedExtensions = List.of("mp4", "webm", "mov", "avi", "mkv");
+        if (!allowedExtensions.contains(ext)) {
+            return ResponseEntity.badRequest()
+                .body("Unsupported video format. Allowed: mp4, webm, mov, avi, mkv");
+        }
+
+        // 4. Save the file to uploads/interview-videos/
+        try {
+            String dir = (uploadDir == null || uploadDir.isBlank()) ? "uploads/" : uploadDir;
+            if (!dir.endsWith("/") && !dir.endsWith(File.separator)) dir = dir + "/";
+
+            Path videosDir = Paths.get(dir + "interview-videos/");
+            Files.createDirectories(videosDir);
+
+            // Unique filename: timestamp_interviewId_applicationId_originalName
+            String savedFilename = System.currentTimeMillis()
+                + "_iv" + interviewId
+                + "_app" + applicationId
+                + "_" + originalFilename.replaceAll("[^a-zA-Z0-9._-]", "_");
+
+            Path destination = videosDir.resolve(savedFilename);
+            try (var inputStream = videoFile.getInputStream()) {
+                Files.copy(inputStream, destination,
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            // 5. Persist the relative path on the application record
+            String relativeVideoPath = "interview-videos/" + savedFilename;
+            application.setVideoUrl(relativeVideoPath);
+            applicationRepository.save(application);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Video uploaded successfully");
+            response.put("videoUrl", "/uploads/" + relativeVideoPath);
+            return ResponseEntity.ok(response);
+
+        } catch (IOException e) {
+            return ResponseEntity.status(500)
+                .body("Failed to save video: " + e.getMessage());
+        }
+    }
+
+    // ── Interviewer profile ──
     @PreAuthorize("hasRole('INTERVIEWER')")
     @GetMapping("/me")
     public ResponseEntity<?> getProfile(Authentication auth) {
@@ -124,7 +216,6 @@ public class InterviewerDashboardController {
         m.put("createdAt", iv.getCreatedAt());
         m.put("email", iv.getUser() != null ? iv.getUser().getEmail() : null);
         m.put("status", iv.getUser() != null && iv.getUser().getStatus() != null ? iv.getUser().getStatus().name() : null);
-        // resumeUrl is stored as a full path e.g. "/uploads/resumes/filename.pdf" — use it directly
         String rawResume = iv.getResumeUrl();
         m.put("resumeUrl", (rawResume != null && !rawResume.isBlank()) ? rawResume : null);
         m.put("resumeFileName", rawResume);

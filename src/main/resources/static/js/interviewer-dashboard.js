@@ -147,6 +147,8 @@ function normalizeStudent(interview, student) {
     skills: student.skills || [],
     about: student.about || '',
     profilePhotoUrl: student.profilePhotoUrl || null,
+    videoUrl: student.videoUrl || null,
+    applicationId: student.applicationId || null,
     instituteConfirmed: interview.instituteConfirmed === true
   };
 }
@@ -432,7 +434,7 @@ function renderHistory() {
   if (!list) return;
   const completed = APP.scheduleStudents.filter(s => isCompleted(s.key));
   const merged = [...completed].sort((a, b) => (b.scheduledDate || 0) - (a.scheduledDate || 0));
-  list.innerHTML = merged.map(s => `<div class="history-card" data-institute="${(s.institute || '').toLowerCase()}"><div class="history-card-header"><div style="display:flex;align-items:center;gap:13px;"><div style="width:42px;height:42px;border-radius:10px;background:#DBEAFE;color:#1E40AF;display:grid;place-items:center;font-weight:800;">${s.initials}</div><div><b style="font-size:15px;">${s.name}</b><div style="font-size:12px;color:var(--muted);margin-top:2px;"><i class="fa-solid fa-calendar"></i> ${s.scheduledDate ? s.scheduledDate.toLocaleDateString() : '—'} &nbsp;|&nbsp;<i class="fa-solid fa-building"></i> ${s.institute}</div></div></div><div style="display:flex;align-items:center;gap:10px;"><span class="badge bg-success">Completed</span><button class="btn btn-info btn-sm" onclick="openVideoModal('${(s.name || '').replace(/'/g, "\\'")}','${s.scheduledDate ? s.scheduledDate.toLocaleDateString() : '—'}')"><i class="fa-solid fa-play"></i> Watch</button></div></div><div class="history-card-body"><div class="history-meta"><span>Domain</span><b>${s.domain}</b></div><div class="history-meta"><span>CGPA</span><b>${s.cgpa}</b></div><div class="history-meta"><span>Status</span><b>Evaluation Submitted</b></div></div></div>`).join('');
+  list.innerHTML = merged.map(s => `<div class="history-card" data-institute="${(s.institute || '').toLowerCase()}"><div class="history-card-header"><div style="display:flex;align-items:center;gap:13px;"><div style="width:42px;height:42px;border-radius:10px;background:#DBEAFE;color:#1E40AF;display:grid;place-items:center;font-weight:800;">${s.initials}</div><div><b style="font-size:15px;">${s.name}</b><div style="font-size:12px;color:var(--muted);margin-top:2px;"><i class="fa-solid fa-calendar"></i> ${s.scheduledDate ? s.scheduledDate.toLocaleDateString() : '—'} &nbsp;|&nbsp;<i class="fa-solid fa-building"></i> ${s.institute}</div></div></div><div style="display:flex;align-items:center;gap:10px;"><span class="badge bg-success">Completed</span><button class="btn btn-info btn-sm" onclick="openVideoModal('${(s.name || '').replace(/'/g, "\\'")}','${s.scheduledDate ? s.scheduledDate.toLocaleDateString() : '—'}', ${JSON.stringify(s.applicationId)}, ${JSON.stringify(s.interviewId)}, ${s.videoUrl ? '\'' + s.videoUrl.replace(/'/g, '%27') + '\'' : 'null'})"><i class="fa-solid fa-play"></i> Watch</button></div></div><div class="history-card-body"><div class="history-meta"><span>Domain</span><b>${s.domain}</b></div><div class="history-meta"><span>CGPA</span><b>${s.cgpa}</b></div><div class="history-meta"><span>Status</span><b>Evaluation Submitted</b></div></div></div>`).join('');
   populateInstituteFilter(merged);
   applyHistFilters();
 }
@@ -539,7 +541,7 @@ function showView(v) {
 }
 
 function openOverlay(id) { document.getElementById(id).classList.add('open'); }
-function closeOverlay(id) { document.getElementById(id).classList.remove('open'); if (id === 'resumeViewerModal') { const frame = document.getElementById('resumeViewerFrame'); const obj = document.getElementById('resumeViewerObject'); if (frame) frame.src = ''; if (obj) obj.data = ''; } }
+function closeOverlay(id) { document.getElementById(id).classList.remove('open'); if (id === 'resumeViewerModal') { const frame = document.getElementById('resumeViewerFrame'); const obj = document.getElementById('resumeViewerObject'); if (frame) frame.src = ''; if (obj) obj.data = ''; } if (id === 'videoModal') { const videoEl = document.getElementById('vmVideoPlayer'); if (videoEl) { videoEl.pause(); videoEl.src = ''; videoEl.load(); } } }
 function scrollToSection(id) { setTimeout(() => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200); }
 function setStep(n) { for (let i = 1; i <= 3; i++) { const s = document.getElementById('step' + i); s.classList.remove('active', 'done'); if (i < n) s.classList.add('done'); else if (i === n) s.classList.add('active'); } for (let i = 1; i <= 2; i++) document.getElementById('div' + i).classList.toggle('done', i < n); }
 function goToPhase2() { if (!APP.currentLiveStudent) return showToast('No students are available for interview yet.', 'warn'); document.getElementById('phase-info').classList.remove('active'); document.getElementById('phase-live').classList.add('active'); setStep(2); }
@@ -598,7 +600,290 @@ function openStudentModal(idx, fromToday) {
 function updateHistCount() { const cards = document.querySelectorAll('#historyList .history-card'); let v = 0; cards.forEach(c => { if (c.style.display !== 'none') v++; }); setText('histCount', `${v} record${v !== 1 ? 's' : ''}`); }
 function applyHistFilters() { const instVal = (document.getElementById('histInstFilter').value || '').toLowerCase().trim(); let visible = 0; document.querySelectorAll('#historyList .history-card').forEach(card => { const ok = !instVal || (card.getAttribute('data-institute') || '').toLowerCase().includes(instVal); card.style.display = ok ? 'block' : 'none'; if (ok) visible++; }); document.getElementById('historyEmpty').style.display = visible === 0 ? 'block' : 'none'; updateHistCount(); }
 function clearHistFilters() { document.getElementById('histInstFilter').value = ''; applyHistFilters(); }
-function openVideoModal(s, d) { setText('vm-student', s); setText('vm-date', d); setText('videoModalTitle', `Recording — ${s}`); openOverlay('videoModal'); }
+// ================================================================
+// CHANGES TO: interviewer-dashboard.js
+//
+// 1. In normalizeStudent() — add videoUrl field (one line)
+// 2. In renderHistory() — pass applicationId and videoUrl to openVideoModal()
+// 3. Replace openVideoModal() — new version with upload logic
+// 4. Add new helper functions: handleVideoFileDrop, handleVideoFileSelected,
+//    submitVideoUpload, downloadCurrentVideo
+// ================================================================
+
+
+// ── CHANGE 1: In normalizeStudent(), add videoUrl after profilePhotoUrl ──
+// Find this block:
+//    profilePhotoUrl: student.profilePhotoUrl || null,
+//    instituteConfirmed: interview.instituteConfirmed === true
+// Replace with:
+//    profilePhotoUrl: student.profilePhotoUrl || null,
+//    videoUrl: student.videoUrl || null,           // ← ADD THIS LINE
+//    applicationId: student.applicationId || null,  // already stored in key but explicit is safer
+//    instituteConfirmed: interview.instituteConfirmed === true
+
+
+// ── CHANGE 2: In renderHistory(), update the Watch button onclick ──
+// Find:
+//   onclick="openVideoModal('${(s.name || '').replace(/'/g, "\\'")}','${s.scheduledDate ? s.scheduledDate.toLocaleDateString() : '—'}')"
+// Replace with:
+//   onclick="openVideoModal('${(s.name || '').replace(/'/g, "\\'")}','${s.scheduledDate ? s.scheduledDate.toLocaleDateString() : '—'}', ${JSON.stringify(s.applicationId)}, ${JSON.stringify(s.interviewId)}, ${JSON.stringify(s.videoUrl)})"
+
+
+// ── CHANGE 3: Replace the existing openVideoModal function ──
+// Find (line ~601):
+//   function openVideoModal(s, d) { setText('vm-student', s); setText('vm-date', d); setText('videoModalTitle', `Recording — ${s}`); openOverlay('videoModal'); }
+// Replace with the full block below:
+
+/** State for the video upload modal */
+const VIDEO_MODAL = {
+  applicationId: null,
+  interviewId: null,
+  selectedFile: null,
+  currentVideoUrl: null
+};
+
+function openVideoModal(studentName, date, applicationId, interviewId, existingVideoUrl) {
+  setText('vm-student', studentName);
+  setText('vm-date', date);
+  setText('videoModalTitle', 'Recording — ' + studentName);
+
+  VIDEO_MODAL.applicationId = applicationId;
+  VIDEO_MODAL.interviewId = interviewId;
+  VIDEO_MODAL.selectedFile = null;
+  VIDEO_MODAL.currentVideoUrl = existingVideoUrl || null;
+
+  // Reset upload area
+  const progressWrap = document.getElementById('vmUploadProgress');
+  if (progressWrap) progressWrap.style.display = 'none';
+  const uploadBtn = document.getElementById('vmUploadBtn');
+  const fileInput = document.getElementById('vmFileInput');
+  if (fileInput) fileInput.value = '';
+  // Reset file card
+  const fileCard = document.getElementById('vmFileCard');
+  if (fileCard) fileCard.style.display = 'none';
+  const uploadArea = document.getElementById('vmUploadArea');
+  const btnText = document.getElementById('vmUploadBtnText');
+  if (existingVideoUrl) {
+    // Video exists: enable Replace button, hide upload drag area
+    if (uploadBtn) uploadBtn.disabled = false;
+    if (btnText) btnText.textContent = 'Replace Recording';
+    if (uploadArea) uploadArea.style.display = 'none';
+  } else {
+    // No video: disable Save button until file selected, show upload drag area
+    if (uploadBtn) uploadBtn.disabled = true;
+    if (btnText) btnText.textContent = 'Save Recording';
+    if (uploadArea) uploadArea.style.display = '';
+  }
+
+  // Show existing video or placeholder
+  const playerWrap = document.getElementById('vmPlayerWrap');
+  const placeholder = document.getElementById('vmPlaceholder');
+  const downloadBtn = document.getElementById('vmDownloadBtn');
+  const statusEl = document.getElementById('vm-status');
+
+  if (existingVideoUrl) {
+    const videoEl = document.getElementById('vmVideoPlayer');
+    if (videoEl) { videoEl.src = existingVideoUrl; videoEl.load(); }
+    if (playerWrap) playerWrap.style.display = '';
+    if (placeholder) placeholder.style.display = 'none';
+    if (downloadBtn) downloadBtn.style.display = '';
+    if (statusEl) statusEl.textContent = 'Uploaded';
+  } else {
+    if (playerWrap) playerWrap.style.display = 'none';
+    if (placeholder) placeholder.style.display = '';
+    if (downloadBtn) downloadBtn.style.display = 'none';
+    if (statusEl) statusEl.textContent = 'Not uploaded';
+  }
+
+  openOverlay('videoModal');
+}
+
+function handleVideoFileDrop(event) {
+  event.preventDefault();
+  document.getElementById('vmUploadArea').style.borderColor = '#CBD5E1';
+  const file = event.dataTransfer.files[0];
+  if (file) handleVideoFileSelected(file);
+}
+
+function handleVideoFileSelected(file) {
+  if (!file) return;
+  const allowedExts = ['mp4', 'webm', 'mov', 'avi', 'mkv'];
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (!allowedExts.includes(ext)) {
+    showToast('Unsupported file type. Please upload MP4, WebM, MOV, AVI, or MKV.', 'error');
+    return;
+  }
+
+  VIDEO_MODAL.selectedFile = file;
+
+  // Hide upload area, show file card
+  const uploadArea = document.getElementById('vmUploadArea');
+  if (uploadArea) uploadArea.style.display = 'none';
+
+  const fileCard = document.getElementById('vmFileCard');
+  if (fileCard) fileCard.style.display = '';
+
+  const fileNameEl = document.getElementById('vmSelectedFileName');
+  if (fileNameEl) fileNameEl.textContent = file.name;
+
+  const fileSizeEl = document.getElementById('vmSelectedFileSize');
+  if (fileSizeEl) {
+    const mb = (file.size / (1024 * 1024)).toFixed(1);
+    fileSizeEl.textContent = mb + ' MB · Ready to upload';
+  }
+
+  // Reset progress bar
+  const pctEl = document.getElementById('vmUploadPct');
+  const bar = document.getElementById('vmProgressBar');
+  if (pctEl) pctEl.textContent = '0%';
+  if (bar) bar.style.width = '0%';
+
+  const uploadBtn = document.getElementById('vmUploadBtn');
+  if (uploadBtn) uploadBtn.disabled = false;
+  // Change button text so user knows clicking it will upload
+  const btnText2 = document.getElementById('vmUploadBtnText');
+  if (btnText2) btnText2.textContent = 'Upload Now';
+}
+
+function clearSelectedVideo() {
+  VIDEO_MODAL.selectedFile = null;
+  // Reset file input
+  const fileInput = document.getElementById('vmFileInput');
+  if (fileInput) fileInput.value = '';
+  // Hide file card, show upload area
+  const fileCard = document.getElementById('vmFileCard');
+  if (fileCard) fileCard.style.display = 'none';
+  const uploadArea = document.getElementById('vmUploadArea');
+  if (uploadArea) uploadArea.style.display = '';
+  // Restore button state based on whether a video already exists
+  const uploadBtn = document.getElementById('vmUploadBtn');
+  const btnText = document.getElementById('vmUploadBtnText');
+  if (VIDEO_MODAL.currentVideoUrl) {
+    if (uploadBtn) uploadBtn.disabled = false;
+    if (btnText) btnText.textContent = 'Replace Recording';
+  } else {
+    if (uploadBtn) uploadBtn.disabled = true;
+    if (btnText) btnText.textContent = 'Save Recording';
+  }
+}
+
+function handleUploadBtnClick() {
+  // If no file selected yet (Replace mode), show the upload area and trigger file picker
+  if (!VIDEO_MODAL.selectedFile) {
+    const uploadArea = document.getElementById('vmUploadArea');
+    if (uploadArea) uploadArea.style.display = '';
+    document.getElementById('vmFileInput').click();
+  } else {
+    submitVideoUpload();
+  }
+}
+
+async function submitVideoUpload() {
+  if (!VIDEO_MODAL.selectedFile || !VIDEO_MODAL.applicationId || !VIDEO_MODAL.interviewId) {
+    showToast('Please select a video file first.', 'error');
+    return;
+  }
+
+  const token = getToken();
+  const formData = new FormData();
+  formData.append('video', VIDEO_MODAL.selectedFile);
+
+  const uploadBtn = document.getElementById('vmUploadBtn');
+  const bar = document.getElementById('vmProgressBar');
+  const pctEl = document.getElementById('vmUploadPct');
+  if (uploadBtn) {
+    uploadBtn.disabled = true;
+    // Swap icon to spinner without destroying vmUploadBtnText span
+    const icon = uploadBtn.querySelector('i');
+    if (icon) icon.className = 'fa-solid fa-spinner fa-spin';
+    const btnText = document.getElementById('vmUploadBtnText');
+    if (btnText) btnText.textContent = 'Uploading…';
+  }
+
+  try {
+    // Use XMLHttpRequest to track upload progress
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `/api/interviewer/assigned-interviews/${VIDEO_MODAL.interviewId}/students/${VIDEO_MODAL.applicationId}/upload-video`);
+      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          if (bar) bar.style.width = pct + '%';
+          if (pctEl) pctEl.textContent = pct + '%';
+        }
+        // Show progress bar in file card on first progress event
+        const progressWrap = document.getElementById('vmUploadProgress');
+        if (progressWrap) progressWrap.style.display = '';
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const data = JSON.parse(xhr.responseText);
+          VIDEO_MODAL.currentVideoUrl = data.videoUrl;
+
+          // Update player
+          const videoEl = document.getElementById('vmVideoPlayer');
+          const playerWrap = document.getElementById('vmPlayerWrap');
+          const placeholder = document.getElementById('vmPlaceholder');
+          const downloadBtn = document.getElementById('vmDownloadBtn');
+          const statusEl = document.getElementById('vm-status');
+          if (videoEl) videoEl.src = data.videoUrl;
+          if (playerWrap) playerWrap.style.display = '';
+          if (placeholder) placeholder.style.display = 'none';
+          if (downloadBtn) downloadBtn.style.display = '';
+          if (statusEl) statusEl.textContent = 'Uploaded';
+          if (pctEl) pctEl.textContent = '100%';
+
+          // Hide the file card now that upload is done
+          const fileCard = document.getElementById('vmFileCard');
+          if (fileCard) fileCard.style.display = 'none';
+          // Update button label to Replace for future uploads
+          const btnText = document.getElementById('vmUploadBtnText');
+          if (btnText) btnText.textContent = 'Replace Recording';
+
+          // Update in-memory data so the history card reflects it without reload
+          const student = APP.scheduleStudents.find(s => s.applicationId == VIDEO_MODAL.applicationId);
+          if (student) student.videoUrl = data.videoUrl;
+
+          showToast('Video uploaded successfully!', 'success');
+          resolve();
+        } else {
+          reject(new Error(xhr.responseText || 'Upload failed'));
+        }
+      };
+      xhr.onerror = () => reject(new Error('Network error during upload'));
+      xhr.send(formData);
+    });
+  } catch (e) {
+    showToast('Upload failed: ' + e.message, 'error');
+    if (bar) bar.style.width = '0%';
+    if (pctEl) pctEl.textContent = 'Error';
+  } finally {
+    if (uploadBtn) {
+      uploadBtn.disabled = false;
+      // Restore the icon WITHOUT destroying vmUploadBtnText span
+      const icon = uploadBtn.querySelector('i');
+      if (icon) { icon.className = 'fa-solid fa-cloud-arrow-up'; }
+      else {
+        const i = document.createElement('i');
+        i.className = 'fa-solid fa-cloud-arrow-up';
+        uploadBtn.prepend(i);
+      }
+    }
+  }
+}
+
+function downloadCurrentVideo() {
+  if (!VIDEO_MODAL.currentVideoUrl) return;
+  const a = document.createElement('a');
+  a.href = VIDEO_MODAL.currentVideoUrl;
+  a.download = '';
+  a.click();
+}
+
 
 function viewStudentResume() {
   if (!APP.currentLiveStudent || !APP.currentLiveStudent.resumeUrl) {
