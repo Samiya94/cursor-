@@ -1,25 +1,3 @@
-let currentRole = 'Student';
-
-const roleSubtitles = {
-  Student:     'Sign in to access your interview sessions and feedback.',
-  Interviewer: 'Sign in to manage your scheduled interview sessions.',
-  Institute:   'Sign in to your institute dashboard and track evaluations.',
-  Mentor:      'Sign in as Department Head to oversee your department\'s evaluations.',
-};
-
-const showRegNote = {
-  Student:     false,
-  Interviewer: true,
-  Institute:   true,
-  Mentor:      true,
-};
-
-const regNoteTexts = {
-  Interviewer: 'Not registered yet? <a href="/register">Join as an Interviewer</a>',
-  Institute:   'Not registered yet? <a href="/register">Register your Institute</a>',
-  Mentor:      '<i class="fa-solid fa-circle-info"></i> Mentor access is invite-only. Your account is created by your Institute from their dashboard.',
-};
-
 const roleDashboardMap = {
   STUDENT:     "/student-dashboard",
   INTERVIEWER: "/interviewer-dashboard",
@@ -27,32 +5,6 @@ const roleDashboardMap = {
   MENTOR:      "/mentor-dashboard",
   ADMIN:       "/admin-dashboard"
 };
-
-/* ── ROLE SELECTION ── */
-function selectRole(role, el) {
-  currentRole = role;
-
-  // update buttons
-  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-
-  // update subtitle
-  document.getElementById('role-subtitle').textContent = roleSubtitles[role] || 'Welcome back.';
-
-  // update button label
-  document.getElementById('btnRoleLabel').textContent = role;
-
-  // reg note
-  const note = document.getElementById('regNote');
-  if (showRegNote[role]) {
-    note.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${regNoteTexts[role]}</span>`;
-    note.classList.add('show');
-  } else {
-    note.classList.remove('show');
-  }
-
-  clearError();
-}
 
 /* ── TOGGLE PASSWORD ── */
 function togglePw() {
@@ -182,19 +134,8 @@ async function handleLogin(event) {
   }
 }
 
-/* ── AUTO-SELECT ROLE FROM URL PARAM ── */
 window.addEventListener('DOMContentLoaded', () => {
-  const param = new URLSearchParams(window.location.search).get('role');
-  const map   = {
-    student:     'role-student',
-    interviewer: 'role-interviewer',
-    institute:   'role-institute',
-    mentor:      'role-mentor',
-  };
-  if (param && map[param.toLowerCase()]) {
-    const btn = document.getElementById(map[param.toLowerCase()]);
-    if (btn) selectRole(param.charAt(0).toUpperCase() + param.slice(1), btn);
-  }
+  // nothing to initialize
 });
 let redirectUrl = null;
 

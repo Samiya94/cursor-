@@ -21,41 +21,12 @@
         <i class="fa-solid fa-microphone-lines"></i> Interview Platform
       </div>
       <h2>Welcome Back</h2>
-      <p id="role-subtitle">Select your role and sign in to continue.</p>
+      <p id="role-subtitle">Sign in to continue.</p>
     </div>
   </div>
 
   <!-- Body -->
   <div class="card-body">
-
-    <!-- Role Selector -->
-    <div class="role-label"><i class="fa-solid fa-user-circle"></i> Login as</div>
-    <div class="role-grid">
-      <button class="role-btn active" id="role-student" onclick="selectRole('Student',this)" type="button">
-        <div class="role-icon"><i class="fa-solid fa-graduation-cap"></i></div>
-        <div class="role-info"><span class="role-name">Student</span></div>
-      </button>
-      <button class="role-btn" id="role-interviewer" onclick="selectRole('Interviewer',this)" type="button">
-        <div class="role-icon"><i class="fa-solid fa-user-tie"></i></div>
-        <div class="role-info"><span class="role-name">Interviewer</span></div>
-      </button>
-      <button class="role-btn" id="role-institute" onclick="selectRole('Institute',this)" type="button">
-        <div class="role-icon"><i class="fa-solid fa-building-columns"></i></div>
-        <div class="role-info"><span class="role-name">Institute</span></div>
-      </button>
-      <button class="role-btn" id="role-mentor" onclick="selectRole('Mentor',this)" type="button">
-        <div class="role-icon"><i class="fa-solid fa-chalkboard-user"></i></div>
-        <div class="role-info"><span class="role-name">Mentor</span></div>
-      </button>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- Register note (shown for Interviewer / Institute) -->
-    <div class="reg-note" id="regNote">
-      <i class="fa-solid fa-circle-info"></i>
-      <span id="regNoteText">Don't have an account? <a th:href="@{/register}">Register here</a></span>
-    </div>
 
     <!-- Error Alert -->
     <div class="error-alert" id="errorAlert">
@@ -93,7 +64,7 @@
 
       <button type="submit" class="btn-login">
         <i class="fa-solid fa-right-to-bracket"></i>
-        Login as <span id="btnRoleLabel">Student</span>
+        Login
       </button>
     </form>
 

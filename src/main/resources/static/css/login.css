@@ -126,86 +126,6 @@ button { font-family:inherit; cursor:pointer; }
 }
 
 /* ── ROLE SELECTOR ── */
-.role-label {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: .07em;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.role-label i {
-  width: 20px; height: 20px;
-  background: var(--bg);
-  border-radius: 5px;
-  display: grid; place-items: center;
-  font-size: 10px; color: var(--primary);
-}
-
-.role-grid {
-  display: grid;
-  grid-template-columns: repeat(2,1fr);
-  gap: 9px;
-  margin-bottom: clamp(20px,4vw,28px);
-}
-
-.role-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 13px;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--input-bg);
-  cursor: pointer;
-  transition: var(--transition);
-  text-align: left;
-  user-select: none;
-}
-.role-btn:hover { border-color: var(--secondary); background: #F0FDFA; }
-.role-btn.active {
-  border-color: var(--secondary);
-  background: #F0FDFA;
-  border-width: 2px;
-}
-
-.role-icon {
-  width: 32px; height: 32px;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--border);
-  background: var(--card);
-  display: grid; place-items: center;
-  font-size: 13px;
-  color: var(--muted);
-  flex-shrink: 0;
-  transition: var(--transition);
-}
-.role-btn.active .role-icon {
-  background: var(--secondary);
-  color: #fff;
-  border-color: var(--secondary);
-}
-
-.role-info { min-width: 0; }
-.role-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--dark);
-  display: block;
-  line-height: 1.2;
-  transition: color var(--transition);
-}
-.role-btn.active .role-name { color: var(--secondary); }
-
-/* ── DIVIDER ── */
-.divider {
-  height: 1px;
-  background: var(--border);
-  margin: 0 0 clamp(16px,3vw,22px);
-}
 
 /* ── FORM FIELDS ── */
 .field { margin-bottom: clamp(14px,2.5vw,18px); }
@@ -336,24 +256,6 @@ button { font-family:inherit; cursor:pointer; }
 .btn-login:active { transform: scale(.99); }
 .btn-login i { font-size: 14px; }
 
-/* ── REGISTER NOTE (Institute / Interviewer) ── */
-.reg-note {
-  display: none;
-  background: #F0FDFA;
-  border: 1px solid #99F6E4;
-  border-radius: var(--radius-sm);
-  padding: 10px 13px;
-  font-size: 12.5px;
-  color: #0D9488;
-  margin-bottom: clamp(12px,2.5vw,18px);
-  align-items: center;
-  gap: 9px;
-}
-.reg-note.show { display: flex; }
-.reg-note i { font-size: 13px; flex-shrink: 0; }
-.reg-note a { color: var(--primary); font-weight: 700; }
-.reg-note a:hover { text-decoration: underline; }
-
 /* ── FOOTER ── */
 .card-footer {
   text-align: center;
@@ -391,12 +293,8 @@ button { font-family:inherit; cursor:pointer; }
   .card-header { padding: 20px 18px 16px; }
   .card-body { padding: 18px 18px 20px; }
   .card-footer { padding: 13px 18px; }
-  .role-grid { grid-template-columns: repeat(2,1fr); gap: 7px; }
 }
 @media(max-width:340px) {
-  .role-grid { grid-template-columns: 1fr 1fr; }
-  .role-btn { padding: 9px 10px; gap: 7px; }
-  .role-name { font-size: 12px; }
 }
 
 /* ── MODAL ── */
