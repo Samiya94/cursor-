@@ -49,6 +49,7 @@ async function fetchMentorProfile() {
 
         localStorage.setItem("mentorDeptId", data.departmentId);
         localStorage.setItem("mentorInstId", data.instituteId);
+        if (data.id) localStorage.setItem("mentorId", data.id);
 
         initHeader();
         initProfileFields();
@@ -424,7 +425,7 @@ async function generateRegLinkInternal(areaId, btnId, isSetup) {
                 if (btn) {
                     btn.innerHTML = '<i class="fa-solid fa-check"></i> Done';
                     btn.onclick = function () {
-                        sessionStorage.setItem('mentorSetupSeen', 'true');
+                        const _sk = getMentorSetupKey(); if(_sk) localStorage.setItem(_sk, 'true');
                         closeOverlay('setupModal');
                     };
                 }
@@ -449,7 +450,7 @@ function setupCopyLink() {
     document.getElementById('copyLinkPreview').textContent = el.textContent.trim();
     closeOverlay('setupModal');
     openOverlay('copyLinkModal');
-    sessionStorage.setItem('mentorSetupSeen', 'true');
+    const _sk = getMentorSetupKey(); if(_sk) localStorage.setItem(_sk, 'true');
 }
 
 function copyRegLink() {
@@ -478,13 +479,20 @@ function fallbackCopy(text) {
 }
 
 /* ===== SETUP POPUP ===== */
+function getMentorSetupKey() {
+    const id = loggedMentor.id || localStorage.getItem('mentorId');
+    return id ? 'mentorSetupSeen_' + id : null;
+}
 function checkSetup() {
-    if (!sessionStorage.getItem('mentorSetupSeen')) {
+    const key = getMentorSetupKey();
+    if (!key) return; // mentor ID not loaded yet
+    if (!localStorage.getItem(key)) {
         openOverlay('setupModal');
     }
 }
 function skipSetup() {
-    sessionStorage.setItem('mentorSetupSeen', 'true');
+    const key = getMentorSetupKey();
+    if (key) localStorage.setItem(key, 'true');
     closeOverlay('setupModal');
 }
 
