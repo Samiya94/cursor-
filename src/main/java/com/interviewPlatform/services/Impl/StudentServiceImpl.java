@@ -135,6 +135,10 @@ public class StudentServiceImpl implements StudentService {
     }
 
     private StudentProfileResponseDTO mapToResponse(Student student) {
+        String resumeFileName = student.getResumeUrl();
+        String resumeUrl = (resumeFileName != null && !resumeFileName.isBlank())
+            ? "/uploads/" + resumeFileName
+            : null;
         return new StudentProfileResponseDTO(
                 student.getId(),
                 student.getFirstName(),
@@ -148,7 +152,9 @@ public class StudentServiceImpl implements StudentService {
                 student.getInstitute() != null ? student.getInstitute().getId() : null,
                 student.getInstitute() != null ? student.getInstitute().getInstituteName() : null,
                 student.getDepartment() != null ? student.getDepartment().getId() : null,
-                student.getDepartment() != null ? student.getDepartment().getName() : null
+                student.getDepartment() != null ? student.getDepartment().getName() : null,
+                resumeFileName,
+                resumeUrl
         );
     }
 

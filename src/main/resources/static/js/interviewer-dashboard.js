@@ -71,36 +71,22 @@ async function loadInterviewerProfile() {
       setText('profilePicText', initials);
     }
 
-    // Populate the Resume / CV card with the interviewer's own uploaded resume
-    const cvViewBtn = document.getElementById('cvViewBtn');
     const cvNameEl  = document.getElementById('cvName');
     const cvDateEl  = document.getElementById('cvDate');
     if (iv.resumeUrl) {
       const rawFile = iv.resumeFileName || iv.resumeUrl;
-      const friendlyName = decodeURIComponent(rawFile.split('/').pop().replace(/^\d+_/, ''));
+      const friendlyName = friendlyResumeName(rawFile.split('/').pop());
       if (cvNameEl) cvNameEl.textContent = friendlyName;
       if (cvDateEl && iv.createdAt) {
         cvDateEl.textContent = 'Uploaded ' + new Date(iv.createdAt).toLocaleDateString();
       } else if (cvDateEl) {
         cvDateEl.textContent = 'Uploaded during registration';
       }
-      if (cvViewBtn) {
-        cvViewBtn.disabled = false;
-        cvViewBtn.onclick = function () {
-          const absUrl = iv.resumeUrl.startsWith('http') ? iv.resumeUrl : window.location.origin + iv.resumeUrl;
-          document.getElementById('resumeViewerTitle').textContent = (iv.fullName || 'Interviewer') + ' — ' + friendlyName;
-          document.getElementById('resumeDownloadLink').href = absUrl;
-          const obj   = document.getElementById('resumeViewerObject');
-          const frame = document.getElementById('resumeViewerFrame');
-          if (obj)   obj.data    = absUrl;
-          if (frame) frame.src   = absUrl;
-          openOverlay('resumeViewerModal');
-        };
-      }
+      mountResumeEmbed('interviewerProfileResumeEmbed', iv.resumeUrl, iv.resumeFileName, { height: '420px' });
     } else {
       if (cvNameEl) cvNameEl.textContent = 'No CV uploaded';
       if (cvDateEl) cvDateEl.textContent = '—';
-      if (cvViewBtn) cvViewBtn.disabled = true;
+      mountResumeEmbed('interviewerProfileResumeEmbed', null, null);
     }
   } catch (e) { console.error('Profile error:', e); }
 }
@@ -409,24 +395,32 @@ function renderScheduleTables() {
 function renderLiveStudent() {
   const s = APP.currentLiveStudent;
   document.getElementById('proceedBtn').disabled = !s;
-  if (!s) return;
+  if (!s) {
+    mountResumeEmbed('liveResumeEmbed', null, null);
+    mountResumeEmbed('liveResumeEmbed2', null, null);
+    return;
+  }
   setText('live-avatar', s.initials); setText('live-avatar2', s.initials); setText('eval-avatar', s.initials);
   setText('live-name', s.name); setText('live-name2', s.name); setText('eval-name', s.name);
-  setText('live-degree', s.className); setText('info-name', s.name); setText('info-studentId', s.email || '—');
+  setText('live-degree', s.className);   setText('info-name', s.name); setText('info-studentId', s.email || '—');
   setText('info-institute', s.institute); setText('info-program', s.domain); setText('info-year', s.className); setText('info-cgpa', s.cgpa);
-  const resumeLabel = s.resumeUrl ? (s.resumeFileName ? decodeURIComponent(s.resumeFileName.replace(/^\d+_/, '')) : 'Resume available') : 'No resume uploaded';
+  setText('info-name-live', s.name); setText('info-cgpa-live', s.cgpa);
+  setText('info-institute-live', s.institute); setText('info-program-live', s.domain);
+  const resumeLabel = s.resumeUrl ? friendlyResumeName(s.resumeFileName) : 'No resume uploaded';
   setText('live-resume-name', resumeLabel);
   setText('live-resume-name2', resumeLabel);
+  mountResumeEmbed('liveResumeEmbed', s.resumeUrl, s.resumeFileName, { height: '460px' });
+  mountResumeEmbed('liveResumeEmbed2', s.resumeUrl, s.resumeFileName, { height: '460px' });
   if (s.profilePhotoUrl) {
     const photoUrl = s.profilePhotoUrl.startsWith('http') ? s.profilePhotoUrl : '/uploads/' + s.profilePhotoUrl;
     const avatarImg = '<img src="' + photoUrl + '" alt="' + s.name + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
     ['live-avatar','live-avatar2','eval-avatar'].forEach(function(id) { const el = document.getElementById(id); if (el) el.innerHTML = avatarImg; });
   }
-  document.getElementById('live-resume-btn').disabled = !s.resumeUrl;
-  document.getElementById('live-resume-btn2').disabled = !s.resumeUrl;
   document.getElementById('live-domains').innerHTML = `<span class="badge bg-info">${s.domain}</span>`;
   document.getElementById('live-domains2').innerHTML = `<span class="badge bg-info">${s.domain}</span>`;
   document.getElementById('info-domains').innerHTML = `<span class="badge bg-info">${s.domain}</span>`;
+  const domLive = document.getElementById('info-domains-live');
+  if (domLive) domLive.innerHTML = `<span class="badge bg-info">${s.domain}</span>`;
 }
 
 function renderHistory() {
@@ -593,7 +587,14 @@ function openStudentModal(idx, fromToday) {
   const source = fromToday ? APP.scheduleStudents.filter(s => s.scheduledDate && s.scheduledDate.toDateString() === new Date().toDateString()) : APP.scheduleStudents;
   const s = source[idx];
   if (!s) return;
-  document.getElementById('studentModalContent').innerHTML = `<div class="student-modal-banner"><div class="student-modal-avatar">${s.initials}</div><div><h3 style="font-size:15px;">${s.name}</h3><p style="font-size:13px;opacity:.85;margin-top:3px;">${s.className}</p><p style="font-size:12px;opacity:.7;margin-top:2px;">${s.email} · ${s.institute}</p></div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:15px;"><div style="background:#F8FAFC;padding:10px;border-radius:var(--r);border-left:3px solid var(--secondary);"><div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;">CGPA</div><b>${s.cgpa}</b></div><div style="background:#F8FAFC;padding:10px;border-radius:var(--r);border-left:3px solid var(--secondary);"><div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;">Class</div><b>${s.className}</b></div><div style="background:#F8FAFC;padding:10px;border-radius:var(--r);border-left:3px solid var(--secondary);"><div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;">Slot</div><b style="font-size:12.5px;">${s.scheduledText}</b></div></div><div style="margin-bottom:13px;"><div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Domain</div><div style="display:flex;flex-wrap:wrap;gap:6px;"><span class="badge bg-info">${s.domain}</span></div></div>`;
+  const detailsHtml =
+    `<div class="student-modal-banner"><div class="student-modal-avatar">${s.initials}</div><div><h3 style="font-size:15px;">${s.name}</h3><p style="font-size:13px;opacity:.85;margin-top:3px;">${s.className}</p><p style="font-size:12px;opacity:.7;margin-top:2px;">${s.email} · ${s.institute}</p></div></div>` +
+    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:15px;">` +
+    `<div style="background:#F8FAFC;padding:10px;border-radius:var(--r);border-left:3px solid var(--secondary);"><div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;">CGPA</div><b>${s.cgpa}</b></div>` +
+    `<div style="background:#F8FAFC;padding:10px;border-radius:var(--r);border-left:3px solid var(--secondary);"><div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;">Class</div><b>${s.className}</b></div>` +
+    `<div style="background:#F8FAFC;padding:10px;border-radius:var(--r);border-left:3px solid var(--secondary);"><div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;">Slot</div><b style="font-size:12.5px;">${s.scheduledText}</b></div></div>` +
+    `<div style="margin-bottom:13px;"><div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Domain</div><div style="display:flex;flex-wrap:wrap;gap:6px;"><span class="badge bg-info">${s.domain}</span></div></div>`;
+  document.getElementById('studentModalContent').innerHTML = wrapDetailsWithResume(detailsHtml, s.resumeUrl, s.resumeFileName, { height: '480px' });
   openOverlay('studentModal');
 }
 

@@ -226,3 +226,78 @@ function logout() {
     localStorage.clear();
     window.location.href = loginHref;
 }
+
+/* ── Resume / CV embed (side-by-side with profile details) ── */
+function toAbsoluteUrl(url) {
+    if (!url || typeof url !== 'string') return '';
+    const u = url.trim();
+    if (!u) return '';
+    if (/^https?:\/\//i.test(u)) return u;
+    return window.location.origin + (u.startsWith('/') ? u : '/' + u);
+}
+
+function friendlyResumeName(fileName) {
+    if (!fileName) return 'Resume';
+    try {
+        return decodeURIComponent(String(fileName).replace(/^\d+_/, ''));
+    } catch {
+        return String(fileName);
+    }
+}
+
+function isPdfResume(url, fileName) {
+    const n = (fileName || url || '').toLowerCase();
+    return n.endsWith('.pdf') || (!/\.(doc|docx)$/i.test(n) && !!url);
+}
+
+function buildResumeEmbedHtml(resumeUrl, resumeFileName, options) {
+    options = options || {};
+    const height = options.height || '480px';
+    const abs = toAbsoluteUrl(resumeUrl);
+    if (!abs) {
+        return '<div class="resume-embed-empty"><i class="fa-solid fa-file-circle-xmark"></i><p>No resume uploaded</p></div>';
+    }
+    const label = friendlyResumeName(resumeFileName || abs.split('/').pop());
+    if (isPdfResume(abs, label)) {
+        return (
+            '<div class="resume-embed-panel" style="--resume-embed-height:' + height + '">' +
+            '<div class="resume-embed-toolbar">' +
+            '<i class="fa-solid fa-file-pdf" style="color:#ef4444;"></i>' +
+            '<span class="resume-embed-filename">' + label + '</span>' +
+            '<a href="' + abs + '" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="background:#1f2937;color:#fff;border-color:#374151;">Open</a>' +
+            '<a href="' + abs + '" download class="btn btn-s btn-sm"><i class="fa-solid fa-download"></i></a>' +
+            '</div>' +
+            '<iframe class="resume-embed-frame" src="' + abs + '#toolbar=0&navpanes=0" title="Resume preview"></iframe>' +
+            '</div>'
+        );
+    }
+    return (
+        '<div class="resume-embed-panel">' +
+        '<div class="resume-embed-toolbar">' +
+        '<i class="fa-solid fa-file-lines" style="color:#3b82f6;"></i>' +
+        '<span class="resume-embed-filename">' + label + '</span>' +
+        '<a href="' + abs + '" target="_blank" rel="noopener" class="btn btn-s btn-sm">Download</a>' +
+        '</div>' +
+        '<div class="resume-embed-empty" style="min-height:160px;"><p>Preview not available for this file type.</p><a href="' + abs + '" target="_blank" class="btn btn-s btn-sm">Open file</a></div>' +
+        '</div>'
+    );
+}
+
+function mountResumeEmbed(containerId, resumeUrl, resumeFileName, options) {
+    const el = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+    if (!el) return;
+    el.innerHTML = buildResumeEmbedHtml(resumeUrl, resumeFileName, options);
+}
+
+function wrapDetailsWithResume(detailsHtml, resumeUrl, resumeFileName, options) {
+    options = options || {};
+    const height = options.height || '480px';
+    return (
+        '<div class="profile-resume-split">' +
+        '<div class="profile-resume-details">' + detailsHtml + '</div>' +
+        '<div class="profile-resume-cv">' +
+        '<div class="resume-embed-label">CV / Resume</div>' +
+        buildResumeEmbedHtml(resumeUrl, resumeFileName, { height: height }) +
+        '</div></div>'
+    );
+}

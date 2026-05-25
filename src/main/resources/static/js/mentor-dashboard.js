@@ -103,6 +103,8 @@ async function renderStudentsTable() {
         const safeId = s.id;
         const safeName = name.replace(/'/g, "\\'");
         const safeEmail = email.replace(/'/g, "\\'");
+        const safeResume = (s.resumeUrl || '').replace(/'/g, "\\'");
+        const safeResumeFile = (s.resumeFileName || '').replace(/'/g, "\\'");
 
         return `<tr data-status="Not Evaluated" data-class="${cls}" data-name="${name.toLowerCase()}">
             <td><b>${name}</b></td>
@@ -113,7 +115,7 @@ async function renderStudentsTable() {
             <td style="font-size:12px;color:var(--muted);">${skills}</td>
             <td>
                 <button class="btn btn-ghost btn-sm"
-                    onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}',${s.cgpa || 0},'${skills}')">
+                    onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}',${s.cgpa || 0},'${skills}','${safeResume}','${safeResumeFile}')">
                     <i class="fa-solid fa-eye"></i> View
                 </button>
             </td>
@@ -157,6 +159,8 @@ async function renderUpcomingTable() {
         const safeId    = s.studentId;
         const safeName  = name.replace(/'/g, "\\'");
         const safeEmail = email.replace(/'/g, "\\'");
+        const safeResume = (s.resumeUrl || '').replace(/'/g, "\\'");
+        const safeResumeFile = (s.resumeFileName || '').replace(/'/g, "\\'");
 
         const dept = s.departmentName || '—';
         const scheduledDate = s.scheduledDate
@@ -183,7 +187,7 @@ async function renderUpcomingTable() {
             <td><span class="badge ${badgeCls}">${badgeTxt}</span></td>
             <td>
                 <button class="btn btn-ghost btn-sm"
-                    onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}',${s.cgpa || 0},'${skills}')">
+                    onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}',${s.cgpa || 0},'${skills}','${safeResume}','${safeResumeFile}')">
                     <i class="fa-solid fa-eye"></i> View
                 </button>
             </td>
@@ -210,6 +214,8 @@ function renderReportStudentTable() {
         const safeId = s.id;
         const safeName = name.replace(/'/g, "\\'");
         const safeEmail = email.replace(/'/g, "\\'");
+        const safeResume = (s.resumeUrl || '').replace(/'/g, "\\'");
+        const safeResumeFile = (s.resumeFileName || '').replace(/'/g, "\\'");
 
         return `<tr>
             <td><b>${name}</b></td>
@@ -220,7 +226,7 @@ function renderReportStudentTable() {
             <td><span class="badge bg-gray"><i class="fa-solid fa-clock"></i> Not Evaluated</span></td>
             <td>
                 <button class="btn btn-ghost btn-sm"
-                    onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}',${s.cgpa || 0},'${skills}')">
+                    onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}',${s.cgpa || 0},'${skills}','${safeResume}','${safeResumeFile}')">
                     <i class="fa-solid fa-eye"></i> View
                 </button>
             </td>
@@ -267,7 +273,7 @@ function updateAllStats() {
 }
 
 /* ===== OPEN STUDENT DETAIL MODAL ===== */
-function openStudentDetailFromData(id, name, cls, email, cgpa, skills) {
+function openStudentDetailFromData(id, name, cls, email, cgpa, skills, resumeUrl, resumeFileName) {
     document.getElementById('modalStudentName').textContent = name;
     document.getElementById('modalStudentMeta').innerHTML =
         '<span><i class="fa-solid fa-graduation-cap"></i> ' + cls + '</span>' +
@@ -306,11 +312,7 @@ function openStudentDetailFromData(id, name, cls, email, cgpa, skills) {
     document.getElementById('videoContent').innerHTML =
         '<p style="color:var(--muted);font-size:13px;padding:10px;">No recordings available yet.</p>';
 
-    // Reset tabs
-    document.querySelectorAll('.modal-tab').forEach(function(t) { t.classList.remove('active'); });
-    document.querySelectorAll('.modal-tab-panel').forEach(function(p) { p.classList.remove('active'); });
-    document.querySelector('.modal-tab').classList.add('active');
-    document.getElementById('tabOverview').classList.add('active');
+    mountResumeEmbed('mentorStudentResumeEmbed', resumeUrl || null, resumeFileName || null, { height: '520px' });
 
     openOverlay('studentDetailModal');
 }

@@ -64,21 +64,29 @@ public class MentorDashboardController {
             .findByDepartmentId(mentor.getDepartment().getId());
 
         List<StudentProfileResponseDTO> dtos = students.stream()
-            .map(s -> new StudentProfileResponseDTO(
-                s.getId(),
-                s.getFirstName(),
-                s.getLastName(),
-                s.getUser().getEmail(),
-                s.getPhone(),
-                s.getStudentClass(),
-                s.getCgpa(),
-                s.getAbout(),
-                s.getSkills(),
-                s.getInstitute() != null ? s.getInstitute().getId() : null,
-                s.getInstitute() != null ? s.getInstitute().getInstituteName() : null,
-                s.getDepartment() != null ? s.getDepartment().getId() : null,
-                s.getDepartment() != null ? s.getDepartment().getName() : null
-            ))
+            .map(s -> {
+                String resumeFileName = s.getResumeUrl();
+                String resumeUrl = (resumeFileName != null && !resumeFileName.isBlank())
+                    ? "/uploads/" + resumeFileName
+                    : null;
+                return new StudentProfileResponseDTO(
+                    s.getId(),
+                    s.getFirstName(),
+                    s.getLastName(),
+                    s.getUser().getEmail(),
+                    s.getPhone(),
+                    s.getStudentClass(),
+                    s.getCgpa(),
+                    s.getAbout(),
+                    s.getSkills(),
+                    s.getInstitute() != null ? s.getInstitute().getId() : null,
+                    s.getInstitute() != null ? s.getInstitute().getInstituteName() : null,
+                    s.getDepartment() != null ? s.getDepartment().getId() : null,
+                    s.getDepartment() != null ? s.getDepartment().getName() : null,
+                    resumeFileName,
+                    resumeUrl
+                );
+            })
             .toList();
 
         return ResponseEntity.ok(dtos);
@@ -118,6 +126,11 @@ public class MentorDashboardController {
                 row.put("studentClass", s.getStudentClass());
                 row.put("cgpa", s.getCgpa());
                 row.put("skills", s.getSkills());
+                String resumeFileName = s.getResumeUrl();
+                row.put("resumeFileName", resumeFileName);
+                row.put("resumeUrl", (resumeFileName != null && !resumeFileName.isBlank())
+                    ? "/uploads/" + resumeFileName
+                    : null);
                 // Application fields
                 row.put("applicationId", app.getId());
                 row.put("applicationStatus", app.getStatus() != null ? app.getStatus().name() : "PENDING");

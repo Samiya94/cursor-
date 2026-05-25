@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" th:href="@{/css/interviewer-dashboard.css}">
+<link rel="stylesheet" th:href="@{/css/resume-embed.css}">
 </head>
 <body>
 
@@ -125,11 +126,8 @@
       </div>
       <div class="data-card">
         <div class="card-header"><h4>Candidate Resume</h4></div>
-        <div class="resume-preview">
-          <i class="fa-solid fa-file-pdf" style="font-size:3rem;color:#ef4444;"></i>
-          <p style="font-size:13.5px;" id="live-resume-name">No resume uploaded</p>
-          <button class="btn btn-s btn-sm" id="live-resume-btn" onclick="viewStudentResume()" disabled><i class="fa-solid fa-eye"></i> View Full Document</button>
-        </div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:8px;" id="live-resume-name">No resume uploaded</p>
+        <div id="liveResumeEmbed"></div>
         <div class="divider"></div>
         <div class="card-header" style="margin-bottom:10px;"><h4 style="font-size:13.5px;">Preparation Notes</h4></div>
         <textarea rows="4" placeholder="Add pre-interview notes about this student..."></textarea>
@@ -158,8 +156,22 @@
     </div>
     <div class="layout-grid">
       <div class="data-card">
-        <div class="card-header"><h4>Candidate Resume</h4></div>
-        <div class="resume-preview"><i class="fa-solid fa-file-pdf" style="font-size:3rem;color:#ef4444;"></i><p id="live-resume-name2">No resume uploaded</p><button class="btn btn-s btn-sm" id="live-resume-btn2" onclick="viewStudentResume()" disabled><i class="fa-solid fa-eye"></i> View Full Document</button></div>
+        <div class="card-header"><h4>Student &amp; Resume</h4></div>
+        <div class="profile-resume-split">
+          <div class="profile-resume-details">
+            <div class="info-grid" style="margin-bottom:0;">
+              <div class="info-item"><span>Full Name</span><b id="info-name-live">—</b></div>
+              <div class="info-item"><span>CGPA</span><b id="info-cgpa-live">—</b></div>
+              <div class="info-item"><span>Institute</span><b id="info-institute-live">—</b></div>
+              <div class="info-item"><span>Program</span><b id="info-program-live">—</b></div>
+            </div>
+            <div class="domain-tags" style="margin-top:12px;" id="info-domains-live"></div>
+          </div>
+          <div class="profile-resume-cv">
+            <p style="font-size:12px;color:var(--muted);margin-bottom:8px;" id="live-resume-name2">No resume uploaded</p>
+            <div id="liveResumeEmbed2"></div>
+          </div>
+        </div>
       </div>
       <div class="data-card">
         <div class="card-header"><h4>Quick Notes</h4></div>
@@ -368,14 +380,9 @@
     <div>
       <div class="data-card" style="margin-bottom:14px;">
         <div class="card-header"><h4>Resume / CV</h4></div>
-        <div style="display:flex;align-items:center;gap:10px;background:#111827;padding:11px 14px;border-radius:var(--r);margin-bottom:13px;">
-          <i class="fa-solid fa-file-pdf" style="color:#ef4444;font-size:1.5rem;flex-shrink:0;"></i>
-          <div style="flex:1;min-width:0;">
-            <b style="color:#fff;font-size:13px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="cvName">No CV uploaded</b>
-            <div style="font-size:11.5px;color:rgba(255,255,255,.5);margin-top:2px;" id="cvDate">—</div>
-          </div>
-          <button class="btn btn-s btn-sm" style="flex-shrink:0;" id="cvViewBtn" disabled><i class="fa-solid fa-eye"></i></button>
-        </div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:8px;" id="cvName">No CV uploaded</p>
+        <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px;" id="cvDate">—</p>
+        <div id="interviewerProfileResumeEmbed" style="margin-bottom:13px;"></div>
         <div class="cv-upload-area" onclick="document.getElementById('cvFileInput').click()">
           <i class="fa-solid fa-cloud-arrow-up" style="font-size:2rem;color:var(--muted);display:block;margin-bottom:8px;"></i>
           <p style="font-size:13px;font-weight:600;color:var(--dark);">Upload New CV</p>
@@ -414,8 +421,8 @@
 </main>
 
 <!-- MODALS -->
-<div class="modal-overlay" id="studentModal">
-  <div class="modal">
+<div class="modal-overlay profile-modal-split" id="studentModal">
+  <div class="modal wide">
     <div class="modal-header"><h3>Student Details</h3><div class="modal-close" onclick="closeOverlay('studentModal')"><i class="fa-solid fa-xmark"></i></div></div>
     <div id="studentModalContent"></div>
     <button class="btn btn-p" style="width:100%;justify-content:center;margin-top:14px;" onclick="closeOverlay('studentModal')">Close</button>

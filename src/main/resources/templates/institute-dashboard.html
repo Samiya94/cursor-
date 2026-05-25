@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" th:href="@{/css/institute-dashboard.css}">
+  <link rel="stylesheet" th:href="@{/css/resume-embed.css}">
 </head>
 <body>
 
@@ -114,7 +115,7 @@
 </div>
 
 <!-- ══════ STUDENT DETAIL MODAL ══════ -->
-<div class="modal-overlay" id="instStudentDetailModal" onclick="if(event.target===this)closeOverlay('instStudentDetailModal')">
+<div class="modal-overlay profile-modal-split" id="instStudentDetailModal" onclick="if(event.target===this)closeOverlay('instStudentDetailModal')">
   <div class="modal wide">
     <div class="modal-header">
       <div>
@@ -124,25 +125,28 @@
       <div class="modal-close" onclick="closeOverlay('instStudentDetailModal')"><i class="fa-solid fa-xmark"></i></div>
     </div>
     <div id="instModalBanner"></div>
-    <div class="modal-tabs">
-      <div class="modal-tab active" onclick="instSwitchTab(this,'instTabOverview')"><i class="fa-solid fa-chart-pie" style="margin-right:4px;font-size:10px;"></i>Overview</div>
-      <div class="modal-tab" onclick="instSwitchTab(this,'instTabFeedback')"><i class="fa-solid fa-comment" style="margin-right:4px;font-size:10px;"></i>Feedback</div>
-      <div class="modal-tab" onclick="instSwitchTab(this,'instTabRounds')"><i class="fa-solid fa-list-check" style="margin-right:4px;font-size:10px;"></i>Rounds</div>
-      <div class="modal-tab" onclick="instSwitchTab(this,'instTabVideo')"><i class="fa-solid fa-video" style="margin-right:4px;font-size:10px;"></i>Recording</div>
-    </div>
-    <div id="instTabOverview" class="modal-tab-panel active">
-      <div class="vd-grid">
-        <div class="vd-item"><span>Overall Score</span><b id="instModalScore">—</b></div>
-        <div class="vd-item"><span>Interviews Attended</span><b id="instModalAttended">0 interviews</b></div>
-        <div class="vd-item"><span>Last Interview</span><b id="instModalLastDate">—</b></div>
-        <div class="vd-item"><span>Performance</span><div id="instModalPerfBadge" style="margin-top:4px;"></div></div>
+    <div class="profile-resume-split">
+      <div class="profile-resume-details">
+        <div class="vd-grid">
+          <div class="vd-item"><span>Overall Score</span><b id="instModalScore">—</b></div>
+          <div class="vd-item"><span>Interviews Attended</span><b id="instModalAttended">0 interviews</b></div>
+          <div class="vd-item"><span>Last Interview</span><b id="instModalLastDate">—</b></div>
+          <div class="vd-item"><span>Performance</span><div id="instModalPerfBadge" style="margin-top:4px;"></div></div>
+        </div>
+        <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 9px;">Skills</p>
+        <div id="instTabSkillBars"></div>
+        <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 9px;">Feedback</p>
+        <div id="instFeedbackContent"></div>
+        <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 9px;">Interview Rounds</p>
+        <div class="round-timeline" id="instRoundsContent"></div>
+        <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 9px;">Recording</p>
+        <div id="instVideoContent"></div>
       </div>
-      <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;">Skill Scores</p>
-      <div id="instTabSkillBars"></div>
+      <div class="profile-resume-cv">
+        <div class="resume-embed-label">Resume / CV</div>
+        <div id="instStudentResumeEmbed"></div>
+      </div>
     </div>
-    <div id="instTabFeedback" class="modal-tab-panel"><div id="instFeedbackContent"></div></div>
-    <div id="instTabRounds" class="modal-tab-panel"><div class="round-timeline" id="instRoundsContent"></div></div>
-    <div id="instTabVideo" class="modal-tab-panel"><div id="instVideoContent"></div></div>
   </div>
 </div>
 

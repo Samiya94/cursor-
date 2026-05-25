@@ -7,6 +7,7 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" th:href="@{/css/admin-dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/resume-embed.css}">
 </head>
 <body>
     <!-- <h1 id="dashboardContent">Loading...</h1> -->
@@ -442,8 +443,8 @@
 </div>
 
 <!-- Interviewer Registration Profile -->
-<div class="modal-overlay" id="regProfileModal">
-  <div class="modal">
+<div class="modal-overlay profile-modal-split" id="regProfileModal">
+  <div class="modal wide">
     <div class="modal-header"><h3>Applicant Profile</h3><div class="modal-close" onclick="closeOverlay('regProfileModal')"><i class="fa-solid fa-xmark"></i></div></div>
     <div id="regProfileContent"></div>
     <div style="display:flex;gap:8px;margin-top:14px;" id="regProfileActions"></div>

@@ -104,6 +104,11 @@ public org.springframework.http.ResponseEntity<?> getStudentsByDepartment(Long d
         m.put("studentClass", s.getStudentClass());
         m.put("cgpa", s.getCgpa());
         m.put("skills", s.getSkills());
+        String resumeFileName = s.getResumeUrl();
+        m.put("resumeFileName", resumeFileName);
+        m.put("resumeUrl", (resumeFileName != null && !resumeFileName.isBlank())
+            ? "/uploads/" + resumeFileName
+            : null);
         return m;
     }).toList();
     return org.springframework.http.ResponseEntity.ok(result);

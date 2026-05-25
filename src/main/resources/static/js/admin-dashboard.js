@@ -309,20 +309,8 @@ function openRegProfileModal(row) {
     const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
     const resumeUrl = d.resume || '';
     const resumeFileName = resumeUrl ? resumeUrl.split('/').pop() : '';
-    const resumeBlock = resumeUrl
-        ? `<div style="display:flex;flex-direction:column;gap:8px;">
-             <div style="display:flex;align-items:center;gap:10px;background:#111827;padding:10px 14px;border-radius:8px;">
-               <i class="fa-solid fa-file-pdf" style="color:#ef4444;font-size:1.4rem;flex-shrink:0;"></i>
-               <span style="color:#fff;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${resumeFileName || 'Resume.pdf'}</span>
-             </div>
-             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-               <a href="${resumeUrl}" target="_blank" class="btn btn-s btn-sm" style="justify-content:center;"><i class="fa-solid fa-eye"></i> View Full</a>
-               <button class="btn btn-outline btn-sm" style="justify-content:center;background:#1f2937;color:#fff;border-color:#374151;" onclick="downloadResume('${resumeUrl}','${resumeFileName}')"><i class="fa-solid fa-download"></i> Download</button>
-             </div>
-           </div>`
-        : `<div style="color:var(--muted);font-size:13px;padding:8px 0;"><i class="fa-solid fa-circle-info"></i> No resume uploaded</div>`;
 
-    document.getElementById('regProfileContent').innerHTML = `
+    const detailsHtml = `
         <div class="profile-banner">
             <div class="profile-banner-avatar">${initials}</div>
             <div>
@@ -346,14 +334,12 @@ function openRegProfileModal(row) {
             <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Skills</div>
             <div style="display:flex;flex-wrap:wrap;gap:5px;">${d.skills.split(',').filter(Boolean).map(s => `<span class="req-tag">${s.trim()}</span>`).join('')}</div>
         </div>` : ''}
-        ${d.interviewexp ? `<div style="background:#F0F9FF;border-radius:8px;padding:12px;border-left:3px solid var(--secondary);margin-bottom:10px;">
+        ${d.interviewexp ? `<div style="background:#F0F9FF;border-radius:8px;padding:12px;border-left:3px solid var(--secondary);">
             <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:5px;">Interview Experience</div>
             <p style="font-size:13px;line-height:1.6;">${d.interviewexp}</p>
-        </div>` : ''}
-        <div style="background:#F8FAFC;border-radius:8px;padding:12px;">
-            <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:8px;">CV / Resume</div>
-            ${resumeBlock}
-        </div>`;
+        </div>` : ''}`;
+
+    document.getElementById('regProfileContent').innerHTML = wrapDetailsWithResume(detailsHtml, resumeUrl, resumeFileName, { height: '480px' });
 
     const ivId = d.id;
     document.getElementById('regProfileActions').innerHTML = `
@@ -1428,35 +1414,7 @@ function openFullProfileModal(d) {
     const resumeUrl = d.resume || '';
     const resumeFileName = resumeUrl ? resumeUrl.split('/').pop() : '';
 
-    const resumeSection = resumeUrl ? `
-        <div class="cv-preview-box">
-            <div class="cv-file-row">
-                <i class="fa-solid fa-file-pdf" style="color:#ef4444;font-size:1.3rem;flex-shrink:0;"></i>
-                <span>${resumeFileName || 'Resume.pdf'}</span>
-                <button class="btn btn-warn btn-sm" onclick="downloadResume('${resumeUrl}','${resumeFileName}')">
-                    <i class="fa-solid fa-download"></i>
-                </button>
-            </div>
-            <div class="cv-preview-frame" onclick="viewResume('${resumeUrl}')">
-                <i class="fa-solid fa-file-lines"></i>
-                <p>Click to preview CV</p>
-                <span style="font-size:11px;margin-top:4px;">PDF Viewer</span>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:4px;">
-                <button class="btn btn-s btn-sm" style="justify-content:center;" onclick="viewResume('${resumeUrl}')">
-                    <i class="fa-solid fa-eye"></i> View Full
-                </button>
-                <button class="btn btn-outline btn-sm" style="justify-content:center;background:#1f2937;color:#fff;border-color:#374151;" onclick="downloadResume('${resumeUrl}','${resumeFileName}')">
-                    <i class="fa-solid fa-download"></i> Download
-                </button>
-            </div>
-        </div>` : `
-        <div class="cv-preview-box">
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;gap:10px;color:rgba(255,255,255,.4);">
-                <i class="fa-solid fa-file-circle-xmark" style="font-size:2.5rem;"></i>
-                <p style="font-size:13px;">No resume uploaded</p>
-            </div>
-        </div>`;
+    const resumeSection = buildResumeEmbedHtml(resumeUrl, resumeFileName, { height: '520px' });
 
     document.getElementById('fullProfileContent').innerHTML = `
         <div class="profile-banner" style="margin-bottom:16px;">
@@ -1520,7 +1478,7 @@ function openFullProfileModal(d) {
                     </div>
                 </div>
             </div>
-            <!-- RIGHT: resume, contact -->
+            <!-- RIGHT: resume (inline preview) + contact -->
             <div class="full-profile-right">
                 <div>
                     <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:8px;">CV / Resume</div>

@@ -477,6 +477,9 @@ async function loadMyResume() {
           dt.textContent = data.resumeFileName ? 'Resume available' : 'No resume uploaded';
         }
       }
+      mountResumeEmbed('studentProfileResumeEmbed', STUDENT_RESUME.url, STUDENT_RESUME.fileName, { height: '520px' });
+    } else {
+      mountResumeEmbed('studentProfileResumeEmbed', null, null);
     }
     updateResumeUI();
   } catch (e) {
@@ -997,6 +1000,7 @@ async function handleResumeUpload(input){
         dt.textContent = data.resumeFileName ? 'Resume updated' : 'No resume uploaded';
       }
     }
+    mountResumeEmbed('studentProfileResumeEmbed', STUDENT_RESUME.url, STUDENT_RESUME.fileName, { height: '520px' });
     updateResumeUI();
     showToast('Resume uploaded successfully!');
     input.value = '';

@@ -6,6 +6,7 @@
     <title>Student Dashboard | Interview Platform</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" th:href="@{/css/student-dashboard.css}">
+    <link rel="stylesheet" th:href="@{/css/resume-embed.css}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
       /* Notification badge (replaces old notif-dot) */
@@ -465,14 +466,11 @@
               </div>
               <button class="btn btn-p" style="width:100%;justify-content:center;" onclick="document.getElementById('resumeInput').click()"><i class="fa-solid fa-upload"></i> Upload Resume</button>
             </div>
-            <!-- Has-resume state (shown when resume exists) -->
+            <!-- Has-resume state: inline preview beside profile details -->
             <div id="resumeExistState" style="display:none;">
-              <div class="resume-box">
-                <i class="fa-solid fa-file-pdf" style="font-size:2.5rem;color:#ef4444;margin-bottom:10px;display:block;"></i>
-                <p id="resumeName" style="font-size:13.5px;font-weight:600;margin-bottom:4px;">—</p>
-                <p style="font-size:11.5px;opacity:.5;" id="resumeDate">Resume available</p>
-              </div>
-              <button class="btn btn-outline" style="width:100%;justify-content:center;" onclick="viewResume()"><i class="fa-solid fa-eye"></i> View Resume</button>
+              <p id="resumeName" style="font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:8px;">—</p>
+              <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px;" id="resumeDate">Resume available</p>
+              <div id="studentProfileResumeEmbed"></div>
             </div>
             <input type="file" id="resumeInput" accept=".pdf,.doc,.docx" style="display:none;" onchange="handleResumeUpload(this)">
           </div>

@@ -618,6 +618,8 @@ function loadDeptDetail(name,coord,initials,email,phone,desg,color){
                   const safeName = sName.replace(/'/g,"\\'");
                   const safeEmail = sEmail.replace(/'/g,"\\'");
                   const safeSkills = sSkills.replace(/'/g,"\\'");
+                  const safeResume = (s.resumeUrl || '').replace(/'/g, "\\'");
+                  const safeResumeFile = (s.resumeFileName || '').replace(/'/g, "\\'");
                   return `<tr style="border-bottom:1px solid #F1F5F9;transition:background .15s;" onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background=''">
                     <td style="padding:9px 10px;font-weight:700;">${sName || '—'}</td>
                     <td style="padding:9px 10px;color:var(--muted);font-size:12px;">${sEmail}</td>
@@ -626,7 +628,7 @@ function loadDeptDetail(name,coord,initials,email,phone,desg,color){
                     <td style="padding:9px 10px;"><b style="color:var(--primary);">${sCgpa}</b></td>
                     <td style="padding:9px 10px;">
                       <button class="btn btn-ghost btn-sm"
-                        onclick="openInstStudentDetail(${s.id||0},'${safeName}','${sCls}','${safeEmail}',${s.cgpa||0},'${safeSkills}','${sPhone}','${name}')">
+                        onclick="openInstStudentDetail(${s.id||0},'${safeName}','${sCls}','${safeEmail}',${s.cgpa||0},'${safeSkills}','${sPhone}','${name}','${safeResume}','${safeResumeFile}')">
                         <i class="fa-solid fa-eye"></i> View
                       </button>
                     </td>
@@ -1555,7 +1557,7 @@ function instGetInitials(n) {
   return (n || 'S').split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'S';
 }
 
-function openInstStudentDetail(id, name, cls, email, cgpa, skills, phone, deptName) {
+function openInstStudentDetail(id, name, cls, email, cgpa, skills, phone, deptName, resumeUrl, resumeFileName) {
   document.getElementById('instModalStudentName').textContent = name;
   document.getElementById('instModalStudentMeta').innerHTML =
     `<span><i class="fa-solid fa-graduation-cap"></i> ${cls}</span>` +
@@ -1598,11 +1600,7 @@ function openInstStudentDetail(id, name, cls, email, cgpa, skills, phone, deptNa
   document.getElementById('instVideoContent').innerHTML =
     '<p style="color:var(--muted);font-size:13px;padding:10px;">No recordings available yet.</p>';
 
-  // Reset tabs
-  document.querySelectorAll('#instStudentDetailModal .modal-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('#instStudentDetailModal .modal-tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelector('#instStudentDetailModal .modal-tab').classList.add('active');
-  document.getElementById('instTabOverview').classList.add('active');
+  mountResumeEmbed('instStudentResumeEmbed', resumeUrl || null, resumeFileName || null, { height: '520px' });
 
   openOverlay('instStudentDetailModal');
 }
