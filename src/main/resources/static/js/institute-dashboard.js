@@ -65,7 +65,9 @@ function getDeptKey() {
 }
 
 function getSetupKey() {
-  return 'instituteSetupDone_' + getInstituteId();
+  const id = getInstituteId();
+  if (!id || id === 'null' || id === 'undefined') return null;
+  return 'instituteSetupDone_' + id;
 }
 
 function getTpoKey() {
@@ -267,7 +269,7 @@ async function saveSetup(){
     // AFTER saving → reload from backend
     await fetchDepartments();
 
-    localStorage.setItem(getSetupKey(),'true');
+    const setupKey = getSetupKey(); if(setupKey) localStorage.setItem(setupKey,'true');
     closeOverlay('setupModal');
 
     showToast('Departments saved successfully!');
@@ -279,9 +281,18 @@ async function saveSetup(){
     showToast('Error saving departments','error');
   }
 }
-function skipSetup(){ localStorage.setItem(getSetupKey(),'true'); closeOverlay('setupModal'); }
+function skipSetup(){ 
+  const key = getSetupKey();
+  if(key) localStorage.setItem(key,'true');
+  closeOverlay('setupModal');
+}
 function checkSetup(){
-  if(!localStorage.getItem(getSetupKey())){setupDepts=[];renderSetupTags();openOverlay('setupModal');}
+  // If institute already has at least one department saved in the backend, never show the popup
+  if(departments && departments.length > 0) return;
+  // No departments yet → show the setup popup
+  setupDepts=[];
+  renderSetupTags();
+  openOverlay('setupModal');
 }
 
 /* ═══════════════ DEPT MANAGEMENT ═══════════════ */
