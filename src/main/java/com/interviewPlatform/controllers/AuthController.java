@@ -82,24 +82,12 @@ public class AuthController {
             // 4. Generate new access token
             String newAccessToken = jwtService.generateAccessToken(email);
 
-            // 5. Rotate the refresh token — generate a new one, replace old in DB
-            //    This keeps the session alive across page refreshes without requiring re-login.
-            String newRefreshToken = jwtService.generateRefreshToken(email);
-
-            // Delete old refresh token and save new one
-            refreshTokenRepository.deleteByUsername(email);
-            RefreshToken newStoredToken = new RefreshToken();
-            newStoredToken.setToken(newRefreshToken);
-            newStoredToken.setUsername(email);
-            newStoredToken.setExpiryDate(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 7));
-            refreshTokenRepository.save(newStoredToken);
-
-            // 6. Fetch user for role
+            // 5. Fetch user for role
             User user = userService.findByEmail(email);
 
             AuthResponse response = new AuthResponse(
                     newAccessToken,
-                    newRefreshToken, // send NEW refresh token to client
+                    refreshToken, // keep the same refresh token to prevent race conditions on reload
                     email,
                     user.getRole().name()
             );
