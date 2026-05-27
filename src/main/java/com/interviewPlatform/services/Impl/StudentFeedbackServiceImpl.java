@@ -52,6 +52,18 @@ public class StudentFeedbackServiceImpl implements StudentFeedbackService {
         return mapToReport(app);
     }
 
+    /**
+     * Used by the institute dashboard to view all feedback reports for a specific student.
+     * Returns ALL applications (with or without evaluation) so the institute can see
+     * interview history, status, recordings, and feedback in one call.
+     */
+    @Override
+    public List<StudentFeedbackReportDTO> getFeedbackReportsByStudentId(Long studentId) {
+        return applicationRepository.findByStudentId(studentId).stream()
+                .map(this::mapToReport)
+                .toList();
+    }
+
     @Override
     @Transactional
     public void submitInterviewerRating(String studentEmail, SubmitInterviewerRatingDTO dto) {
@@ -94,10 +106,15 @@ public class StudentFeedbackServiceImpl implements StudentFeedbackService {
         String videoUrl = app.getVideoUrl();
         String publicVideoUrl = (videoUrl != null && !videoUrl.isBlank()) ? "/uploads/" + videoUrl : null;
 
+        // Domain name: first expertise entry from the interview request
+        var expertise = req.getExpertise();
+        String domainName = (expertise != null && !expertise.isEmpty()) ? expertise.get(0) : null;
+
         return new StudentFeedbackReportDTO(
                 app.getId(),
                 req.getId(),
                 req.getDepartmentName(),
+                domainName,
                 req.getScheduledDate(),
                 req.getScheduledVenue(),
                 interviewerName,
