@@ -17,6 +17,9 @@ public record StudentProfileResponseDTO(
         Long departmentId,
         String departmentName,
         String resumeFileName,
-        String resumeUrl
+        String resumeUrl,
+        String projectName,
+        String projectBrief,
+        String projectGithub
 ) {
 }

@@ -105,32 +105,17 @@
       </div>
       <button class="btn btn-s" id="proceedBtn" onclick="goToPhase2()" disabled><i class="fa-solid fa-arrow-right"></i> Proceed to Interview</button>
     </div>
-    <div class="layout-grid">
-      <div class="data-card">
-        <div class="card-header"><h4>Student Information</h4></div>
-        <div class="info-grid">
-          <div class="info-item"><span>Full Name</span><b id="info-name">—</b></div>
-          <div class="info-item"><span>Student ID</span><b id="info-studentId">—</b></div>
-          <div class="info-item"><span>Institute</span><b id="info-institute">—</b></div>
-          <div class="info-item"><span>Program</span><b id="info-program">—</b></div>
-          <div class="info-item"><span>Year</span><b id="info-year">—</b></div>
-          <div class="info-item"><span>CGPA</span><b id="info-cgpa">—</b></div>
-        </div>
-        <div class="divider"></div>
-        <div class="card-header" style="margin-bottom:10px;"><h4 style="font-size:13.5px;">Interview Domains</h4></div>
-        <div class="domain-tags" style="margin-bottom:14px;" id="info-domains"></div>
-        <div class="card-header" style="margin-bottom:10px;"><h4 style="font-size:13.5px;">Projects</h4></div>
-        <div id="info-projects" style="display:flex;flex-direction:column;gap:8px;color:var(--muted);font-size:13px;">
-          No project data available.
-        </div>
-      </div>
+    <div class="layout-grid" style="grid-template-columns:1fr;">
       <div class="data-card">
         <div class="card-header"><h4>Candidate Resume</h4></div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:8px;" id="live-resume-name">No resume uploaded</p>
         <div id="liveResumeEmbed"></div>
-        <div class="divider"></div>
-        <div class="card-header" style="margin-bottom:10px;"><h4 style="font-size:13.5px;">Preparation Notes</h4></div>
-        <textarea rows="4" placeholder="Add pre-interview notes about this student..."></textarea>
+      </div>
+      <div class="data-card">
+        <div class="card-header"><h4>Project Details</h4></div>
+        <div id="info-projects" style="display:flex;flex-direction:column;gap:10px;color:var(--muted);font-size:13px;">
+          No project details provided.
+        </div>
       </div>
     </div>
   </div>
@@ -156,30 +141,21 @@
     </div>
     <div class="layout-grid">
       <div class="data-card">
-        <div class="card-header"><h4>Student &amp; Resume</h4></div>
-        <div class="profile-resume-split">
-          <div class="profile-resume-details">
-            <div class="info-grid" style="margin-bottom:0;">
-              <div class="info-item"><span>Full Name</span><b id="info-name-live">—</b></div>
-              <div class="info-item"><span>CGPA</span><b id="info-cgpa-live">—</b></div>
-              <div class="info-item"><span>Institute</span><b id="info-institute-live">—</b></div>
-              <div class="info-item"><span>Program</span><b id="info-program-live">—</b></div>
-            </div>
-            <div class="domain-tags" style="margin-top:12px;" id="info-domains-live"></div>
-          </div>
-          <div class="profile-resume-cv">
-            <p style="font-size:12px;color:var(--muted);margin-bottom:8px;" id="live-resume-name2">No resume uploaded</p>
-            <div id="liveResumeEmbed2"></div>
-          </div>
+        <div class="card-header"><h4>Resume &amp; Project</h4></div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:8px;" id="live-resume-name2">No resume uploaded</p>
+        <div id="liveResumeEmbed2" style="margin-bottom:14px;"></div>
+        <div class="card-header" style="margin-bottom:8px;"><h4 style="font-size:13.5px;">Project Details</h4></div>
+        <div id="info-projects-live" style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--muted);">
+          No project details provided.
         </div>
       </div>
       <div class="data-card">
-        <div class="card-header"><h4>Quick Notes</h4></div>
-        <textarea rows="8" placeholder="Take notes during the interview..."></textarea>
-        <div style="margin-top:12px;display:flex;gap:8px;">
-          <button class="btn btn-outline" style="flex:1;justify-content:center;"><i class="fa-solid fa-flag"></i> Flag Moment</button>
-          <button class="btn btn-p"       style="flex:1;justify-content:center;"><i class="fa-solid fa-save"></i> Save Notes</button>
+        <div class="card-header"><h4><i class="fa-solid fa-video" style="margin-right:6px;"></i>Live Webcam</h4></div>
+        <div style="background:#0F172A;border-radius:var(--r);overflow:hidden;aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;">
+          <video id="sessionWebcam" autoplay muted playsinline style="width:100%;height:100%;object-fit:cover;display:none;"></video>
+          <span id="webcamPlaceholder" style="color:rgba(255,255,255,.55);font-size:13px;text-align:center;padding:20px;">Start session to activate webcam</span>
         </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:8px;"><i class="fa-solid fa-circle-info"></i> Recording saves automatically when you end the session.</p>
       </div>
     </div>
   </div>

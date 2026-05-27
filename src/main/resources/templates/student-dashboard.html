@@ -82,14 +82,12 @@
       </div>
       <div class="modal-tabs" style="padding:0 22px;flex-shrink:0;">
         <div class="modal-tab active" onclick="switchReportTab(this,'rt-overview')"><i class="fa-solid fa-chart-pie" style="margin-right:5px;font-size:10px;"></i>Overview</div>
-        <div class="modal-tab" onclick="switchReportTab(this,'rt-feedback')"><i class="fa-solid fa-comment" style="margin-right:5px;font-size:10px;"></i>Feedback</div>
-        <div class="modal-tab" onclick="switchReportTab(this,'rt-rounds')"><i class="fa-solid fa-list-check" style="margin-right:5px;font-size:10px;"></i>Rounds</div>
+        <div class="modal-tab" onclick="switchReportTab(this,'rt-feedback')"><i class="fa-solid fa-comment" style="margin-right:5px;font-size:10px;"></i>Evaluation Details</div>
         <div class="modal-tab" onclick="switchReportTab(this,'rt-recording')"><i class="fa-solid fa-video" style="margin-right:5px;font-size:10px;"></i>Recording</div>
       </div>
       <div style="overflow-y:auto;flex:1;">
         <div id="rt-overview" class="modal-tab-panel active"></div>
         <div id="rt-feedback" class="modal-tab-panel"></div>
-        <div id="rt-rounds" class="modal-tab-panel"></div>
         <div id="rt-recording" class="modal-tab-panel"></div>
       </div>
       <div class="modal-footer" style="flex-shrink:0;">
@@ -386,7 +384,7 @@
                   <option value="TY">TY – Third Year</option>
                   <option value="LY">LY – Last Year</option>
                 </select>
-                <select id="pf_degree" onchange="updateClassCode()">
+                <select id="pf_degree" onchange="onDegreeChange()">
                   <option value="BE">BE – Bachelor of Engineering</option>
                   <option value="BTech">BTech – B.Tech</option>
                   <option value="BSc">BSc – Bachelor of Science</option>
@@ -394,13 +392,30 @@
                   <option value="MCA" selected>MCA</option>
                   <option value="MTech">MTech</option>
                   <option value="MBA">MBA</option>
+                  <option value="Other">Other</option>
                 </select>
+              </div>
+              <div class="form-group" id="pf_degreeOtherWrap" style="display:none;">
+                <label>Specify Degree</label>
+                <input type="text" class="form-field editable" id="pf_degreeOther" placeholder="Enter your degree" oninput="updateClassCode()">
               </div>
               <div style="margin-top:7px;display:inline-flex;align-items:center;gap:7px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:6px 12px;">
                 <i class="fa-solid fa-id-badge" style="color:var(--accent);font-size:11px;"></i>
                 <span style="font-size:11px;color:var(--muted);">Class code:</span>
                 <b id="classCodeVal" style="color:var(--primary);font-size:14px;">SYMCA</b>
               </div>
+            </div>
+            <div class="form-group">
+              <label>Project Name</label>
+              <input type="text" class="form-field editable" id="pf_projectName" placeholder="e.g. Campus Placement Portal">
+            </div>
+            <div class="form-group">
+              <label>Project Brief</label>
+              <textarea class="form-field editable" id="pf_projectBrief" rows="3" style="resize:none;" placeholder="Describe your project…"></textarea>
+            </div>
+            <div class="form-group">
+              <label>GitHub Link <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+              <input type="url" class="form-field editable" id="pf_projectGithub" placeholder="https://github.com/username/repo">
             </div>
             <div class="form-group">
               <label>About Me</label>

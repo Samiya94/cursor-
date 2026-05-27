@@ -20,10 +20,14 @@ public record StudentDashboardStatsDTO(
     Double cgpa,
     List<StudentInterviewItemDTO> interviews,
     String resumeFileName,
-    String resumeUrl
+    String resumeUrl,
+    String projectName,
+    String projectBrief,
+    String projectGithub
 ) {
     public record StudentInterviewItemDTO(
-        Long id,
+        Long applicationId,
+        Long interviewRequestId,
         String topic,
         String expertise,
         String dateTime,
@@ -32,6 +36,7 @@ public record StudentDashboardStatsDTO(
         String remarks,
         java.time.LocalDateTime scheduledDate,
         String meetingLink,
-        String scheduledVenue
+        String scheduledVenue,
+        String assignedInterviewerName
     ) {}
 }

@@ -16,6 +16,26 @@
     }
 })();
 
+function toggleDomainOther() {
+    const sel = document.getElementById('domainSelect');
+    const wrap = document.getElementById('domainOtherWrap');
+    const input = document.getElementById('domainOther');
+    if (!sel || !wrap) return;
+    const show = sel.value === 'Other';
+    wrap.style.display = show ? '' : 'none';
+    if (!show && input) input.value = '';
+}
+
+function toggleQualificationOther() {
+    const sel = document.getElementById('qualificationSelect');
+    const wrap = document.getElementById('qualificationOtherWrap');
+    const input = document.getElementById('qualificationOther');
+    if (!sel || !wrap) return;
+    const show = sel.value === 'Other';
+    wrap.style.display = show ? '' : 'none';
+    if (!show && input) input.value = '';
+}
+
 // Validate registration link (ONLY for TPO registration page)
 
 const params = new URLSearchParams(window.location.search);
@@ -263,12 +283,39 @@ async function handleSubmit(e, role){
     // =========================
     if(role === 'interviewer'){
 
+      const domainSel = form.querySelector('[name="domain"]');
+      const qualSel = form.querySelector('[name="qualification"]');
+
+      if (domainSel && domainSel.value === 'Other') {
+        const custom = (document.getElementById('domainOther') || {}).value.trim();
+        if (!custom) {
+          showToast('Please enter your primary domain / expertise.', 'error');
+          return;
+        }
+      }
+      if (qualSel && qualSel.value === 'Other') {
+        const custom = (document.getElementById('qualificationOther') || {}).value.trim();
+        if (!custom) {
+          showToast('Please enter your highest qualification.', 'error');
+          return;
+        }
+      }
+
       const formData = new FormData(form);
 
       // Capture name before we do anything else (form.reset() will clear it)
       const fullName = form.querySelector('input[name="fullName"]')
                          ? form.querySelector('input[name="fullName"]').value.trim()
                          : '';
+
+      if (domainSel && domainSel.value === 'Other') {
+        formData.set('domain', document.getElementById('domainOther').value.trim());
+      }
+      if (qualSel && qualSel.value === 'Other') {
+        formData.set('qualification', document.getElementById('qualificationOther').value.trim());
+      }
+      formData.delete('domainOther');
+      formData.delete('qualificationOther');
 
       // Skills fix
       const skills = Array.from(document.querySelectorAll('#skills-tags-wrap .tag-chip'))

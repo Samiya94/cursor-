@@ -55,6 +55,13 @@ public class Student {
 
     private String resumeUrl;
 
+    private String projectName;
+
+    @Column(length = 2000)
+    private String projectBrief;
+
+    private String projectGithub;
+
     private String profilePhotoUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)

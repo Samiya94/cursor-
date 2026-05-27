@@ -84,7 +84,10 @@ public class MentorDashboardController {
                     s.getDepartment() != null ? s.getDepartment().getId() : null,
                     s.getDepartment() != null ? s.getDepartment().getName() : null,
                     resumeFileName,
-                    resumeUrl
+                    resumeUrl,
+                    null,  // projectName
+                    null,  // projectBrief
+                    null   // projectGithub
                 );
             })
             .toList();

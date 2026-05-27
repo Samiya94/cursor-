@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.interviewPlatform.entities.Interviewer;
 import com.interviewPlatform.entities.StudentApplication;
+import com.interviewPlatform.repositories.InterviewEvaluationRepository;
 import com.interviewPlatform.repositories.InterviewRequestRepository;
 import com.interviewPlatform.repositories.InterviewerRepository;
 import com.interviewPlatform.repositories.StudentApplicationRepository;
@@ -32,6 +33,7 @@ public class InterviewerDashboardController {
     private final InterviewerRepository interviewerRepository;
     private final InterviewRequestRepository interviewRequestRepository;
     private final StudentApplicationRepository applicationRepository;
+    private final InterviewEvaluationRepository evaluationRepository;
 
     @Value("${file.upload.dir:uploads/}")
     private String uploadDir;
@@ -86,7 +88,10 @@ public class InterviewerDashboardController {
             return ResponseEntity.status(403).body("You are not allowed to access this interview");
         }
 
-        List<StudentApplication> apps = applicationRepository.findByInterviewRequestId(id);
+        List<StudentApplication> apps = applicationRepository.findByInterviewRequestId(id).stream()
+                .filter(a -> a.getAssignedInterviewer() != null
+                        && a.getAssignedInterviewer().getId().equals(interviewer.getId()))
+                .toList();
         List<Map<String, Object>> result = apps.stream().map(a -> {
             Map<String, Object> m = new HashMap<>();
             m.put("applicationId", a.getId());
@@ -105,7 +110,11 @@ public class InterviewerDashboardController {
             // Extra profile info
             m.put("skills", a.getStudent().getSkills());
             m.put("about", a.getStudent().getAbout());
+            m.put("projectName", a.getStudent().getProjectName());
+            m.put("projectBrief", a.getStudent().getProjectBrief());
+            m.put("projectGithub", a.getStudent().getProjectGithub());
             m.put("profilePhotoUrl", a.getStudent().getProfilePhotoUrl());
+            m.put("evaluationSubmitted", evaluationRepository.existsByApplicationId(a.getId()));
             // ── NEW: include video URL if a video has been uploaded for this student ──
             String videoUrl = a.getVideoUrl();
             m.put("videoUrl", (videoUrl != null && !videoUrl.isBlank())
@@ -143,6 +152,11 @@ public class InterviewerDashboardController {
 
         if (!application.getInterviewRequest().getId().equals(interviewId)) {
             return ResponseEntity.status(400).body("Application does not belong to this interview");
+        }
+
+        if (application.getAssignedInterviewer() == null
+                || !application.getAssignedInterviewer().getId().equals(interviewer.getId())) {
+            return ResponseEntity.status(403).body("You are not assigned to this student");
         }
 
         // 3. Validate the uploaded file is a video

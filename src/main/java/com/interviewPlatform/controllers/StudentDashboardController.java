@@ -18,6 +18,7 @@ import com.interviewPlatform.entities.InterviewRequest;
 import com.interviewPlatform.entities.StudentApplication;
 import com.interviewPlatform.entities.Student;
 import com.interviewPlatform.enums.Status;
+import com.interviewPlatform.repositories.InterviewEvaluationRepository;
 import com.interviewPlatform.repositories.InterviewRequestRepository;
 import com.interviewPlatform.repositories.StudentApplicationRepository;
 import com.interviewPlatform.repositories.StudentRepository;
@@ -32,6 +33,7 @@ public class StudentDashboardController {
     private final StudentRepository studentRepository;
     private final InterviewRequestRepository interviewRequestRepository;
     private final StudentApplicationRepository applicationRepository;
+    private final InterviewEvaluationRepository evaluationRepository;
 
     private static final DateTimeFormatter DISPLAY_FMT =
         DateTimeFormatter.ofPattern("MMM dd, yyyy · hh:mm a");
@@ -55,9 +57,16 @@ public class StudentDashboardController {
 
         long confirmedCount = interviewsTaken;
 
-        Double cgpa = student.getCgpa();
-        Double averageScore = cgpa != null ? cgpa : 0.0;
-        Double bestScore = cgpa != null ? Math.min(10.0, cgpa + 0.5) : 0.0;
+        List<Double> evalScores = myApplications.stream()
+            .map(a -> evaluationRepository.findByApplicationId(a.getId()).orElse(null))
+            .filter(java.util.Objects::nonNull)
+            .map(e -> e.getOverallScore())
+            .filter(java.util.Objects::nonNull)
+            .toList();
+        Double averageScore = evalScores.isEmpty() ? 0.0
+            : evalScores.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        Double bestScore = evalScores.isEmpty() ? 0.0
+            : evalScores.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
 
         List<StudentDashboardStatsDTO.StudentInterviewItemDTO> interviewItems = myApplications.stream()
             .filter(a -> a.getStatus() == Status.APPROVED)
@@ -66,7 +75,11 @@ public class StudentDashboardController {
                 var scheduled = req.getScheduledDate() != null ? req.getScheduledDate() : req.getStartDate();
                 var dateTime =
                     scheduled != null ? scheduled.format(DISPLAY_FMT) : "TBD";
+                String interviewerName = app.getAssignedInterviewer() != null
+                        ? app.getAssignedInterviewer().getFullName()
+                        : (req.getAssignedInterviewer() != null ? req.getAssignedInterviewer().getFullName() : "");
                 return new StudentDashboardStatsDTO.StudentInterviewItemDTO(
+                    app.getId(),
                     req.getId(),
                     req.getDepartmentName() != null ? req.getDepartmentName() : "Interview",
                     req.getExpertise() != null ? String.join(", ", req.getExpertise()) : "",
@@ -76,7 +89,8 @@ public class StudentDashboardController {
                     req.getRemarks() != null ? req.getRemarks() : "",
                     scheduled,
                     req.getMeetingLink() != null ? req.getMeetingLink() : "",
-                    req.getScheduledVenue() != null ? req.getScheduledVenue() : ""
+                    req.getScheduledVenue() != null ? req.getScheduledVenue() : "",
+                    interviewerName
                 );
             })
             .sorted((a, b) -> {
@@ -99,10 +113,13 @@ public class StudentDashboardController {
             student.getStudentClass(),
             student.getDepartment() != null ? student.getDepartment().getName() : "",
             student.getInstitute() != null ? student.getInstitute().getInstituteName() : "",
-            student.getAbout(), student.getSkills(), cgpa,
+            student.getAbout(), student.getSkills(), student.getCgpa(),
             interviewItems,
             resumeFileName,
-            resumeUrl
+            resumeUrl,
+            student.getProjectName(),
+            student.getProjectBrief(),
+            student.getProjectGithub()
         );
 
         return ResponseEntity.ok(stats);

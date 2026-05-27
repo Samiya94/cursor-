@@ -23,13 +23,17 @@ function escHtml(str) {
 }
 function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 
+var KNOWN_DEGREES = ['BE','BTech','BSc','BCA','MCA','MTech','MBA'];
 var STUDENT = {
   name:'', firstName:'', lastName:'', email:'',
   phone:'', department:'', instituteName:'', class:'',
-  year:'SY', degree:'MCA', about:'', skills:[], cgpa:null
+  year:'SY', degree:'MCA', about:'', skills:[], cgpa:null,
+  projectName:'', projectBrief:'', projectGithub:''
 };
 var DASHBOARD_STATS = null;
 var MY_INTERVIEWS   = [];
+var FEEDBACK_REPORTS = [];
+var CURRENT_REPORT = null;
 var ratingPending = null, ratingGiven = {}, ratingValue = 0;
 var appliedSlots  = {};
 var STUDENT_RESUME = {
@@ -45,6 +49,7 @@ window.addEventListener('DOMContentLoaded', async function() {
   renderSkillMasteryProgress();
   renderUpcomingInterviewCard();
   renderInterviewTimeline();
+  await loadFeedbackReports();
   renderFeedbackReports();
 
   await loadMyApplicationsFromAPI();            // My Interviews tab
@@ -89,7 +94,25 @@ async function loadDashboardStats() {
       skills:        DASHBOARD_STATS.skills          || [],
       cgpa:          DASHBOARD_STATS.cgpa
     };
-    MY_INTERVIEWS = DASHBOARD_STATS.interviews || [];
+    MY_INTERVIEWS = (DASHBOARD_STATS.interviews || []).map(function(iv) {
+      return {
+        id: iv.interviewRequestId,
+        applicationId: iv.applicationId,
+        topic: iv.topic,
+        expertise: iv.expertise,
+        dateTime: iv.dateTime,
+        status: iv.status,
+        contactPerson: iv.assignedInterviewerName || iv.contactPerson || '',
+        remarks: iv.remarks,
+        scheduledDate: iv.scheduledDate,
+        meetingLink: iv.meetingLink,
+        scheduledVenue: iv.scheduledVenue,
+        assignedInterviewerName: iv.assignedInterviewerName
+      };
+    });
+    if (DASHBOARD_STATS.projectName) STUDENT.projectName = DASHBOARD_STATS.projectName;
+    if (DASHBOARD_STATS.projectBrief) STUDENT.projectBrief = DASHBOARD_STATS.projectBrief;
+    if (DASHBOARD_STATS.projectGithub) STUDENT.projectGithub = DASHBOARD_STATS.projectGithub;
     // Seed resume info from dashboard-stats so it's available before loadResumeInfo() runs
     if (DASHBOARD_STATS.resumeFileName) {
       STUDENT_RESUME.url = DASHBOARD_STATS.resumeUrl || null;
@@ -123,11 +146,29 @@ function initStudentUI() {
   setVal('pf_dept_ro',  STUDENT.department);
   setVal('pf_inst_ro',  STUDENT.instituteName);
 
-  var ye = document.getElementById('pf_year'), de2 = document.getElementById('pf_degree');
-  if(ye)  { for(var i=0;i<ye.options.length;i++)  { if(ye.options[i].value===STUDENT.year)   { ye.selectedIndex=i; break; } } }
-  if(de2) { for(var j=0;j<de2.options.length;j++) { if(de2.options[j].value===STUDENT.degree){ de2.selectedIndex=j; break;} } }
+  var ye = document.getElementById('pf_year'), de2 = document.getElementById('pf_degree'), degOther = document.getElementById('pf_degreeOther');
+  var classCode = STUDENT.class || 'SYMCA';
+  var yearPart = classCode.slice(0, 2);
+  var degreePart = classCode.slice(2);
+  if (ye) ye.value = ['FY','SY','TY','LY'].indexOf(yearPart) >= 0 ? yearPart : 'SY';
+  if (de2) {
+    if (KNOWN_DEGREES.indexOf(degreePart) >= 0) {
+      de2.value = degreePart;
+      if (degOther) degOther.value = '';
+      var wrap = document.getElementById('pf_degreeOtherWrap');
+      if (wrap) wrap.style.display = 'none';
+    } else if (degreePart) {
+      de2.value = 'Other';
+      if (degOther) degOther.value = degreePart;
+      var wrap2 = document.getElementById('pf_degreeOtherWrap');
+      if (wrap2) wrap2.style.display = '';
+    }
+  }
   updateClassCode();
 
+  setVal('pf_projectName', STUDENT.projectName || DASHBOARD_STATS && DASHBOARD_STATS.projectName || '');
+  setVal('pf_projectBrief', STUDENT.projectBrief || DASHBOARD_STATS && DASHBOARD_STATS.projectBrief || '');
+  setVal('pf_projectGithub', STUDENT.projectGithub || DASHBOARD_STATS && DASHBOARD_STATS.projectGithub || '');
   var ab = document.getElementById('pf_about');
   if (ab) ab.value = STUDENT.about || '';
   var scc= document.getElementById('statsClassCode'); if(scc) scc.textContent = cls;
@@ -193,7 +234,9 @@ function renderInterviewTable() {
     if (iv.status==='PENDING' || iv.status==='CONFIRMED') {
       actionCell = '<button class="btn btn-ghost btn-sm" onclick="cancelMyInterview('+iv.id+',this)"><i class="fa-solid fa-xmark"></i> Cancel</button>';
     } else {
-      actionCell = '<button class="btn btn-outline btn-sm" onclick="openReportFlow(\''+escHtml(iv.topic)+'\',\''+escHtml(iv.dateTime)+'\',\''+escHtml(iv.contactPerson||'Interviewer')+'\',\'—\')"><i class="fa-solid fa-file-invoice"></i> Report</button>';
+      actionCell = iv.applicationId
+        ? '<button class="btn btn-outline btn-sm" onclick="openReportFlow('+iv.applicationId+')"><i class="fa-solid fa-file-invoice"></i> Report</button>'
+        : '';
     }
     var row = document.createElement('tr');
     row.setAttribute('data-status', dataStatus);
@@ -232,26 +275,35 @@ function filterInts(status, btn) {
   });
 }
 
+async function loadFeedbackReports() {
+  try {
+    var res = await secureFetch('/api/student/feedback/reports');
+    if (res && res.ok) FEEDBACK_REPORTS = await res.json();
+    else FEEDBACK_REPORTS = [];
+  } catch (e) {
+    FEEDBACK_REPORTS = [];
+  }
+}
+
 function renderFeedbackReports() {
   var tbody = document.querySelector('#view-reports table tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
-  // Feedback reports are shown for interviews that are approved/scheduled for the student.
-  var completed = (MY_INTERVIEWS||[]).filter(function(iv){return iv.status==='APPROVED';});
-  if (completed.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">No feedback reports yet.</td></tr>';
+  if (!FEEDBACK_REPORTS.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">No feedback reports yet. Reports appear after your interviewer submits an evaluation.</td></tr>';
     return;
   }
-  completed.forEach(function(iv) {
-    var isCancelled = iv.status==='CANCELLED'||iv.status==='REJECTED';
+  FEEDBACK_REPORTS.forEach(function(r) {
+    var dateStr = r.scheduledDate ? new Date(r.scheduledDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'TBD';
+    var score = r.evaluation && r.evaluation.overallScore != null ? r.evaluation.overallScore.toFixed(1) : '—';
     var row = document.createElement('tr');
     row.innerHTML =
-      '<td><b>'+escHtml(iv.dateTime)+'</b></td>'+
-      '<td>'+escHtml(iv.topic)+(iv.expertise?' – '+escHtml(iv.expertise):'')+'</td>'+
-      '<td>'+escHtml(iv.contactPerson||'Interviewer')+'</td>'+
-      '<td><span style="font-weight:700;color:var(--accent);">— / 10</span></td>'+
-      '<td><span class="badge '+(isCancelled?'bg-danger':'bg-success')+'">'+formatStatus(iv.status)+'</span></td>'+
-      '<td><button class="btn btn-outline btn-sm" onclick="openReportFlow(\''+escHtml(iv.topic)+'\',\''+escHtml(iv.dateTime)+'\',\''+escHtml(iv.contactPerson||'Interviewer')+'\',\'—\')"><i class="fa-solid fa-eye"></i> View</button></td>';
+      '<td><b>'+escHtml(dateStr)+'</b></td>'+
+      '<td>'+escHtml(r.departmentName||'Interview')+'</td>'+
+      '<td>'+escHtml(r.interviewerName||'Interviewer')+'</td>'+
+      '<td><span style="font-weight:700;color:var(--accent);">'+score+' / 10</span></td>'+
+      '<td><span class="badge bg-success">Evaluated</span></td>'+
+      '<td><button class="btn btn-outline btn-sm" onclick="openReportFlow('+r.applicationId+')"><i class="fa-solid fa-eye"></i> View</button></td>';
     tbody.appendChild(row);
   });
 }
@@ -784,13 +836,20 @@ async function loadMyApplicationsFromAPI() {
                 actionHtml = '<button class="btn btn-ghost btn-sm" onclick="withdrawApplication(' + app.applicationId + ', this)"><i class="fa-solid fa-xmark"></i> Withdraw</button>';
             }
 
+            var report = FEEDBACK_REPORTS.find(function(r){ return r.applicationId === app.applicationId; });
+            var scoreCell = report && report.evaluation && report.evaluation.overallScore != null
+                ? '<span style="font-weight:700;color:var(--accent);">' + report.evaluation.overallScore.toFixed(1) + ' / 10</span>'
+                : '<span style="color:var(--muted);">—</span>';
+            var reportBtn = app.applicationId && report
+                ? ' <button class="btn btn-outline btn-sm" onclick="openReportFlow(' + app.applicationId + ')"><i class="fa-solid fa-eye"></i></button>'
+                : '';
             row.innerHTML =
                 '<td><div style="font-weight:700;">' + escHtml(dateText) + '</div></td>' +
                 '<td>' + escHtml(app.departmentName || '—') + '</td>' +
                 '<td><span style="color:var(--muted);">' + interviewerText + '</span></td>' +
                 '<td><span class="badge ' + statusClass + '">' + escHtml(app.applicationStatus || 'PENDING') + '</span></td>' +
-                '<td style="color:var(--muted);">—</td>' +
-                '<td>' + actionHtml + '</td>';
+                '<td>' + scoreCell + '</td>' +
+                '<td>' + actionHtml + reportBtn + '</td>';
             tbody.appendChild(row);
         });
     } catch(e) { console.error('My applications error:', e); }
@@ -839,69 +898,121 @@ function filterApply(cat, btn) {
 function cancelInterview(btn) { if(confirm('Cancel this interview request?')) { btn.closest('tr').remove(); showToast('Interview cancelled','warn'); } }
 function scrollSlots(id,dir){var c=document.getElementById(id);if(c)c.scrollBy({left:dir*250,behavior:'smooth'});}
 
-function openReportFlow(topic, date, interviewer, score) {
-  var key = topic+'_'+date;
-  if (!ratingGiven[key]) {
-    ratingPending = {topic:topic,date:date,interviewer:interviewer,score:score}; ratingValue=0;
-    document.getElementById('ratingInterviewerName').textContent = 'Rate '+interviewer;
-    document.querySelectorAll('.star').forEach(function(s){s.classList.remove('active');});
-    document.getElementById('ratingText').value=''; document.getElementById('ratingLabel').textContent='';
+async function openReportFlow(applicationId) {
+  try {
+    var res = await secureFetch('/api/student/feedback/reports/' + applicationId);
+    if (!res || !res.ok) { showToast('Could not load report', 'warn'); return; }
+    CURRENT_REPORT = await res.json();
+  } catch (e) {
+    showToast('Could not load report', 'error');
+    return;
+  }
+  if (!CURRENT_REPORT.hasStudentRating) {
+    ratingPending = { applicationId: applicationId, interviewer: CURRENT_REPORT.interviewerName || 'Interviewer' };
+    ratingValue = 0;
+    document.getElementById('ratingInterviewerName').textContent = 'Rate ' + (CURRENT_REPORT.interviewerName || 'your interviewer');
+    document.querySelectorAll('.star').forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById('ratingText').value = '';
+    document.getElementById('ratingLabel').textContent = '';
     openOverlay('ratingModal');
-  } else openReport(topic,date,interviewer,score);
+  } else {
+    openReport(CURRENT_REPORT);
+  }
 }
 function setRating(v){
   ratingValue=v; var labels=['','Poor','Fair','Good','Very Good','Excellent'];
   document.getElementById('ratingLabel').textContent=labels[v]||'';
   document.querySelectorAll('.star').forEach(function(s){s.classList.toggle('active',parseInt(s.dataset.v)<=v);});
 }
-function submitRating(){
-  if(!ratingPending)return;
-  var key=ratingPending.topic+'_'+ratingPending.date;
-  ratingGiven[key]={rating:ratingValue,feedback:document.getElementById('ratingText').value};
-  var p=ratingPending; ratingPending=null; closeOverlay('ratingModal'); showToast('Rating submitted! Thank you ⭐');
-  setTimeout(function(){openReport(p.topic,p.date,p.interviewer,p.score);},350);
+async function submitRating(){
+  if(!ratingPending || !ratingPending.applicationId) return;
+  if(!ratingValue){ showToast('Please select a star rating','warn'); return; }
+  try {
+    var res = await secureFetch('/api/student/feedback/ratings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        applicationId: ratingPending.applicationId,
+        rating: ratingValue,
+        feedback: document.getElementById('ratingText').value.trim()
+      })
+    });
+    if (!res || !res.ok) throw new Error();
+    var res2 = await secureFetch('/api/student/feedback/reports/' + ratingPending.applicationId);
+    if (res2 && res2.ok) CURRENT_REPORT = await res2.json();
+  } catch (e) {
+    showToast('Could not save rating', 'error');
+    return;
+  }
+  ratingPending = null;
+  closeOverlay('ratingModal');
+  showToast('Rating submitted! Thank you');
+  setTimeout(function(){ openReport(CURRENT_REPORT); }, 350);
 }
 function skipRating(){
-  var p=ratingPending; if(p){ratingGiven[p.topic+'_'+p.date]=true;} ratingPending=null; closeOverlay('ratingModal');
-  if(p) setTimeout(function(){openReport(p.topic,p.date,p.interviewer,p.score);},200);
+  var report = CURRENT_REPORT;
+  ratingPending = null;
+  closeOverlay('ratingModal');
+  if (report) setTimeout(function(){ openReport(report); }, 200);
 }
 
-function openReport(topic, date, interviewer, score) {
-  var s = parseFloat(score)||0;
-  var name=STUDENT.name||'Student', cls=STUDENT.class||'', email=STUDENT.email||'—', phone=STUDENT.phone||'—', ini=getInitials(name);
-  var perf=s>=9?'Outstanding':s>=8?'Excellent':s>=7?'Good':s>=6?'Average':'Pending';
-  var perfColor=s>=8?'var(--success)':s>=6?'var(--warning)':'var(--danger)';
-  var perfBg=s>=8?'#DCFCE7':s>=6?'#FEF3C7':'#FEE2E2';
-  document.getElementById('rm_studentName').textContent=name;
-  document.getElementById('rm_class').textContent=cls;
-  document.getElementById('rm_email').textContent=email;
-  document.getElementById('rm_phone').textContent=phone;
-  document.getElementById('rm_bannerAvatar').textContent=ini;
-  document.getElementById('rm_bannerName').textContent=name;
-  document.getElementById('rm_bannerSub').textContent=cls+' ('+topic+') · '+perf;
-  var totalInterviews=(MY_INTERVIEWS||[]).length;
-  var avgScore=DASHBOARD_STATS&&DASHBOARD_STATS.averageScore?DASHBOARD_STATS.averageScore.toFixed(1):'—';
-  document.getElementById('rt-overview').innerHTML=
+function formatReportDate(r) {
+  if (!r || !r.scheduledDate) return 'TBD';
+  return new Date(r.scheduledDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function openReport(report) {
+  if (!report) return;
+  var ev = report.evaluation || {};
+  var score = ev.overallScore != null ? parseFloat(ev.overallScore) : 0;
+  var name = STUDENT.name || 'Student';
+  var cls = STUDENT.class || '';
+  var email = STUDENT.email || '—';
+  var phone = STUDENT.phone || '—';
+  var ini = getInitials(name);
+  var perfLabel = ev.overallPerformance || (score >= 8 ? 'Excellent' : score >= 6 ? 'Good' : 'Average');
+  var perfColor = score >= 8 ? 'var(--success)' : score >= 6 ? 'var(--warning)' : 'var(--danger)';
+  var perfBg = score >= 8 ? '#DCFCE7' : score >= 6 ? '#FEF3C7' : '#FEE2E2';
+  var dateStr = formatReportDate(report);
+  document.getElementById('rm_studentName').textContent = name;
+  document.getElementById('rm_class').textContent = cls;
+  document.getElementById('rm_email').textContent = email;
+  document.getElementById('rm_phone').textContent = phone;
+  document.getElementById('rm_bannerAvatar').textContent = ini;
+  document.getElementById('rm_bannerName').textContent = name;
+  document.getElementById('rm_bannerSub').textContent = (report.departmentName || 'Interview') + ' · ' + perfLabel;
+  document.getElementById('rt-overview').innerHTML =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">'+
-      '<div style="background:var(--bg);border-radius:var(--r);padding:14px 16px;"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Overall Score (CGPA)</div><div style="font-size:1.7rem;font-weight:800;color:var(--dark);">'+avgScore+' / 10</div></div>'+
-      '<div style="background:var(--bg);border-radius:var(--r);padding:14px 16px;"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Interviews On Record</div><div style="font-size:1.7rem;font-weight:800;color:var(--dark);">'+totalInterviews+' interviews</div></div>'+
-      '<div style="background:var(--bg);border-radius:var(--r);padding:14px 16px;"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Interview Date</div><div style="font-size:1rem;font-weight:700;color:var(--dark);">'+escHtml(date)+'</div></div>'+
-      '<div style="background:'+perfBg+';border-radius:var(--r);padding:14px 16px;"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Performance</div><div style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-circle-check" style="color:'+perfColor+';"></i><span style="font-size:13px;font-weight:700;color:'+perfColor+';">'+perf+'</span></div></div>'+
+      '<div style="background:var(--bg);border-radius:var(--r);padding:14px 16px;"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Overall Score</div><div style="font-size:1.7rem;font-weight:800;color:var(--dark);">'+(score ? score.toFixed(1) : '—')+' / 10</div></div>'+
+      '<div style="background:var(--bg);border-radius:var(--r);padding:14px 16px;"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Interviewer</div><div style="font-size:1rem;font-weight:700;color:var(--dark);">'+escHtml(report.interviewerName||'—')+'</div></div>'+
+      '<div style="background:var(--bg);border-radius:var(--r);padding:14px 16px;"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Date &amp; Time</div><div style="font-size:1rem;font-weight:700;color:var(--dark);">'+escHtml(dateStr)+'</div></div>'+
+      '<div style="background:'+perfBg+';border-radius:var(--r);padding:14px 16px;"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Overall Performance</div><div style="display:flex;align-items:center;gap:6px;"><i class="fa-solid fa-circle-check" style="color:'+perfColor+';"></i><span style="font-size:13px;font-weight:700;color:'+perfColor+';">'+escHtml(perfLabel)+'</span></div></div>'+
     '</div>';
-  document.getElementById('rt-feedback').innerHTML=
-    '<div style="border-left:3px solid var(--accent);background:var(--bg);border-radius:0 var(--r) var(--r) 0;padding:14px 16px;">'+
-      '<div style="display:flex;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:4px;"><span style="font-size:13px;font-weight:700;color:var(--accent);">'+escHtml(topic)+'</span><span style="font-size:12px;color:var(--muted);">'+escHtml(interviewer)+' · '+escHtml(date)+'</span></div>'+
-      '<p style="font-size:13.5px;line-height:1.75;color:var(--dark);">Detailed feedback will appear here once the interviewer submits their evaluation.</p>'+
+  var rubricRows = [
+    ['Technical Problem Solving', ev.technicalScore],
+    ['Communication Clarity', ev.communicationScore],
+    ['Domain Knowledge', ev.domainScore],
+    ['Problem Approach & Logic', ev.approachScore],
+    ['Confidence & Presentation', ev.confidenceScore]
+  ].filter(function(row){ return row[1] != null; }).map(function(row){
+    return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span>'+row[0]+'</span><b>'+row[1]+'/10</b></div>';
+  }).join('');
+  document.getElementById('rt-feedback').innerHTML =
+    '<div style="display:flex;flex-direction:column;gap:14px;">'+
+      (rubricRows ? '<div style="background:var(--bg);border-radius:var(--r);padding:14px 16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:10px;">Evaluation Rubric</div>'+rubricRows+'</div>' : '')+
+      (ev.strengths ? '<div><div style="font-size:11px;font-weight:700;color:var(--success);margin-bottom:6px;">Strengths</div><p style="line-height:1.7;">'+escHtml(ev.strengths)+'</p></div>' : '')+
+      (ev.improvements ? '<div><div style="font-size:11px;font-weight:700;color:var(--warning);margin-bottom:6px;">Areas for Improvement</div><p style="line-height:1.7;">'+escHtml(ev.improvements)+'</p></div>' : '')+
+      (ev.remarks ? '<div><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;">Remarks</div><p style="line-height:1.7;">'+escHtml(ev.remarks)+'</p></div>' : '')+
+      (report.hasStudentRating ? '<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:var(--r);padding:12px 14px;"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:4px;">Your rating for interviewer</div><div>'+report.studentRating+' / 5 stars</div>'+(report.studentRatingFeedback ? '<p style="margin-top:6px;font-size:13px;">'+escHtml(report.studentRatingFeedback)+'</p>' : '')+'</div>' : '')+
     '</div>';
-  var rounds=(MY_INTERVIEWS||[]).slice(0,5).map(function(iv){return{label:iv.topic+(iv.expertise?' – '+iv.expertise:''),date:iv.dateTime,done:iv.status!=='PENDING'};});
-  document.getElementById('rt-rounds').innerHTML='<div style="display:flex;flex-direction:column;gap:16px;">'+rounds.map(function(r){
-    return '<div style="display:flex;gap:13px;align-items:flex-start;"><div style="width:11px;height:11px;border-radius:50%;background:'+(r.done?'var(--accent)':'#D1D5DB')+';margin-top:4px;flex-shrink:0;"></div><div><div style="font-size:13.5px;font-weight:700;color:var(--dark);margin-bottom:2px;">'+escHtml(r.label)+'</div><div style="font-size:12px;color:var(--muted);">'+escHtml(r.date)+'</div></div></div>';
-  }).join('')+'</div>';
-  document.getElementById('rt-recording').innerHTML=
-    '<div style="width:100%;aspect-ratio:16/9;background:var(--primary);border-radius:var(--r);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden;" onclick="showToast(\'Recording playback coming soon\',\'warn\')">'+
-      '<div style="width:56px;height:56px;background:rgba(255,255,255,.9);border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-play" style="color:var(--primary);font-size:1.1rem;margin-left:4px;"></i></div>'+
-      '<div style="position:absolute;bottom:12px;left:14px;color:rgba(255,255,255,.7);font-size:12px;"><i class="fa-solid fa-video" style="margin-right:5px;"></i>Interview Recording · '+escHtml(date)+'</div>'+
-    '</div><p style="font-size:12px;color:var(--muted);margin-top:10px;"><i class="fa-solid fa-circle-info" style="color:var(--accent);margin-right:4px;"></i>Recordings will be available once enabled by your institution.</p>';
+  if (report.videoUrl) {
+    document.getElementById('rt-recording').innerHTML =
+      '<video controls style="width:100%;border-radius:var(--r);background:#000;max-height:420px;" src="'+escHtml(report.videoUrl)+'"></video>'+
+      '<p style="font-size:12px;color:var(--muted);margin-top:10px;"><i class="fa-solid fa-video"></i> Interview recording · '+escHtml(dateStr)+'</p>';
+  } else {
+    document.getElementById('rt-recording').innerHTML =
+      '<p style="color:var(--muted);padding:24px;text-align:center;">No recording uploaded for this interview yet.</p>';
+  }
   document.querySelectorAll('#reportModal .modal-tab').forEach(function(t){t.classList.remove('active');});
   document.querySelectorAll('#reportModal .modal-tab-panel').forEach(function(p){p.classList.remove('active');});
   document.querySelector('#reportModal .modal-tab').classList.add('active');
@@ -943,9 +1054,31 @@ function togglePwdEye(iId,eId){
   ico.className='fa-solid '+(show?'fa-eye-slash':'fa-eye');
   ico.style.cssText='position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);cursor:pointer;font-size:13px;';
 }
+function resolveProfileDegree() {
+  var d = document.getElementById('pf_degree');
+  if (!d) return 'MCA';
+  if (d.value === 'Other') {
+    var other = document.getElementById('pf_degreeOther');
+    return other ? other.value.trim() : '';
+  }
+  return d.value;
+}
+
+function onDegreeChange() {
+  var d = document.getElementById('pf_degree');
+  var wrap = document.getElementById('pf_degreeOtherWrap');
+  var other = document.getElementById('pf_degreeOther');
+  if (!d || !wrap) return;
+  var show = d.value === 'Other';
+  wrap.style.display = show ? '' : 'none';
+  if (!show && other) other.value = '';
+  updateClassCode();
+}
+
 function updateClassCode(){
-  var y=document.getElementById('pf_year'),d=document.getElementById('pf_degree');
-  var code=(y?y.value:'SY')+(d?d.value:'MCA');
+  var y=document.getElementById('pf_year');
+  var deg=resolveProfileDegree();
+  var code=(y?y.value:'SY')+deg;
   var cv=document.getElementById('classCodeVal');if(cv)cv.textContent=code;
   var sc=document.getElementById('statsClassCode');if(sc)sc.textContent=code;
   var hs=document.getElementById('headerSub');if(hs)hs.textContent=code+' · Student';
@@ -953,9 +1086,20 @@ function updateClassCode(){
 }
 function saveAcademic(){
   var ye=document.getElementById('pf_year'),de=document.getElementById('pf_degree'),ab=document.getElementById('pf_about');
-  STUDENT.year=ye?ye.value:STUDENT.year;STUDENT.degree=de?de.value:STUDENT.degree;STUDENT.class=STUDENT.year+STUDENT.degree;
+  var degVal=resolveProfileDegree();
+  if(de&&de.value==='Other'&&!degVal){showToast('Please enter your degree.','warn');return;}
+  STUDENT.year=ye?ye.value:STUDENT.year;STUDENT.degree=degVal;STUDENT.class=STUDENT.year+STUDENT.degree;
   STUDENT.about=ab?ab.value:STUDENT.about;STUDENT.skills=getSkills();
-  secureFetch('/api/students/me',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({studentClass:STUDENT.class,cgpa:null,about:STUDENT.about||'',skills:STUDENT.skills||[]})})
+  var pn = document.getElementById('pf_projectName');
+  var pb = document.getElementById('pf_projectBrief');
+  var pg = document.getElementById('pf_projectGithub');
+  STUDENT.projectName = pn ? pn.value.trim() : '';
+  STUDENT.projectBrief = pb ? pb.value.trim() : '';
+  STUDENT.projectGithub = pg ? pg.value.trim() : '';
+  secureFetch('/api/students/me',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    studentClass:STUDENT.class,cgpa:null,about:STUDENT.about||'',skills:STUDENT.skills||[],
+    projectName:STUDENT.projectName,projectBrief:STUDENT.projectBrief,projectGithub:STUDENT.projectGithub
+  })})
       .then(function(res){if(!res.ok)throw new Error();try{localStorage.setItem('currentStudent',JSON.stringify(STUDENT));}catch(e){}updateClassCode();showToast('Academic details saved!');})
       .catch(function(){try{localStorage.setItem('currentStudent',JSON.stringify(STUDENT));}catch(e){}updateClassCode();showToast('Saved locally','warn');});
 }

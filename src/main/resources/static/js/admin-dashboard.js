@@ -1048,35 +1048,14 @@ async function viewApplicants(requestId) {
             ? '<p style="color:var(--muted);padding:12px 0;">No applicants yet.</p>'
             : `<table style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead><tr style="background:#F8FAFC;">
-                    <th style="padding:8px;text-align:left;">Student</th>
+                    <th style="padding:8px;text-align:left;">Name</th>
                     <th style="padding:8px;">Email</th>
-                    <th style="padding:8px;">CGPA</th>
-                    <th style="padding:8px;">Class</th>
-                    <th style="padding:8px;">Status</th>
-                    <th style="padding:8px;">Action</th>
+                    <th style="padding:8px;">Class (Year &amp; Degree)</th>
                 </tr></thead><tbody>
                 ${apps.map(a => `<tr style="border-top:1px solid #E2E8F0;">
                     <td style="padding:8px;"><b>${a.studentName || '—'}</b></td>
                     <td style="padding:8px;">${a.studentEmail || '—'}</td>
-                    <td style="padding:8px;">${a.cgpa ?? '—'}</td>
                     <td style="padding:8px;">${a.studentClass || '—'}</td>
-                    <td style="padding:8px;">
-                        <span class="badge ${a.applicationStatus === 'APPROVED' ? 'bg-success' : a.applicationStatus === 'REJECTED' ? 'bg-danger' : 'bg-pending'}">
-                            ${a.applicationStatus}
-                        </span>
-                    </td>
-                    <td style="padding:8px;">
-                        ${a.applicationStatus === 'PENDING'
-                            ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">
-                                <button class="btn btn-s btn-sm btn-approve" onclick="approveStudentApplication(${a.applicationId}, ${requestId})">
-                                    <i class="fa-solid fa-check"></i> Approve
-                                </button>
-                                <button class="btn btn-s btn-sm btn-reject" onclick="rejectStudentApplication(${a.applicationId}, ${requestId})">
-                                    <i class="fa-solid fa-xmark"></i> Reject
-                                </button>
-                              </div>`
-                            : '<span style="color:var(--muted);font-size:12px;">—</span>'}
-                    </td>
                 </tr>`).join('')}
                 </tbody></table>`;
 

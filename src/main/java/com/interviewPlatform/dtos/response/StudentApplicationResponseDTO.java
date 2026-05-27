@@ -19,5 +19,6 @@ public record StudentApplicationResponseDTO(
     String scheduledVenue,
     String meetingLink,
     String contactPerson,
-    String assignedInterviewerName
+    String assignedInterviewerName,
+    String videoUrl
 ) {}

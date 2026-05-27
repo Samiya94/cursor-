@@ -277,13 +277,17 @@
             </div>
             <div class="field">
               <label>Primary Domain / Expertise <span class="required">*</span></label>
-              <select name="domain" id="domainSelect" required>
+              <select name="domain" id="domainSelect" required onchange="toggleDomainOther()">
                 <option value="">Loading domains…</option>
               </select>
             </div>
+            <div class="field full" id="domainOtherWrap" style="display:none;">
+              <label>Specify Domain / Expertise <span class="required">*</span></label>
+              <input type="text" id="domainOther" name="domainOther" placeholder="Enter your primary domain or expertise">
+            </div>
             <div class="field">
               <label>Highest Qualification <span class="required">*</span></label>
-              <select name="qualification" required>
+              <select name="qualification" id="qualificationSelect" required onchange="toggleQualificationOther()">
                 <option value="">Select</option>
                 <option>B.E. / B.Tech</option>
                 <option>M.E. / M.Tech</option>
@@ -292,8 +296,12 @@
                 <option>B.Sc / M.Sc</option>
                 <option>Ph.D</option>
                 <option>Diploma</option>
-                <option>Other</option>
+                <option value="Other">Other</option>
               </select>
+            </div>
+            <div class="field full" id="qualificationOtherWrap" style="display:none;">
+              <label>Specify Qualification <span class="required">*</span></label>
+              <input type="text" id="qualificationOther" name="qualificationOther" placeholder="Enter your highest qualification">
             </div>
             <div class="field">
               <label>LinkedIn Profile <span class="required">*</span></label>

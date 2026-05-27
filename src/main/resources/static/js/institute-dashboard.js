@@ -590,7 +590,7 @@ function loadDeptDetail(name,coord,initials,email,phone,desg,color){
         document.getElementById('det-perc-text').textContent = pct + '%';
         document.getElementById('det-perc-bar').style.width = pct + '%';
 
-        // --- Render student table with Name, Email, Class, Phone, CGPA, Action ---
+        // --- Render student table with Name, Email, Class, Phone, Action ---
         let studentSection = document.getElementById('deptStudentSection');
         if (!studentSection) {
           studentSection = document.createElement('div');
@@ -614,7 +614,6 @@ function loadDeptDetail(name,coord,initials,email,phone,desg,color){
                   <th style="padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--border);">Email</th>
                   <th style="padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--border);">Class</th>
                   <th style="padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--border);">Phone</th>
-                  <th style="padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--border);">CGPA</th>
                   <th style="padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:2px solid var(--border);">Action</th>
                 </tr>
               </thead>
@@ -624,7 +623,6 @@ function loadDeptDetail(name,coord,initials,email,phone,desg,color){
                   const sEmail = s.email || '—';
                   const sCls = s.studentClass || '—';
                   const sPhone = s.phone || '—';
-                  const sCgpa = s.cgpa != null ? parseFloat(s.cgpa).toFixed(1) : '—';
                   const sSkills = (s.skills && s.skills.length) ? s.skills.join(', ') : '—';
                   const safeName = sName.replace(/'/g,"\\'");
                   const safeEmail = sEmail.replace(/'/g,"\\'");
@@ -636,10 +634,9 @@ function loadDeptDetail(name,coord,initials,email,phone,desg,color){
                     <td style="padding:9px 10px;color:var(--muted);font-size:12px;">${sEmail}</td>
                     <td style="padding:9px 10px;">${sCls}</td>
                     <td style="padding:9px 10px;font-size:12px;">${sPhone}</td>
-                    <td style="padding:9px 10px;"><b style="color:var(--primary);">${sCgpa}</b></td>
                     <td style="padding:9px 10px;">
                       <button class="btn btn-ghost btn-sm"
-                        onclick="openInstStudentDetail(${s.id||0},'${safeName}','${sCls}','${safeEmail}',${s.cgpa||0},'${safeSkills}','${sPhone}','${name}','${safeResume}','${safeResumeFile}')">
+                        onclick="openInstStudentDetail(${s.id||0},'${safeName}','${sCls}','${safeEmail}','${safeSkills}','${sPhone}','${name}','${safeResume}','${safeResumeFile}')">
                         <i class="fa-solid fa-eye"></i> View
                       </button>
                     </td>
@@ -1568,12 +1565,11 @@ function instGetInitials(n) {
   return (n || 'S').split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'S';
 }
 
-function openInstStudentDetail(id, name, cls, email, cgpa, skills, phone, deptName, resumeUrl, resumeFileName) {
+function openInstStudentDetail(id, name, cls, email, skills, phone, deptName, resumeUrl, resumeFileName) {
   document.getElementById('instModalStudentName').textContent = name;
   document.getElementById('instModalStudentMeta').innerHTML =
     `<span><i class="fa-solid fa-graduation-cap"></i> ${cls}</span>` +
-    `<span><i class="fa-solid fa-envelope"></i> ${email || '—'}</span>` +
-    (cgpa ? `<span><i class="fa-solid fa-star"></i> CGPA: ${cgpa}</span>` : '');
+    `<span><i class="fa-solid fa-envelope"></i> ${email || '—'}</span>`;
 
   document.getElementById('instModalBanner').innerHTML =
     `<div class="profile-banner" style="background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:16px 20px;border-radius:10px;display:flex;align-items:center;gap:14px;margin-bottom:16px;">
@@ -1768,14 +1764,12 @@ async function loadDeptStudents(deptId, containerId) {
       <thead><tr style="background:#F8FAFC;">
         <th style="padding:8px;text-align:left;">Name</th>
         <th style="padding:8px;text-align:left;">Email</th>
-        <th style="padding:8px;text-align:left;">Class</th>
-        <th style="padding:8px;text-align:left;">CGPA</th>
+        <th style="padding:8px;text-align:left;">Class (Year &amp; Degree)</th>
       </tr></thead><tbody>
       ${students.map(s => `<tr style="border-bottom:1px solid #F1F5F9;">
         <td style="padding:8px;font-weight:600;">${s.firstName||''} ${s.lastName||''}</td>
         <td style="padding:8px;color:var(--muted);">${s.email||'—'}</td>
         <td style="padding:8px;">${s.studentClass||'—'}</td>
-        <td style="padding:8px;">${s.cgpa!=null?s.cgpa:'—'}</td>
       </tr>`).join('')}
       </tbody></table></div>`;
   } catch(e) {

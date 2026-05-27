@@ -1,3 +1,9 @@
+function getAuthHeadersMultipart() {
+  const token = localStorage.getItem('accessToken');
+  if (!token) return null;
+  return { Authorization: 'Bearer ' + token };
+}
+
 const APP = {
   profile: null,
   interviews: [],
@@ -8,7 +14,10 @@ const APP = {
   seconds: 0,
   realtimeStarted: false,
   completed: JSON.parse(localStorage.getItem('interviewerCompleted') || '{}'),
-  reviews: JSON.parse(localStorage.getItem('interviewerReviews') || '[]')
+  reviews: JSON.parse(localStorage.getItem('interviewerReviews') || '[]'),
+  mediaStream: null,
+  mediaRecorder: null,
+  recordedChunks: []
 };
 
 window.addEventListener('DOMContentLoaded', async function () {
@@ -135,14 +144,40 @@ function normalizeStudent(interview, student) {
     profilePhotoUrl: student.profilePhotoUrl || null,
     videoUrl: student.videoUrl || null,
     applicationId: student.applicationId || null,
-    instituteConfirmed: interview.instituteConfirmed === true
+    instituteConfirmed: interview.instituteConfirmed === true,
+    projectName: student.projectName || '',
+    projectBrief: student.projectBrief || '',
+    projectGithub: student.projectGithub || '',
+    evaluationSubmitted: !!student.evaluationSubmitted
   };
+}
+
+function renderProjectDetailsHtml(s) {
+  if (!s || (!s.projectName && !s.projectBrief && !s.projectGithub)) {
+    return '<p style="color:var(--muted);">No project details provided.</p>';
+  }
+  let html = '';
+  if (s.projectName) {
+    html += '<div><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Project Name</div><b>' + escHtml(s.projectName) + '</b></div>';
+  }
+  if (s.projectBrief) {
+    html += '<div style="margin-top:10px;"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Brief</div><p style="line-height:1.6;margin:0;">' + escHtml(s.projectBrief) + '</p></div>';
+  }
+  if (s.projectGithub) {
+    html += '<div style="margin-top:10px;"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">GitHub</div><a href="' + escHtml(s.projectGithub) + '" target="_blank" rel="noopener" style="color:var(--primary);word-break:break-all;">' + escHtml(s.projectGithub) + '</a></div>';
+  }
+  return html;
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function chooseCurrentLiveStudent() {
   const now = Date.now();
   const candidates = APP.scheduleStudents.filter(s =>
-    (s.status === 'APPROVED' || s.status === 'PENDING') && !isCompleted(s.key)
+    (s.status === 'APPROVED' || s.status === 'PENDING') && !isCompleted(s.key) && !s.evaluationSubmitted
   );
   candidates.sort((a, b) => {
     const ad = a.scheduledDate ? a.scheduledDate.getTime() : Number.MAX_SAFE_INTEGER;
@@ -402,25 +437,26 @@ function renderLiveStudent() {
   }
   setText('live-avatar', s.initials); setText('live-avatar2', s.initials); setText('eval-avatar', s.initials);
   setText('live-name', s.name); setText('live-name2', s.name); setText('eval-name', s.name);
-  setText('live-degree', s.className);   setText('info-name', s.name); setText('info-studentId', s.email || '—');
-  setText('info-institute', s.institute); setText('info-program', s.domain); setText('info-year', s.className); setText('info-cgpa', s.cgpa);
-  setText('info-name-live', s.name); setText('info-cgpa-live', s.cgpa);
-  setText('info-institute-live', s.institute); setText('info-program-live', s.domain);
+  setText('live-degree', s.className + ' · ' + s.institute);
   const resumeLabel = s.resumeUrl ? friendlyResumeName(s.resumeFileName) : 'No resume uploaded';
   setText('live-resume-name', resumeLabel);
   setText('live-resume-name2', resumeLabel);
   mountResumeEmbed('liveResumeEmbed', s.resumeUrl, s.resumeFileName, { height: '460px' });
-  mountResumeEmbed('liveResumeEmbed2', s.resumeUrl, s.resumeFileName, { height: '460px' });
+  mountResumeEmbed('liveResumeEmbed2', s.resumeUrl, s.resumeFileName, { height: '360px' });
+  const projectsHtml = renderProjectDetailsHtml(s);
+  const projEl = document.getElementById('info-projects');
+  if (projEl) projEl.innerHTML = projectsHtml;
+  const projLive = document.getElementById('info-projects-live');
+  if (projLive) projLive.innerHTML = projectsHtml;
   if (s.profilePhotoUrl) {
     const photoUrl = s.profilePhotoUrl.startsWith('http') ? s.profilePhotoUrl : '/uploads/' + s.profilePhotoUrl;
     const avatarImg = '<img src="' + photoUrl + '" alt="' + s.name + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
     ['live-avatar','live-avatar2','eval-avatar'].forEach(function(id) { const el = document.getElementById(id); if (el) el.innerHTML = avatarImg; });
+  } else {
+    ['live-avatar','live-avatar2','eval-avatar'].forEach(function(id) { const el = document.getElementById(id); if (el) el.textContent = s.initials; });
   }
   document.getElementById('live-domains').innerHTML = `<span class="badge bg-info">${s.domain}</span>`;
   document.getElementById('live-domains2').innerHTML = `<span class="badge bg-info">${s.domain}</span>`;
-  document.getElementById('info-domains').innerHTML = `<span class="badge bg-info">${s.domain}</span>`;
-  const domLive = document.getElementById('info-domains-live');
-  if (domLive) domLive.innerHTML = `<span class="badge bg-info">${s.domain}</span>`;
 }
 
 function renderHistory() {
@@ -539,47 +575,152 @@ function closeOverlay(id) { document.getElementById(id).classList.remove('open')
 function scrollToSection(id) { setTimeout(() => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200); }
 function setStep(n) { for (let i = 1; i <= 3; i++) { const s = document.getElementById('step' + i); s.classList.remove('active', 'done'); if (i < n) s.classList.add('done'); else if (i === n) s.classList.add('active'); } for (let i = 1; i <= 2; i++) document.getElementById('div' + i).classList.toggle('done', i < n); }
 function goToPhase2() { if (!APP.currentLiveStudent) return showToast('No students are available for interview yet.', 'warn'); document.getElementById('phase-info').classList.remove('active'); document.getElementById('phase-live').classList.add('active'); setStep(2); }
-function startSession() { document.getElementById('startBtn').disabled = true; document.getElementById('endBtn').disabled = false; APP.seconds = 0; APP.timerInterval = setInterval(() => { APP.seconds++; const h = String(Math.floor(APP.seconds / 3600)).padStart(2, '0'); const m = String(Math.floor((APP.seconds % 3600) / 60)).padStart(2, '0'); const s = String(APP.seconds % 60).padStart(2, '0'); setText('liveClock', `${h}:${m}:${s}`); }, 1000); }
-function confirmEndSession() { closeOverlay('endConfirmModal'); clearInterval(APP.timerInterval); document.getElementById('endBtn').disabled = true; setText('evalDuration', document.getElementById('liveClock').innerText); document.getElementById('phase-live').classList.remove('active'); document.getElementById('phase-eval').classList.add('active'); setStep(3); }
-function submitEvalAndNext() {
+async function startSession() {
+  if (!APP.currentLiveStudent) return;
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('endBtn').disabled = false;
+  APP.seconds = 0;
+  APP.recordedChunks = [];
+  APP.timerInterval = setInterval(() => {
+    APP.seconds++;
+    const h = String(Math.floor(APP.seconds / 3600)).padStart(2, '0');
+    const m = String(Math.floor((APP.seconds % 3600) / 60)).padStart(2, '0');
+    const s = String(APP.seconds % 60).padStart(2, '0');
+    setText('liveClock', `${h}:${m}:${s}`);
+  }, 1000);
+  try {
+    APP.mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    const videoEl = document.getElementById('sessionWebcam');
+    const placeholder = document.getElementById('webcamPlaceholder');
+    if (videoEl) {
+      videoEl.srcObject = APP.mediaStream;
+      videoEl.style.display = 'block';
+    }
+    if (placeholder) placeholder.style.display = 'none';
+    const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+    APP.mediaRecorder = new MediaRecorder(APP.mediaStream, { mimeType: mime });
+    APP.mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) APP.recordedChunks.push(e.data); };
+    APP.mediaRecorder.start(1000);
+    showToast('Webcam and recording started');
+  } catch (e) {
+    console.error(e);
+    showToast('Could not access webcam. Check browser permissions.', 'warn');
+  }
+}
+async function stopWebcamAndUpload() {
+  const s = APP.currentLiveStudent;
+  if (APP.mediaRecorder && APP.mediaRecorder.state !== 'inactive') {
+    await new Promise((resolve) => {
+      APP.mediaRecorder.onstop = resolve;
+      APP.mediaRecorder.stop();
+    });
+  }
+  if (APP.mediaStream) {
+    APP.mediaStream.getTracks().forEach(t => t.stop());
+    APP.mediaStream = null;
+  }
+  const videoEl = document.getElementById('sessionWebcam');
+  const placeholder = document.getElementById('webcamPlaceholder');
+  if (videoEl) { videoEl.srcObject = null; videoEl.style.display = 'none'; }
+  if (placeholder) placeholder.style.display = '';
+  if (!s || !APP.recordedChunks.length) return;
+  const blob = new Blob(APP.recordedChunks, { type: 'video/webm' });
+  const formData = new FormData();
+  formData.append('video', blob, 'interview_' + s.applicationId + '.webm');
+  try {
+    const uploadHeaders = getAuthHeadersMultipart() || {};
+    const res = await fetch(`/api/interviewer/assigned-interviews/${s.interviewId}/students/${s.applicationId}/upload-video`, {
+      method: 'POST',
+      headers: uploadHeaders,
+      body: formData
+    });
+    if (res.ok) {
+      const data = await res.json();
+      s.videoUrl = data.videoUrl || s.videoUrl;
+      showToast('Interview recording saved');
+    } else {
+      showToast('Recording upload failed', 'warn');
+    }
+  } catch (e) {
+    console.error(e);
+    showToast('Recording upload error', 'error');
+  }
+  APP.recordedChunks = [];
+  APP.mediaRecorder = null;
+}
+async function confirmEndSession() {
+  closeOverlay('endConfirmModal');
+  clearInterval(APP.timerInterval);
+  document.getElementById('endBtn').disabled = true;
+  setText('evalDuration', document.getElementById('liveClock').innerText);
+  await stopWebcamAndUpload();
+  document.getElementById('phase-live').classList.remove('active');
+  document.getElementById('phase-eval').classList.add('active');
+  setStep(3);
+}
+async function submitEvalAndNext() {
   const perf = document.getElementById('overallPerformance').value;
   if (!perf) return showToast('Please select Overall Performance before submitting.', 'warn');
   if (!APP.currentLiveStudent) return;
-  APP.completed[APP.currentLiveStudent.key] = true;
+  const s = APP.currentLiveStudent;
+  const payload = {
+    applicationId: s.applicationId,
+    technicalScore: parseInt(document.getElementById('v1').innerText, 10),
+    communicationScore: parseInt(document.getElementById('v2').innerText, 10),
+    domainScore: parseInt(document.getElementById('v3').innerText, 10),
+    approachScore: parseInt(document.getElementById('v4').innerText, 10),
+    confidenceScore: parseInt(document.getElementById('v5').innerText, 10),
+    overallPerformance: perf,
+    strengths: document.getElementById('strengthsField').value.trim(),
+    improvements: document.getElementById('improvField') ? document.getElementById('improvField').value.trim() : '',
+    remarks: document.getElementById('remarksField').value.trim()
+  };
+  try {
+    const res = await secureFetch('/api/interviewer/evaluations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res || !res.ok) {
+      const err = res ? await res.text() : 'Failed';
+      showToast(err || 'Could not save evaluation', 'error');
+      return;
+    }
+  } catch (e) {
+    showToast('Could not save evaluation', 'error');
+    return;
+  }
+  APP.completed[s.key] = true;
   localStorage.setItem('interviewerCompleted', JSON.stringify(APP.completed));
-  const comment = (document.getElementById('remarksField').value || document.getElementById('strengthsField').value || 'Interview completed successfully.').trim();
-  APP.reviews.unshift({ student: APP.currentLiveStudent.name, institute: APP.currentLiveStudent.institute, domain: APP.currentLiveStudent.domain, date: new Date().toLocaleDateString(), comment: comment, rating: mapPerformanceToRating(perf) });
+  s.evaluationSubmitted = true;
+  const comment = (payload.remarks || payload.strengths || 'Interview completed successfully.').trim();
+  APP.reviews.unshift({ student: s.name, institute: s.institute, domain: s.domain, date: new Date().toLocaleDateString(), comment: comment, rating: mapPerformanceToRating(perf) });
   APP.reviews = APP.reviews.slice(0, 25);
   localStorage.setItem('interviewerReviews', JSON.stringify(APP.reviews));
   clearInterval(APP.timerInterval);
   APP.seconds = 0;
   setText('liveClock', '00:00:00');
-
-  // Reset all eval form fields for next student
   document.getElementById('overallPerformance').value = '';
   document.getElementById('strengthsField').value = '';
+  if (document.getElementById('improvField')) document.getElementById('improvField').value = '';
   document.getElementById('remarksField').value = '';
   setText('evalDuration', '00:00:00');
-
   document.getElementById('startBtn').disabled = false;
   document.getElementById('endBtn').disabled = true;
-
-  // Advance to next student (completed key is now set, so chooseCurrentLiveStudent skips them)
   chooseCurrentLiveStudent();
+  await loadAssignedInterviews();
   renderLiveStudent();
   renderHistory();
   renderProfileStats();
   renderProfileReviews();
-
   document.getElementById('phase-eval').classList.remove('active');
   document.getElementById('phase-live').classList.remove('active');
   document.getElementById('phase-info').classList.add('active');
   setStep(1);
-
   if (APP.currentLiveStudent) {
     showToast('Evaluation submitted! Next up: ' + APP.currentLiveStudent.name);
   } else {
-    showToast('Evaluation submitted. All students for today are done! 🎉');
+    showToast('Evaluation submitted. All assigned students are done!');
   }
 }
 
@@ -589,8 +730,7 @@ function openStudentModal(idx, fromToday) {
   if (!s) return;
   const detailsHtml =
     `<div class="student-modal-banner"><div class="student-modal-avatar">${s.initials}</div><div><h3 style="font-size:15px;">${s.name}</h3><p style="font-size:13px;opacity:.85;margin-top:3px;">${s.className}</p><p style="font-size:12px;opacity:.7;margin-top:2px;">${s.email} · ${s.institute}</p></div></div>` +
-    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:15px;">` +
-    `<div style="background:#F8FAFC;padding:10px;border-radius:var(--r);border-left:3px solid var(--secondary);"><div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;">CGPA</div><b>${s.cgpa}</b></div>` +
+    `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:15px;">` +
     `<div style="background:#F8FAFC;padding:10px;border-radius:var(--r);border-left:3px solid var(--secondary);"><div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;">Class</div><b>${s.className}</b></div>` +
     `<div style="background:#F8FAFC;padding:10px;border-radius:var(--r);border-left:3px solid var(--secondary);"><div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;">Slot</div><b style="font-size:12.5px;">${s.scheduledText}</b></div></div>` +
     `<div style="margin-bottom:13px;"><div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Domain</div><div style="display:flex;flex-wrap:wrap;gap:6px;"><span class="badge bg-info">${s.domain}</span></div></div>`;

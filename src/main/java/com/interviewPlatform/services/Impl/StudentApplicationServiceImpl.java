@@ -19,6 +19,7 @@ import com.interviewPlatform.enums.Status;
 import com.interviewPlatform.repositories.InterviewRequestRepository;
 import com.interviewPlatform.repositories.StudentApplicationRepository;
 import com.interviewPlatform.repositories.StudentRepository;
+import com.interviewPlatform.services.InterviewerAssignmentService;
 import com.interviewPlatform.services.StudentApplicationService;
 
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class StudentApplicationServiceImpl implements StudentApplicationService 
     private final StudentRepository studentRepository;
     private final InterviewRequestRepository interviewRequestRepository;
     private final JavaMailSender mailSender;
+    private final InterviewerAssignmentService interviewerAssignmentService;
 
     @Value("${app.mail.from:${spring.mail.username:no-reply@interview-platform.local}}")
     private String fromEmail;
@@ -70,6 +72,7 @@ public class StudentApplicationServiceImpl implements StudentApplicationService 
         application.setInterviewRequest(request);
         application.setStatus(Status.APPROVED);
         applicationRepository.save(application);
+        interviewerAssignmentService.assignRandomInterviewer(application, request);
 
         // Send confirmation email to student
         sendInterviewConfirmationEmail(student, request);
@@ -174,7 +177,10 @@ public class StudentApplicationServiceImpl implements StudentApplicationService 
             req.getScheduledVenue(),
             req.getMeetingLink(),
             req.getContactPerson(),
-            req.getAssignedInterviewer() != null ? req.getAssignedInterviewer().getFullName() : null
+            app.getAssignedInterviewer() != null
+                    ? app.getAssignedInterviewer().getFullName()
+                    : (req.getAssignedInterviewer() != null ? req.getAssignedInterviewer().getFullName() : null),
+            app.getVideoUrl() != null && !app.getVideoUrl().isBlank() ? "/uploads/" + app.getVideoUrl() : null
         );
     }
 }

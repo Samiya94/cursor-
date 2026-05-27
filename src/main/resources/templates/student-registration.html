@@ -116,8 +116,8 @@
           </div>
           <div class="field-grid">
             <div class="field">
-              <label>Class / Year <span class="req">*</span></label>
-              <select id="studentClass" required>
+              <label>Year <span class="req">*</span></label>
+              <select id="studentYear" required>
                 <option value="">Select Year</option>
                 <option value="FY">FY – First Year</option>
                 <option value="SY">SY – Second Year</option>
@@ -126,13 +126,22 @@
               </select>
             </div>
             <div class="field">
-              <label>CGPA <span class="req">*</span></label>
-              <div class="input-icon-wrap">
-                <i class="fa-solid fa-star-half-stroke"></i>
-                <input type="number" id="studentCgpa" placeholder="e.g. 8.5"
-                  step="0.01" min="0" max="10" required>
-              </div>
-              <div class="field-hint">Enter your current CGPA out of 10.</div>
+              <label>Degree <span class="req">*</span></label>
+              <select id="studentDegree" required onchange="toggleDegreeOther()">
+                <option value="">Select Degree</option>
+                <option value="BE">BE – Bachelor of Engineering</option>
+                <option value="BTech">BTech – B.Tech</option>
+                <option value="BSc">BSc – Bachelor of Science</option>
+                <option value="BCA">BCA</option>
+                <option value="MCA">MCA</option>
+                <option value="MTech">MTech</option>
+                <option value="MBA">MBA</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="field full" id="degreeOtherWrap" style="display:none;">
+              <label>Specify Degree <span class="req">*</span></label>
+              <input type="text" id="degreeOther" placeholder="Enter your degree (e.g. BBA, BCom)">
             </div>
           </div>
 

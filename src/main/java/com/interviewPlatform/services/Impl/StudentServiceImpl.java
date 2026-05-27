@@ -79,7 +79,6 @@ public class StudentServiceImpl implements StudentService {
         student.setLastName(request.lastName());
         student.setPhone(request.phone());
         student.setStudentClass(request.studentClass());
-        student.setCgpa(request.cgpa());
 
         studentRepository.save(student);
     }
@@ -105,6 +104,15 @@ public class StudentServiceImpl implements StudentService {
         }
         if (request.skills() != null) {
             student.setSkills(request.skills());
+        }
+        if (request.projectName() != null) {
+            student.setProjectName(request.projectName());
+        }
+        if (request.projectBrief() != null) {
+            student.setProjectBrief(request.projectBrief());
+        }
+        if (request.projectGithub() != null) {
+            student.setProjectGithub(request.projectGithub());
         }
         return mapToResponse(studentRepository.save(student));
     }
@@ -154,7 +162,10 @@ public class StudentServiceImpl implements StudentService {
                 student.getDepartment() != null ? student.getDepartment().getId() : null,
                 student.getDepartment() != null ? student.getDepartment().getName() : null,
                 resumeFileName,
-                resumeUrl
+                resumeUrl,
+                student.getProjectName(),
+                student.getProjectBrief(),
+                student.getProjectGithub()
         );
     }
 

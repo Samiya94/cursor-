@@ -9,7 +9,6 @@ public record StudentRegisterRequestDTO(
         String email,
         String phone,
         String studentClass,
-        Double cgpa,
         String password,
         String confirmPassword
 ) {

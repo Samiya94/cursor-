@@ -27,6 +27,10 @@ public class StudentApplication {
     @JoinColumn(name = "interview_request_id", nullable = false)
     private InterviewRequest interviewRequest;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_interviewer_id")
+    private Interviewer assignedInterviewer;
+
     @Enumerated(EnumType.STRING)
     private Status status;  // PENDING, APPROVED, REJECTED
 

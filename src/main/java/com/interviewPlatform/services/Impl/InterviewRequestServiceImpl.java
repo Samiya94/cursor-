@@ -25,6 +25,7 @@ import com.interviewPlatform.repositories.InstituteRepository;
 import com.interviewPlatform.repositories.InterviewRequestRepository;
 import com.interviewPlatform.repositories.InterviewerRepository;
 import com.interviewPlatform.services.InterviewRequestService;
+import com.interviewPlatform.services.InterviewerAssignmentService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,7 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
     private final InstituteRepository instituteRepo;
     private final InterviewerRepository interviewerRepository;
     private final JavaMailSender mailSender;
+    private final InterviewerAssignmentService interviewerAssignmentService;
 
     @Value("${app.mail.from:${spring.mail.username:no-reply@interview-platform.local}}")
     private String fromEmail;
@@ -165,6 +167,7 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
             req.setStatus(Status.CONFIRMED);
         }
         requestRepo.save(req);
+        interviewerAssignmentService.assignAllUnassignedForRequest(req.getId());
     }
 
     @Override
@@ -228,6 +231,7 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
             req.setAssignedInterviewerIds(java.util.List.of(dto.assignedInterviewerId()));
         }
         requestRepo.save(req);
+        interviewerAssignmentService.assignAllUnassignedForRequest(req.getId());
         // Notify assigned interviewers by email
         if (req.getAssignedInterviewerIds() != null && !req.getAssignedInterviewerIds().isEmpty()) {
             notifyInterviewersOfAssignment(req, req.getAssignedInterviewerIds());
@@ -281,6 +285,7 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
         req.setStatus(Status.RESCHEDULED);
         req.setInstituteConfirmed(false);
         requestRepo.save(req);
+        interviewerAssignmentService.assignAllUnassignedForRequest(req.getId());
     }
 
     @Override
@@ -300,6 +305,7 @@ public class InterviewRequestServiceImpl implements InterviewRequestService {
         req.setAssignedInterviewer(interviewer);
         req.setAssignedInterviewerIds(ids);
         requestRepo.save(req);
+        interviewerAssignmentService.assignAllUnassignedForRequest(req.getId());
         // Notify newly assigned interviewers by email
         notifyInterviewersOfAssignment(req, ids);
     }

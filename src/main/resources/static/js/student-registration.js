@@ -108,6 +108,24 @@ function markField(id, valid) {
     return valid;
 }
 
+function toggleDegreeOther() {
+    const degree = document.getElementById('studentDegree').value;
+    const wrap = document.getElementById('degreeOtherWrap');
+    const other = document.getElementById('degreeOther');
+    if (!wrap) return;
+    const show = degree === 'Other';
+    wrap.style.display = show ? '' : 'none';
+    if (!show && other) other.value = '';
+}
+
+function resolveDegreeValue() {
+    const degree = document.getElementById('studentDegree').value;
+    if (degree === 'Other') {
+        return document.getElementById('degreeOther').value.trim();
+    }
+    return degree;
+}
+
 /* ── FORM SUBMIT → POST to backend ── */
 async function handleSubmit(e) {
     e.preventDefault();
@@ -117,11 +135,12 @@ async function handleSubmit(e) {
     const lastName        = document.getElementById('lastName').value.trim();
     const email           = document.getElementById('regEmail').value.trim();
     const phone           = document.getElementById('phone').value.trim();
-    const studentClass    = document.getElementById('studentClass').value;
-    const cgpa            = document.getElementById('studentCgpa').value;
+    const studentYear     = document.getElementById('studentYear').value;
+    const degreeValue     = resolveDegreeValue();
     const password        = document.getElementById('regPassword').value;
     const confirmPassword = document.getElementById('regConfirmPassword').value;
     const terms           = document.getElementById('terms').checked;
+    const studentClass    = studentYear && degreeValue ? studentYear + degreeValue : '';
 
     // Client-side validation
     let ok = true;
@@ -129,8 +148,11 @@ async function handleSubmit(e) {
     ok = markField('lastName',           lastName.length > 0)                       && ok;
     ok = markField('regEmail',           /\S+@\S+\.\S+/.test(email))                && ok;
     ok = markField('phone',              /^\d{10}$/.test(phone))                    && ok;
-    ok = markField('studentClass',       studentClass !== '')                        && ok;
-    ok = markField('studentCgpa',        cgpa !== '' && +cgpa >= 0 && +cgpa <= 10)  && ok;
+    ok = markField('studentYear',        studentYear !== '')                        && ok;
+    ok = markField('studentDegree',      document.getElementById('studentDegree').value !== '') && ok;
+    if (document.getElementById('studentDegree').value === 'Other') {
+        ok = markField('degreeOther', degreeValue.length > 0) && ok;
+    }
     ok = markField('regPassword',        password.length >= 8)                      && ok;
     ok = markField('regConfirmPassword', password === confirmPassword)               && ok;
 
@@ -153,7 +175,6 @@ async function handleSubmit(e) {
             email:           email,
             phone:           phone,
             studentClass:    studentClass,
-            cgpa:            parseFloat(cgpa),
             password:        password,
             confirmPassword: confirmPassword
         };

@@ -86,7 +86,7 @@ async function renderStudentsTable() {
     departmentStudents = await fetchMyStudents();
 
     if (!departmentStudents.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--muted);">' +
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted);">' +
             '<i class="fa-solid fa-users" style="font-size:2rem;display:block;margin-bottom:10px;opacity:.3;"></i>' +
             'No students registered in your department yet.<br>' +
             '<small>Share the registration link with your students.</small></td></tr>';
@@ -99,7 +99,6 @@ async function renderStudentsTable() {
         const cls = s.studentClass || '—';
         const email = s.email || '—';
         const phone = s.phone || '—';
-        const cgpa = s.cgpa ? s.cgpa.toFixed(1) : '—';
         const skills = (s.skills && s.skills.length) ? s.skills.slice(0, 3).join(', ') : '—';
         const safeId = s.id;
         const safeName = name.replace(/'/g, "\\'");
@@ -112,11 +111,10 @@ async function renderStudentsTable() {
             <td>${cls}</td>
             <td style="font-size:12px;">${email}</td>
             <td style="font-size:12px;">${phone}</td>
-            <td><b style="color:var(--primary);">${cgpa}</b></td>
             <td style="font-size:12px;color:var(--muted);">${skills}</td>
             <td>
                 <button class="btn btn-ghost btn-sm"
-                    onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}',${s.cgpa || 0},'${skills}','${safeResume}','${safeResumeFile}')">
+                    onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}','${skills}','${safeResume}','${safeResumeFile}')">
                     <i class="fa-solid fa-eye"></i> View
                 </button>
             </td>
@@ -132,7 +130,7 @@ async function renderUpcomingTable() {
     const tbody = document.getElementById('upcomingTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted);"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</td></tr>';
 
     let upcomingStudents = [];
     try {
@@ -145,7 +143,7 @@ async function renderUpcomingTable() {
     }
 
     if (!upcomingStudents.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted);">' +
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:var(--muted);">' +
             '<i class="fa-solid fa-calendar-xmark" style="font-size:2rem;display:block;margin-bottom:10px;opacity:.3;"></i>' +
             'No students have applied for upcoming interviews yet.</td></tr>';
         return;
@@ -155,13 +153,6 @@ async function renderUpcomingTable() {
         const name   = ((s.firstName || '') + ' ' + (s.lastName || '')).trim();
         const cls    = s.studentClass || '—';
         const email  = s.email || '—';
-        const cgpa   = s.cgpa != null ? parseFloat(s.cgpa).toFixed(1) : '—';
-        const skills = (s.skills && s.skills.length) ? s.skills.slice(0, 3).join(', ') : '—';
-        const safeId    = s.studentId;
-        const safeName  = name.replace(/'/g, "\\'");
-        const safeEmail = email.replace(/'/g, "\\'");
-        const safeResume = (s.resumeUrl || '').replace(/'/g, "\\'");
-        const safeResumeFile = (s.resumeFileName || '').replace(/'/g, "\\'");
 
         const dept = s.departmentName || '—';
         const scheduledDate = s.scheduledDate
@@ -169,29 +160,13 @@ async function renderUpcomingTable() {
             : 'TBD';
         const expertise = (s.expertise && s.expertise.length) ? s.expertise.join(', ') : '';
 
-        const appStatus = s.applicationStatus || 'PENDING';
-        const badgeCls  = appStatus === 'APPROVED' ? 'bg-success'
-                        : appStatus === 'REJECTED'  ? 'bg-danger'
-                        : 'bg-pending';
-        const badgeTxt  = appStatus === 'APPROVED' ? '<i class="fa-solid fa-circle-check"></i> Confirmed'
-                        : appStatus === 'REJECTED'  ? '<i class="fa-solid fa-circle-xmark"></i> Rejected'
-                        : '<i class="fa-solid fa-clock"></i> Pending';
-
-        return `<tr data-class="${cls}" data-name="${name.toLowerCase()}" data-status="${appStatus}">
+        return `<tr data-class="${cls}" data-name="${name.toLowerCase()}">
             <td>
               <div style="font-weight:700;">${name}</div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px;">${dept}${expertise ? ' · ' + expertise : ''} · ${scheduledDate}</div>
             </td>
-            <td>${cls}</td>
             <td style="font-size:12px;">${email}</td>
-            <td><b style="color:var(--primary);">${cgpa}</b></td>
-            <td><span class="badge ${badgeCls}">${badgeTxt}</span></td>
-            <td>
-                <button class="btn btn-ghost btn-sm"
-                    onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}',${s.cgpa || 0},'${skills}','${safeResume}','${safeResumeFile}')">
-                    <i class="fa-solid fa-eye"></i> View
-                </button>
-            </td>
+            <td>${cls}</td>
         </tr>`;
     }).join('');
 }
@@ -202,7 +177,7 @@ function renderReportStudentTable() {
     if (!tbody) return;
 
     if (!departmentStudents.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted);">No students found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);">No students found.</td></tr>';
         return;
     }
 
@@ -210,7 +185,6 @@ function renderReportStudentTable() {
         const name = (s.firstName || '') + ' ' + (s.lastName || '');
         const cls = s.studentClass || '—';
         const email = s.email || '—';
-        const cgpa = s.cgpa ? s.cgpa.toFixed(1) : '—';
         const skills = (s.skills && s.skills.length) ? s.skills.slice(0, 2).join(', ') : '—';
         const safeId = s.id;
         const safeName = name.replace(/'/g, "\\'");
@@ -222,12 +196,11 @@ function renderReportStudentTable() {
             <td><b>${name}</b></td>
             <td>${cls}</td>
             <td style="font-size:12px;">${email}</td>
-            <td><b>${cgpa}</b></td>
             <td style="font-size:12px;">${skills}</td>
             <td><span class="badge bg-gray"><i class="fa-solid fa-clock"></i> Not Evaluated</span></td>
             <td>
                 <button class="btn btn-ghost btn-sm"
-                    onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}',${s.cgpa || 0},'${skills}','${safeResume}','${safeResumeFile}')">
+                    onclick="openStudentDetailFromData(${safeId},'${safeName}','${cls}','${safeEmail}','${skills}','${safeResume}','${safeResumeFile}')">
                     <i class="fa-solid fa-eye"></i> View
                 </button>
             </td>
@@ -274,12 +247,11 @@ function updateAllStats() {
 }
 
 /* ===== OPEN STUDENT DETAIL MODAL ===== */
-function openStudentDetailFromData(id, name, cls, email, cgpa, skills, resumeUrl, resumeFileName) {
+function openStudentDetailFromData(id, name, cls, email, skills, resumeUrl, resumeFileName) {
     document.getElementById('modalStudentName').textContent = name;
     document.getElementById('modalStudentMeta').innerHTML =
         '<span><i class="fa-solid fa-graduation-cap"></i> ' + cls + '</span>' +
-        '<span><i class="fa-solid fa-envelope"></i> ' + (email || '—') + '</span>' +
-        (cgpa ? '<span><i class="fa-solid fa-star"></i> CGPA: ' + cgpa + '</span>' : '');
+        '<span><i class="fa-solid fa-envelope"></i> ' + (email || '—') + '</span>';
 
     document.getElementById('modalBanner').innerHTML =
         '<div class="profile-banner" style="background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:16px 20px;border-radius:10px;display:flex;align-items:center;gap:14px;margin-bottom:16px;">' +
