@@ -1762,6 +1762,8 @@ async function openInstStudentDetail(id, name, cls, email, skills, phone, deptNa
       </div>`;
     }).join('');
   }
+
+  mountResumeEmbed('instStudentResumeEmbed', resumeUrl || null, resumeFileName || null, { height: '520px' });
 }
 
 /* ═══════════════ NOTIFICATIONS ═══════════════ */

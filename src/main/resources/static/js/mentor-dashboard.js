@@ -247,47 +247,202 @@ function updateAllStats() {
 }
 
 /* ===== OPEN STUDENT DETAIL MODAL ===== */
-function openStudentDetailFromData(id, name, cls, email, skills, resumeUrl, resumeFileName) {
+function mentorSwitchTab(tabEl, panelId) {
+    document.querySelectorAll('#studentDetailModal .modal-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#studentDetailModal .modal-tab-panel').forEach(p => p.classList.remove('active'));
+    tabEl.classList.add('active');
+    const panel = document.getElementById(panelId);
+    if (panel) panel.classList.add('active');
+}
+
+function mentorPerfBadge(perf) {
+    if (!perf) return '—';
+    const p = perf.toUpperCase();
+    const map = {
+        'EXCELLENT': { bg: '#DCFCE7', color: '#15803D', icon: 'fa-star',         label: 'Excellent' },
+        'GOOD':      { bg: '#CFFAFE', color: '#0E7490', icon: 'fa-thumbs-up',    label: 'Good' },
+        'AVERAGE':   { bg: '#FEF9C3', color: '#A16207', icon: 'fa-minus-circle', label: 'Average' },
+        'POOR':      { bg: '#FEE2E2', color: '#DC2626', icon: 'fa-thumbs-down',  label: 'Poor' },
+    };
+    const s = map[p];
+    if (!s) return '—';
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:${s.bg};color:${s.color};font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;">
+        <i class="fa-solid ${s.icon}"></i> ${s.label}
+    </span>`;
+}
+
+function mentorFmtDate(dt) {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    return isNaN(d) ? '—' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function mentorFmtDateTime(dt) {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    return isNaN(d) ? '—' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) +
+        ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function openMentorVideoLightbox(url) {
+    const lb = document.getElementById('mentorVideoLightbox');
+    const vid = document.getElementById('mentorVideoPlayer');
+    if (!lb || !vid) return;
+    vid.src = url;
+    lb.style.display = 'flex';
+}
+
+function closeMentorVideo() {
+    const lb = document.getElementById('mentorVideoLightbox');
+    const vid = document.getElementById('mentorVideoPlayer');
+    if (vid) { vid.pause(); vid.src = ''; }
+    if (lb) lb.style.display = 'none';
+}
+
+async function openStudentDetailFromData(id, name, cls, email, skills, resumeUrl, resumeFileName) {
+    // Reset to Overview tab
+    document.querySelectorAll('#studentDetailModal .modal-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
+    document.querySelectorAll('#studentDetailModal .modal-tab-panel').forEach((p, i) => p.classList.toggle('active', i === 0));
+
+    const combined = (cls && cls !== '—' ? cls : '') + ' ' + (loggedMentor.department || '');
+
     document.getElementById('modalStudentName').textContent = name;
     document.getElementById('modalStudentMeta').innerHTML =
-        '<span><i class="fa-solid fa-graduation-cap"></i> ' + cls + '</span>' +
-        '<span><i class="fa-solid fa-envelope"></i> ' + (email || '—') + '</span>';
+        `<span><i class="fa-solid fa-graduation-cap" style="color:var(--secondary);margin-right:4px;"></i>${combined}</span>` +
+        `<span><i class="fa-solid fa-envelope" style="color:var(--secondary);margin-right:4px;"></i>${email || '—'}</span>`;
 
     document.getElementById('modalBanner').innerHTML =
-        '<div class="profile-banner" style="background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:16px 20px;border-radius:10px;display:flex;align-items:center;gap:14px;margin-bottom:16px;">' +
-        '<div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;font-size:1rem;font-weight:800;">' + getInitials(name) + '</div>' +
-        '<div><p style="font-size:15px;font-weight:800;margin-bottom:2px;">' + name + '</p>' +
-        '<p style="font-size:12px;opacity:.8;">' + cls + ' · ' + loggedMentor.department + '</p></div></div>';
+        `<div style="background:linear-gradient(135deg,var(--primary) 0%,#1e40af 55%,var(--secondary) 100%);padding:16px 22px;display:flex;align-items:center;gap:14px;">
+            <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.22);border:2px solid rgba(255,255,255,.35);display:grid;place-items:center;font-size:1rem;font-weight:800;color:#fff;flex-shrink:0;">${getInitials(name)}</div>
+            <div>
+                <div style="font-size:16px;font-weight:800;color:#fff;">${name}</div>
+                <div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;">${combined}</div>
+            </div>
+        </div>`;
 
-    document.getElementById('modalScore').textContent = '—';
-    document.getElementById('modalAttended').textContent = '0 interviews';
-    document.getElementById('modalLastDate').textContent = '—';
-    document.getElementById('modalPerfBadge').innerHTML =
-        '<span class="badge bg-gray"><i class="fa-solid fa-clock"></i> Not Evaluated Yet</span>';
-
-    // Skills
-    const skillsArr = skills ? skills.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
-    const skEl = document.getElementById('tabSkillBars');
-    if (skillsArr.length) {
-        skEl.innerHTML = skillsArr.map(function(sk) {
-            return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
-                '<span style="font-size:13px;min-width:120px;">' + sk + '</span>' +
-                '<span class="badge bg-info">' + sk + '</span></div>';
-        }).join('');
-    } else {
-        skEl.innerHTML = '<p style="color:var(--muted);font-size:13px;">No skills listed yet.</p>';
-    }
-
-    document.getElementById('feedbackContent').innerHTML =
-        '<p style="color:var(--muted);font-size:13px;padding:10px;">No feedback available yet. Feedback will appear after interviews are completed.</p>';
-    document.getElementById('roundsContent').innerHTML =
-        '<p style="color:var(--muted);font-size:13px;padding:10px;">No interview rounds yet.</p>';
-    document.getElementById('videoContent').innerHTML =
-        '<p style="color:var(--muted);font-size:13px;padding:10px;">No recordings available yet.</p>';
-
-    mountResumeEmbed('mentorStudentResumeEmbed', resumeUrl || null, resumeFileName || null, { height: '520px' });
+    document.getElementById('modalScore').textContent = '…';
+    document.getElementById('modalAttended').textContent = '…';
+    document.getElementById('modalLastDate').textContent = '…';
+    document.getElementById('modalPerfBadge').innerHTML = '';
+    document.getElementById('feedbackContent').innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0;">Loading…</p>';
+    document.getElementById('roundsContent').innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0;">Loading…</p>';
+    document.getElementById('videoContent').innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0;">Loading…</p>';
 
     openOverlay('studentDetailModal');
+
+    // Fetch reports
+    let reports = [];
+    try {
+        const res = await secureFetch(`/api/mentor/students/${id}/feedback-reports`);
+        if (res && res.ok) reports = await res.json();
+    } catch (e) { }
+
+    const completed = reports.filter(r => r.evaluation);
+    const attended = reports.length;
+    let avgScore = '—', lastDate = '—', bestPerf = null;
+
+    if (completed.length) {
+        const scores = completed.map(r => {
+            const ev = r.evaluation;
+            if (ev.overallScore != null) return ev.overallScore;
+            const parts = [ev.technicalScore, ev.communicationScore, ev.domainScore, ev.approachScore, ev.confidenceScore].filter(s => s != null);
+            return parts.length ? (parts.reduce((a, b) => a + b, 0) / parts.length) : null;
+        }).filter(s => s != null);
+
+        const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+        avgScore = avg != null ? avg.toFixed(1) + ' / 10' : '—';
+
+        const sorted = [...completed].sort((a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate));
+        lastDate = mentorFmtDate(sorted[0].scheduledDate);
+
+        for (const r of sorted) {
+            if (r.evaluation?.overallPerformance) { bestPerf = r.evaluation.overallPerformance; break; }
+        }
+        if (!bestPerf && avg != null) {
+            if (avg >= 8.5) bestPerf = 'EXCELLENT';
+            else if (avg >= 6.5) bestPerf = 'GOOD';
+            else if (avg >= 4.5) bestPerf = 'AVERAGE';
+            else bestPerf = 'POOR';
+        }
+    }
+
+    document.getElementById('modalScore').textContent = avgScore;
+    document.getElementById('modalAttended').textContent = attended + (attended === 1 ? ' interview' : ' interviews');
+    document.getElementById('modalLastDate').textContent = lastDate;
+    document.getElementById('modalPerfBadge').innerHTML = mentorPerfBadge(bestPerf);
+
+    const fbEl = document.getElementById('feedbackContent');
+    if (!completed.length) {
+        fbEl.innerHTML = '<p style="color:var(--muted);font-size:13px;">No feedback available yet.</p>';
+    } else {
+        fbEl.innerHTML = completed.map(r => {
+            const ev = r.evaluation;
+            const score = ev.overallScore != null ? `<span style="background:var(--primary);color:#fff;font-size:12px;font-weight:700;padding:2px 10px;border-radius:20px;">${ev.overallScore}/10</span>` : '';
+            return `<div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+                    <span style="font-size:12px;font-weight:700;background:var(--bg);padding:2px 8px;border-radius:6px;color:var(--dark);">${r.domainName || r.departmentName || loggedMentor.department || '—'}</span>
+                    <span style="font-size:12px;color:var(--muted);">${mentorFmtDate(r.scheduledDate)}</span>
+                    ${score}
+                </div>
+                <div style="font-size:12px;color:var(--muted);margin-bottom:6px;"><i class="fa-solid fa-user" style="margin-right:4px;"></i>${r.interviewerName || '—'}</div>
+                ${ev.strengths ? `<div style="font-size:13px;margin-bottom:4px;"><b style="color:var(--success);">Strengths:</b> ${ev.strengths}</div>` : ''}
+                ${ev.improvements ? `<div style="font-size:13px;margin-bottom:4px;"><b style="color:#D97706;">Improvements:</b> ${ev.improvements}</div>` : ''}
+                ${ev.remarks ? `<div style="font-size:13px;"><b style="color:var(--muted);">Remarks:</b> ${ev.remarks}</div>` : ''}
+            </div>`;
+        }).join('');
+    }
+
+    const rnEl = document.getElementById('roundsContent');
+    if (!reports.length) {
+        rnEl.innerHTML = '<p style="color:var(--muted);font-size:13px;">No interview rounds yet.</p>';
+    } else {
+        rnEl.innerHTML = reports.map((r, idx) => {
+            const status = (r.applicationStatus || '').replace(/_/g, ' ');
+            const statusCls = status.includes('CONFIRM') ? 'bg-success' : status.includes('COMPLET') ? 'bg-info' : 'bg-gray';
+            const score = r.evaluation?.overallScore != null
+                ? `<div style="font-size:13px;color:var(--dark);margin-top:4px;"><i class="fa-solid fa-star" style="color:#F59E0B;margin-right:4px;"></i>Score: <b>${r.evaluation.overallScore}/10</b></div>` : '';
+            return `<div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);">
+                <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;flex-shrink:0;">${idx + 1}</div>
+                <div style="flex:1;">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                        <span style="font-size:13px;font-weight:700;color:var(--dark);">${r.domainName || r.departmentName || loggedMentor.department || '—'}</span>
+                        <span class="badge ${statusCls}" style="font-size:11px;">${status}</span>
+                    </div>
+                    <div style="font-size:12.5px;color:var(--muted);"><i class="fa-regular fa-calendar" style="margin-right:4px;"></i>${mentorFmtDateTime(r.scheduledDate)}</div>
+                    <div style="font-size:12.5px;color:var(--muted);margin-top:2px;"><i class="fa-solid fa-user" style="margin-right:4px;"></i>${r.interviewerName || '—'}</div>
+                    ${score}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    const vidEl = document.getElementById('videoContent');
+    const withVideo = reports.filter(r => r.videoUrl);
+    if (!withVideo.length) {
+        vidEl.innerHTML = '<p style="color:var(--muted);font-size:13px;">No recordings available yet.</p>';
+    } else {
+        vidEl.innerHTML = withVideo.map((r, idx) => {
+            const score = r.evaluation?.overallScore != null
+                ? `<div style="font-size:12.5px;color:var(--muted);margin-top:2px;"><i class="fa-solid fa-star" style="color:#F59E0B;margin-right:4px;"></i>Score: <b>${r.evaluation.overallScore}/10</b></div>` : '';
+            return `<div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);align-items:center;">
+                <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;flex-shrink:0;">${idx + 1}</div>
+                <div style="flex:1;">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                        <i class="fa-solid fa-video" style="color:var(--primary);"></i>
+                        <span style="font-size:13px;font-weight:700;color:var(--dark);">${r.domainName || r.departmentName || loggedMentor.department || '—'}</span>
+                        <span style="font-size:12px;color:var(--muted);">· ${mentorFmtDate(r.scheduledDate)}</span>
+                    </div>
+                    <div style="font-size:12.5px;color:var(--muted);"><i class="fa-solid fa-user" style="margin-right:4px;"></i>${r.interviewerName || '—'}</div>
+                    ${score}
+                </div>
+                <button class="btn btn-sm btn-p" onclick="openMentorVideoLightbox('${r.videoUrl}')" style="flex-shrink:0;">
+                    <i class="fa-solid fa-play"></i> Watch
+                </button>
+            </div>`;
+        }).join('');
+    }
+
+    mountResumeEmbed('mentorStudentResumeEmbed', resumeUrl || null, resumeFileName || null, { height: '520px' });
 }
 
 /* ===== INIT HEADER ===== */

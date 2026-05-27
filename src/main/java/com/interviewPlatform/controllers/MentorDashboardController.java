@@ -13,6 +13,8 @@ import com.interviewPlatform.repositories.StudentRepository;
 import com.interviewPlatform.entities.Mentor;
 import com.interviewPlatform.entities.Student;
 import com.interviewPlatform.enums.Status;
+import com.interviewPlatform.services.StudentFeedbackService;
+import com.interviewPlatform.dtos.response.StudentFeedbackReportDTO;
 
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +31,7 @@ public class MentorDashboardController {
     private final StudentRepository studentRepository;
     private final InterviewRequestRepository interviewRequestRepository;
     private final StudentApplicationRepository applicationRepository;
+    private final StudentFeedbackService feedbackService;
 
     @PreAuthorize("hasRole('MENTOR')")
     @GetMapping("/me")
@@ -178,4 +181,11 @@ public class MentorDashboardController {
 
     return ResponseEntity.ok(result);
 }
+
+    // Mentor sees student feedback reports
+    @PreAuthorize("hasRole('MENTOR')")
+    @GetMapping("/students/{studentId}/feedback-reports")
+    public ResponseEntity<List<StudentFeedbackReportDTO>> getStudentFeedbackReports(@PathVariable Long studentId) {
+        return ResponseEntity.ok(feedbackService.getFeedbackReportsByStudentId(studentId));
+    }
 }

@@ -67,39 +67,62 @@
 </div>
 
 <!-- STUDENT DETAIL MODAL -->
-<div class="modal-overlay profile-modal-split" id="studentDetailModal" onclick="if(event.target===this)closeOverlay('studentDetailModal')">
-    <div class="modal wide">
-        <div class="modal-header">
-            <div>
-                <h3 id="modalStudentName" style="font-size:16px;font-weight:800;"></h3>
-                <div id="modalStudentMeta" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;font-size:12px;color:var(--muted);"></div>
-            </div>
-            <div class="modal-close" onclick="closeOverlay('studentDetailModal')"><i class="fa-solid fa-xmark"></i></div>
+<div class="modal-overlay" id="studentDetailModal" onclick="if(event.target===this)closeOverlay('studentDetailModal')">
+  <div class="modal wide" style="padding:0;overflow:hidden;max-height:90vh;display:flex;flex-direction:column;">
+    <!-- Header -->
+    <div style="padding:20px 22px 14px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <h3 id="modalStudentName" style="font-size:18px;font-weight:800;color:var(--dark);margin-bottom:6px;"></h3>
+          <div id="modalStudentMeta" style="display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);"></div>
         </div>
-        <div id="modalBanner"></div>
-        <div class="profile-resume-split">
-            <div class="profile-resume-details">
-                <div class="vd-grid">
-                    <div class="vd-item"><span>Overall Score</span><b id="modalScore">—</b></div>
-                    <div class="vd-item"><span>Interviews Attended</span><b id="modalAttended">0</b></div>
-                    <div class="vd-item"><span>Last Interview</span><b id="modalLastDate">—</b></div>
-                    <div class="vd-item"><span>Performance</span><div id="modalPerfBadge" style="margin-top:4px;"></div></div>
-                </div>
-                <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 9px;">Skills</p>
-                <div id="tabSkillBars"></div>
-                <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 9px;">Feedback</p>
-                <div id="feedbackContent"></div>
-                <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 9px;">Interview Rounds</p>
-                <div class="round-timeline" id="roundsContent"></div>
-                <p style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 9px;">Recording</p>
-                <div id="videoContent"></div>
-            </div>
-            <div class="profile-resume-cv">
-                <div class="resume-embed-label">Resume / CV</div>
-                <div id="mentorStudentResumeEmbed"></div>
-            </div>
-        </div>
+        <div class="modal-close" onclick="closeOverlay('studentDetailModal')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
     </div>
+    <!-- Banner -->
+    <div id="modalBanner" style="flex-shrink:0;"></div>
+    <!-- Tabs -->
+    <div class="modal-tabs" style="padding:0 22px;flex-shrink:0;">
+      <div class="modal-tab active" onclick="mentorSwitchTab(this,'mentor-tab-overview')"><i class="fa-solid fa-chart-pie" style="margin-right:5px;font-size:10px;"></i>Overview</div>
+      <div class="modal-tab" onclick="mentorSwitchTab(this,'mentor-tab-feedback')"><i class="fa-regular fa-comment" style="margin-right:5px;font-size:10px;"></i>Feedback</div>
+      <div class="modal-tab" onclick="mentorSwitchTab(this,'mentor-tab-interviews')"><i class="fa-solid fa-calendar-check" style="margin-right:5px;font-size:10px;"></i>Interviews</div>
+      <div class="modal-tab" onclick="mentorSwitchTab(this,'mentor-tab-recording')"><i class="fa-solid fa-video" style="margin-right:5px;font-size:10px;"></i>Recording</div>
+      <div class="modal-tab" onclick="mentorSwitchTab(this,'mentor-tab-resume')"><i class="fa-regular fa-file-pdf" style="margin-right:5px;font-size:10px;"></i>Resume</div>
+    </div>
+    <!-- Tab Panels -->
+    <div style="overflow-y:auto;flex:1;padding:18px 22px;">
+      <!-- OVERVIEW -->
+      <div id="mentor-tab-overview" class="modal-tab-panel active">
+        <div class="vd-grid" style="margin-bottom:16px;">
+          <div class="vd-item"><span>Overall Score</span><b id="modalScore">—</b></div>
+          <div class="vd-item"><span>Interviews Attended</span><b id="modalAttended">0 interviews</b></div>
+          <div class="vd-item"><span>Last Interview</span><b id="modalLastDate">—</b></div>
+          <div class="vd-item"><span>Performance</span><div id="modalPerfBadge" style="margin-top:4px;"></div></div>
+        </div>
+      </div>
+      <!-- FEEDBACK -->
+      <div id="mentor-tab-feedback" class="modal-tab-panel">
+        <div id="feedbackContent"></div>
+      </div>
+      <!-- INTERVIEWS -->
+      <div id="mentor-tab-interviews" class="modal-tab-panel">
+        <div id="roundsContent"></div>
+      </div>
+      <!-- RECORDING -->
+      <div id="mentor-tab-recording" class="modal-tab-panel">
+        <div id="videoContent"></div>
+      </div>
+      <!-- RESUME -->
+      <div id="mentor-tab-resume" class="modal-tab-panel">
+        <div id="mentorStudentResumeEmbed"></div>
+      </div>
+    </div>
+    <!-- Video lightbox (hidden) -->
+    <div id="mentorVideoLightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">
+      <button onclick="closeMentorVideo()" style="position:absolute;top:18px;right:22px;background:none;border:none;color:#fff;font-size:24px;cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+      <video id="mentorVideoPlayer" controls style="max-width:90vw;max-height:82vh;border-radius:10px;"></video>
+    </div>
+  </div>
 </div>
 
 <!-- SIDEBAR OVERLAY -->
