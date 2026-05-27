@@ -60,6 +60,12 @@ public class Interviewer {
 
     private LocalDateTime createdAt;
 
+    @jakarta.persistence.Transient
+    private int interviewsConducted;
+
+    @jakarta.persistence.Transient
+    private double averageRating;
+
     @PrePersist
     protected void onCreate(){
         this.createdAt=LocalDateTime.now();

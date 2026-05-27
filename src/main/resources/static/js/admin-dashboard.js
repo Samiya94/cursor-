@@ -423,8 +423,8 @@ async function loadActiveInterviewers() {
             row.setAttribute('data-exp', iv.experience || '—');
             row.setAttribute('data-phone', iv.phone || '—');
             row.setAttribute('data-bio', iv.bio || '—');
-            row.setAttribute('data-interviews', '0');
-            row.setAttribute('data-rating', '—');
+            row.setAttribute('data-interviews', iv.interviewsConducted || '0');
+            row.setAttribute('data-rating', iv.averageRating > 0 ? iv.averageRating : '—');
             row.setAttribute('data-id', iv.id);
             row.setAttribute('data-resume', iv.resumeUrl || '');
             row.setAttribute('data-linkedin', iv.linkedin || '');
@@ -433,14 +433,20 @@ async function loadActiveInterviewers() {
             row.setAttribute('data-qualification', iv.qualification || '');
             row.setAttribute('data-skills', (iv.skills || []).join(','));
             row.setAttribute('data-interview-exp', iv.interviewExperience || '');
+            row.setAttribute('data-profilephoto', iv.profilePhotoUrl || '');
+            
+            const avatarHtml = iv.profilePhotoUrl 
+                ? `<img src="${iv.profilePhotoUrl}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` 
+                : initials;
+
             row.innerHTML = `
                 <td><div style="display:flex;align-items:center;gap:10px;">
-                    <div style="width:34px;height:34px;border-radius:50%;background:#EFF6FF;color:var(--primary);display:grid;place-items:center;font-weight:800;font-size:12px;flex-shrink:0;">${initials}</div>
+                    <div style="width:34px;height:34px;border-radius:50%;background:#EFF6FF;color:var(--primary);display:grid;place-items:center;font-weight:800;font-size:12px;flex-shrink:0;overflow:hidden;">${avatarHtml}</div>
                     <b>${name}</b></div></td>
                 <td style="font-size:12px;color:var(--muted);">${iv.location || '—'}</td>
                 <td>${iv.domain || '—'}</td>
                 <td>—</td>
-                <td><span style="color:#EAB308;font-weight:700;">★ —</span></td>
+                <td><span style="color:#EAB308;font-weight:700;">★ ${iv.averageRating > 0 ? iv.averageRating : '—'}</span></td>
                 <td><span class="badge ${isActive ? 'bg-success' : 'bg-danger'} status-badge">${isActive ? 'Active' : 'Inactive'}</span></td>
                 <td><div style="display:flex;gap:5px;flex-wrap:wrap;">
                     <button class="btn btn-info btn-sm" onclick="openPlatformProfileModalFromRow(this.closest('tr'))"><i class="fa-solid fa-eye"></i> View</button>
@@ -1320,12 +1326,26 @@ function deleteInterviewerRow(row, name) {
 /* ═══════════════════════════════════════
    PLATFORM PROFILE MODAL
 ═══════════════════════════════════════ */
-function openPlatformProfileModalFromRow(row) {
+async function openPlatformProfileModalFromRow(row) {
     if (!row) return;
+    const id = row.getAttribute('data-id') || '';
+    
+    // Fetch dynamic stats from backend
+    let details = { interviewsConducted: row.dataset.interviews || '0', completionRate: '—', averageRating: row.dataset.rating || '—', feedbacks: [] };
+    try {
+        const res = await secureFetch(`/api/admin/interviewers/${id}/details`);
+        if (res && res.ok) {
+            details = await res.json();
+        }
+    } catch (e) {
+        console.error('Error fetching interviewer details', e);
+    }
+
     const d = {
-        id: row.getAttribute('data-id') || '',
+        id: id,
         name: row.dataset.name || '—', domain: row.dataset.domain || '—',
-        interviews: row.dataset.interviews || '0', rating: row.dataset.rating || '—',
+        interviews: details.interviewsConducted, rating: details.averageRating > 0 ? details.averageRating : '—',
+        completion: details.completionRate, feedbacks: details.feedbacks || [],
         email: row.dataset.email || '—', exp: row.dataset.exp || '—',
         location: row.dataset.loc || '—', phone: row.dataset.phone || '—',
         bio: row.dataset.bio || '—', status: row.getAttribute('data-status') || 'active',
@@ -1336,12 +1356,15 @@ function openPlatformProfileModalFromRow(row) {
         qualification: row.getAttribute('data-qualification') || '',
         skills: row.getAttribute('data-skills') || '',
         interviewExp: row.getAttribute('data-interview-exp') || '',
+        profilePhotoUrl: row.getAttribute('data-profilephoto') || ''
     };
     const initials = d.name.split(' ').map(n => n[0]).join('').slice(0, 2);
     const isActive = d.status === 'active';
+    const avatarHtml = d.profilePhotoUrl ? `<img src="${d.profilePhotoUrl}" alt="${d.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : initials;
+    
     document.getElementById('platformProfileContent').innerHTML = `
         <div class="profile-banner">
-            <div class="profile-banner-avatar">${initials}</div>
+            <div class="profile-banner-avatar" style="overflow:hidden;">${avatarHtml}</div>
             <div>
                 <h3 style="font-size:15px;">${d.name}</h3>
                 <p style="font-size:12.5px;opacity:.8;">${d.jobTitle || d.domain}${d.company ? ' · ' + d.company : ''}</p>
@@ -1363,7 +1386,7 @@ function openPlatformProfileModalFromRow(row) {
                 <div style="font-size:11.5px;color:var(--muted);">Interviews</div>
             </div>
             <div style="flex:1;text-align:center;background:#F8FAFC;border-radius:9px;padding:11px;">
-                <div style="font-size:1.3rem;font-weight:800;color:var(--success);">—%</div>
+                <div style="font-size:1.3rem;font-weight:800;color:var(--success);">${d.completion}%</div>
                 <div style="font-size:11.5px;color:var(--muted);">Completion</div>
             </div>
             <div style="flex:1;text-align:center;background:#F8FAFC;border-radius:9px;padding:11px;">
@@ -1394,10 +1417,11 @@ function openFullProfileModal(d) {
     const resumeFileName = resumeUrl ? resumeUrl.split('/').pop() : '';
 
     const resumeSection = buildResumeEmbedHtml(resumeUrl, resumeFileName, { height: '520px' });
+    const avatarHtml = d.profilePhotoUrl ? `<img src="${d.profilePhotoUrl}" alt="${d.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : initials;
 
     document.getElementById('fullProfileContent').innerHTML = `
         <div class="profile-banner" style="margin-bottom:16px;">
-            <div class="profile-banner-avatar">${initials}</div>
+            <div class="profile-banner-avatar" style="overflow:hidden;">${avatarHtml}</div>
             <div>
                 <h3 style="font-size:15px;">${d.name}</h3>
                 <p style="opacity:.8;font-size:12.5px;">${d.jobTitle || d.domain}${d.company ? ' · ' + d.company : ''}${d.location ? ' · ' + d.location : ''}</p>
@@ -1417,7 +1441,7 @@ function openFullProfileModal(d) {
                         <div style="font-size:11px;color:var(--muted);">Interviews</div>
                     </div>
                     <div style="text-align:center;background:#F8FAFC;border-radius:9px;padding:10px;">
-                        <div style="font-size:1.2rem;font-weight:800;color:var(--success);">—%</div>
+                        <div style="font-size:1.2rem;font-weight:800;color:var(--success);">${d.completion}%</div>
                         <div style="font-size:11px;color:var(--muted);">Completion</div>
                     </div>
                     <div style="text-align:center;background:#F8FAFC;border-radius:9px;padding:10px;">
@@ -1445,12 +1469,29 @@ function openFullProfileModal(d) {
                     <div style="display:flex;flex-wrap:wrap;gap:5px;">${skillsHtml}</div>
                 </div>
 
+                <div style="margin-top:16px;">
+                    <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Student Feedback</div>
+                    ${d.feedbacks && d.feedbacks.length > 0 ? 
+                        `<div style="display:flex;flex-direction:column;gap:8px;">
+                            ${d.feedbacks.map(fb => `
+                                <div style="background:#F8FAFC;border-radius:8px;padding:10px;border-left:3px solid #EAB308;">
+                                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                        <b style="font-size:12.5px;">${fb.studentName}</b>
+                                        <span style="color:#EAB308;font-weight:700;font-size:12px;">★ ${fb.rating}</span>
+                                    </div>
+                                    <p style="font-size:12px;color:var(--dark);line-height:1.4;">${fb.feedback || '<i>No feedback text provided.</i>'}</p>
+                                </div>
+                            `).join('')}
+                        </div>` 
+                    : '<div style="font-size:13px;color:var(--muted);">No feedback received yet.</div>'}
+                </div>
+
                 <div>
                     <div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:8px;">Quick Actions</div>
                     <div style="display:flex;gap:7px;">
-                        <button class="btn btn-p" style="flex:1;justify-content:center;" onclick="window.location.href='mailto:${d.email}'">
-                            <i class="fa-solid fa-envelope"></i> Email
-                        </button>
+                        <a href="https://mail.google.com/mail/?view=cm&fs=1&to=${d.email}" target="_blank" rel="noopener noreferrer" class="btn btn-p" style="flex:1;justify-content:center;text-decoration:none;">
+                            <i class="fa-solid fa-envelope"></i> Gmail
+                        </a>
                         ${ensureUrl(d.linkedin) ? `<button class="btn btn-info" style="flex:1;justify-content:center;" onclick="window.open('${ensureUrl(d.linkedin)}','_blank')">
                             <i class="fa-brands fa-linkedin"></i> LinkedIn
                         </button>` : ''}

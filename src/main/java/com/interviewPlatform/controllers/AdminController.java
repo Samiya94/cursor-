@@ -24,6 +24,9 @@ import com.interviewPlatform.repositories.InterviewRequestRepository;
 import com.interviewPlatform.repositories.InterviewerRepository;
 import com.interviewPlatform.repositories.StudentRepository;
 import com.interviewPlatform.repositories.UserRepository;
+import com.interviewPlatform.repositories.InterviewEvaluationRepository;
+import com.interviewPlatform.repositories.StudentInterviewerRatingRepository;
+import com.interviewPlatform.entities.StudentInterviewerRating;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +42,8 @@ public class AdminController {
     private final InterviewerRepository interviewerRepository;
     private final StudentRepository studentRepository;
     private final InterviewRequestRepository interviewRequestRepository;
+    private final InterviewEvaluationRepository interviewEvaluationRepository;
+    private final StudentInterviewerRatingRepository studentInterviewerRatingRepository;
     private final JavaMailSender mailSender;
 
     @Value("${app.mail.from:${spring.mail.username:no-reply@interview-platform.local}}")
@@ -124,6 +129,18 @@ public class AdminController {
     public ResponseEntity<List<Interviewer>> getActiveInterviewers() {
         List<Interviewer> active = interviewerRepository.findAll().stream()
             .filter(iv -> iv.getUser() != null && iv.getUser().getStatus() == Status.ACTIVE)
+            .peek(iv -> {
+                long count = interviewEvaluationRepository.countByInterviewerId(iv.getId());
+                iv.setInterviewsConducted((int) count);
+
+                List<StudentInterviewerRating> ratings = studentInterviewerRatingRepository.findByInterviewerId(iv.getId());
+                if (!ratings.isEmpty()) {
+                    double avg = ratings.stream().mapToInt(StudentInterviewerRating::getRating).average().orElse(0.0);
+                    iv.setAverageRating(Math.round(avg * 10.0) / 10.0);
+                } else {
+                    iv.setAverageRating(0.0);
+                }
+            })
             .toList();
         return ResponseEntity.ok(active);
     }
@@ -197,6 +214,45 @@ public class AdminController {
         return interviewerRepository.findById(id)
             .<ResponseEntity<?>>map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/interviewers/{id}/details")
+    public ResponseEntity<?> getInterviewerDetails(@PathVariable Long id) {
+        Interviewer interviewer = interviewerRepository.findById(id).orElse(null);
+        if (interviewer == null) return ResponseEntity.notFound().build();
+        
+        long interviewsConducted = interviewEvaluationRepository.countByInterviewerId(id);
+        List<StudentInterviewerRating> ratings = studentInterviewerRatingRepository.findByInterviewerId(id);
+        
+        double avgRating = 0.0;
+        if (!ratings.isEmpty()) {
+            avgRating = ratings.stream().mapToInt(StudentInterviewerRating::getRating).average().orElse(0.0);
+            avgRating = Math.round(avgRating * 10.0) / 10.0;
+        }
+
+        // Compute completion rate: 
+        // For simplicity, returning 100 if there are conducted interviews, or placeholder
+        int completionRate = interviewsConducted > 0 ? 100 : 0; 
+        
+        List<Map<String, Object>> feedbacks = ratings.stream().map(r -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("rating", r.getRating());
+            map.put("feedback", r.getFeedback());
+            String fName = r.getStudent().getFirstName() != null ? r.getStudent().getFirstName() : "";
+            String lName = r.getStudent().getLastName() != null ? r.getStudent().getLastName() : "";
+            map.put("studentName", (fName + " " + lName).trim());
+            map.put("date", r.getCreatedAt());
+            return map;
+        }).toList();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("interviewsConducted", interviewsConducted);
+        result.put("averageRating", avgRating);
+        result.put("completionRate", completionRate);
+        result.put("feedbacks", feedbacks);
+        
+        return ResponseEntity.ok(result);
     }
 
     @PreAuthorize("hasRole('ADMIN')")

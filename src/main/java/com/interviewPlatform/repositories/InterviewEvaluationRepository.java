@@ -9,4 +9,5 @@ import com.interviewPlatform.entities.InterviewEvaluation;
 public interface InterviewEvaluationRepository extends JpaRepository<InterviewEvaluation, Long> {
     Optional<InterviewEvaluation> findByApplicationId(Long applicationId);
     boolean existsByApplicationId(Long applicationId);
+    long countByInterviewerId(Long interviewerId);
 }
