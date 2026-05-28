@@ -93,7 +93,8 @@ public String getOrCreateRegistrationLink(Long instituteId) {
 
     instituteRepository.save(institute);
 
-    return "http://localhost:8080/register/mentor?inst="
+    String baseUrl = org.springframework.web.servlet.support.ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+    return baseUrl + "/register/mentor?inst="
             + instituteId + "&token=" + token;
 }
 
@@ -149,7 +150,8 @@ public boolean validateRegistrationToken(Long instituteId, String token) {
         instituteRepository.save(institute);
     }
 
-    return "http://localhost:8080/register/student"
+    String baseUrl = org.springframework.web.servlet.support.ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+    return baseUrl + "/register/student"
             + "?instituteId=" + instituteId
             + "&dept=" + deptId
             + "&token=" + institute.getRegistrationToken();

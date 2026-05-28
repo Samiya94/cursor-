@@ -184,7 +184,7 @@ public class AdminController {
             "Hi " + firstName + ",\n\n"
             + "Great news! Your interviewer account has been reviewed and approved by our admin team.\n\n"
             + "You can now log in to your dashboard and start taking interviews:\n"
-            + "👉 http://localhost:8080/login\n\n"
+            + "👉 " + org.springframework.web.servlet.support.ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString() + "/login\n\n"
             + "Here's what you can do next:\n"
             + "  • Complete your profile if you haven't already\n"
             + "  • Check your assigned interviews from your dashboard\n"

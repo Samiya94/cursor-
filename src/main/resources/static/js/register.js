@@ -45,7 +45,7 @@ const token = params.get("token");
 // If this page is opened via registration link
 if(instId && token){
 
-  fetch("http://localhost:8080/register/validate-registration", {
+  fetch("/register/validate-registration", {
     method: "POST",
     headers: {"Content-Type":"application/json"},
     body: JSON.stringify({ instId, token })
