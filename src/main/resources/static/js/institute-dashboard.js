@@ -571,8 +571,8 @@ function loadDeptDetail(name,coord,initials,email,phone,desg,color){
     let completed = 0, scheduled = 0, pending = 0;
     interviews.forEach(i => {
       const s = normalizeStatusValue(i.status);
-      if (s === 'CONFIRMED') completed++;
-      else if (s === 'RESCHEDULED' || s === 'AWAITING_CONFIRMATION') scheduled++;
+      if (s === 'COMPLETED') completed++;
+      else if (s === 'CONFIRMED' || s === 'RESCHEDULED' || s === 'AWAITING_CONFIRMATION') scheduled++;
       else if (s === 'PENDING') pending++;
     });
     document.getElementById('det-comp').textContent = completed;
@@ -678,9 +678,9 @@ async function renderOverview(){
     const s = normalizeStatusValue(i.status);
 
     if (s === 'PENDING') pending++;
-    else if (s === 'CONFIRMED') confirmed++;
+    else if (s === 'COMPLETED') confirmed++;
     else if (s === 'CANCELLED') cancelled++;
-    else if (s === 'RESCHEDULED') rescheduled++;
+    else if (s === 'CONFIRMED' || s === 'RESCHEDULED') rescheduled++;
   });
 
   document.getElementById('ovDepts').textContent=departments.length;
@@ -873,9 +873,9 @@ function renderReqStats(){
     const sd = (i.startDate || i.timeSlot || "").slice(0, 10);
 
     if      (s === 'PENDING')     pending++;
-    else if (s === 'CONFIRMED')   confirmed++;
+    else if (s === 'COMPLETED')   confirmed++;
     else if (s === 'CANCELLED')   canceled++;
-    else if (s === 'RESCHEDULED') rescheduled++;
+    else if (s === 'CONFIRMED' || s === 'RESCHEDULED') rescheduled++;
 
     if (sd && sd === today) todayCount++;
   });

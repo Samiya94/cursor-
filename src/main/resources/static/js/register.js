@@ -268,12 +268,8 @@ async function handleSubmit(e, role){
       });
 
       if(response.ok){
-        showToast('Institute registered successfully!','success');
+        showSuccessModal("Institute Registered!", "Your institute has been registered successfully. You can now log in.");
         form.reset();
-        // Institute has no approval step — redirect to login after toast
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 2000);
       }
 
     }
@@ -333,9 +329,12 @@ async function handleSubmit(e, role){
       });
 
       if(response.ok){
-        // Replace the form with the approval-pending success screen
-        // No auto-redirect — let the interviewer read and then click Go to Login
-        showInterviewerSuccess(fullName);
+        const firstName = (fullName || '').split(' ')[0] || 'there';
+        showSuccessModal(
+            `You're registered, ${firstName}!`,
+            "Your application has been received. Our admin team will review your profile and notify you by email once your account is approved."
+        );
+        form.reset();
       } else {
         const errorText = await response.text();
         showToast(errorText || 'Interviewer registration failed.','error');
@@ -358,4 +357,12 @@ function showToast(msg,type='success'){
   void t.offsetWidth;
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),4000);
+}
+
+function showSuccessModal(title, msg) {
+  const modal = document.getElementById('successModal');
+  if (!modal) return;
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalMsg').textContent = msg;
+  modal.classList.add('show');
 }

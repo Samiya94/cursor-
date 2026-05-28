@@ -90,7 +90,12 @@ public class MentorDashboardController {
                     resumeUrl,
                     null,  // projectName
                     null,  // projectBrief
-                    null   // projectGithub
+                    null,   // projectGithub
+                    applicationRepository.findByStudentId(s.getId()).stream()
+                        .filter(a -> a.getStatus() == Status.APPROVED && 
+                                     a.getInterviewRequest() != null && 
+                                     a.getInterviewRequest().getStatus() == Status.COMPLETED)
+                        .count()
                 );
             })
             .toList();

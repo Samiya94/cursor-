@@ -11,6 +11,7 @@ import com.interviewPlatform.entities.StudentApplication;
 import com.interviewPlatform.repositories.InterviewEvaluationRepository;
 import com.interviewPlatform.repositories.InterviewerRepository;
 import com.interviewPlatform.repositories.StudentApplicationRepository;
+import com.interviewPlatform.repositories.InterviewRequestRepository;
 import com.interviewPlatform.services.InterviewEvaluationService;
 
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class InterviewEvaluationServiceImpl implements InterviewEvaluationServic
     private final InterviewEvaluationRepository evaluationRepository;
     private final StudentApplicationRepository applicationRepository;
     private final InterviewerRepository interviewerRepository;
+    private final InterviewRequestRepository interviewRequestRepository;
 
     @Override
     @Transactional
@@ -53,6 +55,14 @@ public class InterviewEvaluationServiceImpl implements InterviewEvaluationServic
         eval.setOverallScore(computeOverallScore(dto));
 
         InterviewEvaluation saved = evaluationRepository.save(eval);
+
+        // Update the InterviewRequest status to COMPLETED if it isn't already
+        com.interviewPlatform.entities.InterviewRequest req = app.getInterviewRequest();
+        if (req != null && req.getStatus() != com.interviewPlatform.enums.Status.COMPLETED) {
+            req.setStatus(com.interviewPlatform.enums.Status.COMPLETED);
+            interviewRequestRepository.save(req);
+        }
+
         return mapToDTO(saved);
     }
 

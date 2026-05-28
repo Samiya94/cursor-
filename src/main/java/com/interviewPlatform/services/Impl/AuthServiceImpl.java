@@ -121,7 +121,7 @@ public class AuthServiceImpl implements AuthService{
                 Files.createDirectories(path.getParent());
                 Files.write(path, request.profilePhoto().getBytes());
 
-                interviewer.setProfilePhotoUrl(fileName);
+                interviewer.setProfilePhotoUrl("/uploads/" + fileName);
             }
         } catch (Exception e) {
             throw new RuntimeException("File upload failed");

@@ -48,9 +48,11 @@ public class StudentDashboardController {
         List<StudentApplication> myApplications =
             applicationRepository.findByStudentId(student.getId());
 
-        // interviewsTaken = interviews the student is confirmed for (APPROVED)
+        // interviewsTaken = interviews the student has actually completed
         long interviewsTaken = myApplications.stream()
-            .filter(a -> a.getStatus() == Status.APPROVED)
+            .filter(a -> a.getStatus() == Status.APPROVED && 
+                         a.getInterviewRequest() != null && 
+                         a.getInterviewRequest().getStatus() == Status.COMPLETED)
             .count();
 
         long pendingCount = 0; // no more pending — all are auto-approved now

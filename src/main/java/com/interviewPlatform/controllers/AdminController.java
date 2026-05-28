@@ -71,6 +71,7 @@ public class AdminController {
             "totalRequests", interviewRequestRepository.count(),
             "pendingInterviewers", interviewerRepository.findByUserStatus(Status.PENDING).size(),
             "confirmedRequests", interviewRequestRepository.findByStatus(Status.CONFIRMED).size(),
+            "completedRequests", interviewRequestRepository.findByStatus(Status.COMPLETED).size(),
             "pendingRequests", interviewRequestRepository.findByStatus(Status.PENDING).size(),
             "deptStudentCounts", deptStudentCounts
         ));
@@ -297,8 +298,8 @@ public class AdminController {
             .orElseThrow(() -> new RuntimeException("Admin not found"));
         java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
         result.put("email", user.getEmail());
-        result.put("fullName", "Super Admin");
-        result.put("phone", "");
+        result.put("fullName", user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : "Super Admin");
+        result.put("phone", user.getPhone() != null ? user.getPhone() : "");
         result.put("role", user.getRole() != null ? user.getRole().name() : "ADMIN");
         result.put("status", user.getStatus() != null ? user.getStatus().name() : "ACTIVE");
         return ResponseEntity.ok(result);
@@ -308,8 +309,15 @@ public class AdminController {
     @PutMapping("/profile")
     public ResponseEntity<String> updateAdminProfile(Authentication auth,
             @RequestBody Map<String, String> body) {
-        // Admin profile fields (fullName/phone) are not stored in User entity yet.
-        // This endpoint is a placeholder for future extension.
+        User user = userRepository.findByEmail(auth.getName())
+            .orElseThrow(() -> new RuntimeException("Admin not found"));
+        if (body.containsKey("fullName")) {
+            user.setFullName(body.get("fullName"));
+        }
+        if (body.containsKey("phone")) {
+            user.setPhone(body.get("phone"));
+        }
+        userRepository.save(user);
         return ResponseEntity.ok("Profile updated");
     }
 }

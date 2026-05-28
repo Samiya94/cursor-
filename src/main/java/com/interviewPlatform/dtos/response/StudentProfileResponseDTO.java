@@ -20,6 +20,7 @@ public record StudentProfileResponseDTO(
         String resumeUrl,
         String projectName,
         String projectBrief,
-        String projectGithub
+        String projectGithub,
+        Long interviewsTaken
 ) {
 }

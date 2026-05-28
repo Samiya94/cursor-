@@ -125,7 +125,7 @@ function initBaseCharts() {
         pieChartInstance = new Chart(pieCanvas, {
             type: 'doughnut',
             data: {
-                labels: ['Confirmed', 'Pending', 'Cancelled'],
+                labels: ['Confirmed', 'Pending', 'Completed'],
                 datasets: [{
                     data: [0, 0, 0],
                     backgroundColor: ['#16A34A', '#EAB308', '#DC2626'],
@@ -149,9 +149,8 @@ async function updatePieChart() {
         if (pieChartInstance) {
             const confirmed = data.confirmedRequests ?? 0;
             const pending = data.pendingRequests ?? 0;
-            const total = data.totalRequests ?? 0;
-            const cancelled = total - confirmed - pending;
-            pieChartInstance.data.datasets[0].data = [confirmed, pending, Math.max(0, cancelled)];
+            const completed = data.completedRequests ?? 0;
+            pieChartInstance.data.datasets[0].data = [confirmed, pending, completed];
             pieChartInstance.update();
         }
     } catch (e) {}
@@ -415,6 +414,8 @@ async function loadActiveInterviewers() {
             const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
             const isActive = iv.user?.status === 'ACTIVE';
             const row = document.createElement('tr');
+            const resolvedPhotoUrl = iv.profilePhotoUrl ? (iv.profilePhotoUrl.startsWith('/') || iv.profilePhotoUrl.startsWith('http') ? iv.profilePhotoUrl : '/uploads/' + iv.profilePhotoUrl) : '';
+            
             row.setAttribute('data-status', isActive ? 'active' : 'inactive');
             row.setAttribute('data-name', name);
             row.setAttribute('data-domain', iv.domain || '');
@@ -433,10 +434,10 @@ async function loadActiveInterviewers() {
             row.setAttribute('data-qualification', iv.qualification || '');
             row.setAttribute('data-skills', (iv.skills || []).join(','));
             row.setAttribute('data-interview-exp', iv.interviewExperience || '');
-            row.setAttribute('data-profilephoto', iv.profilePhotoUrl || '');
+            row.setAttribute('data-profilephoto', resolvedPhotoUrl);
             
-            const avatarHtml = iv.profilePhotoUrl 
-                ? `<img src="${iv.profilePhotoUrl}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` 
+            const avatarHtml = resolvedPhotoUrl 
+                ? `<img src="${resolvedPhotoUrl}" alt="${name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` 
                 : initials;
 
             row.innerHTML = `
@@ -503,8 +504,9 @@ async function loadAllInterviewsTable() {
         tbody.innerHTML = '';
 
         requests.forEach(req => {
-            const isUpcoming = req.status === 'CONFIRMED' || req.status === 'RESCHEDULED';
-            const rowStatus = isUpcoming ? 'upcoming' : 'completed';
+            let rowStatus = 'pending';
+            if (req.status === 'COMPLETED') rowStatus = 'completed';
+            else if (req.status === 'CONFIRMED' || req.status === 'RESCHEDULED') rowStatus = 'upcoming';
 
             const institute = req.instituteName || '—';
             const interviewerName = req.assignedInterviewerName || '—';
@@ -517,8 +519,21 @@ async function loadAllInterviewsTable() {
             const studentsVal = (req.numberOfStudentsRequired !== null && req.numberOfStudentsRequired !== undefined)
                 ? req.numberOfStudentsRequired
                 : '—';
-            const statusBadgeClass = isUpcoming ? 'bg-blue' : 'bg-success';
-            const statusBadgeText = isUpcoming ? 'Upcoming' : 'Completed';
+            let statusBadgeClass = 'bg-pending';
+            let statusBadgeText = 'Pending';
+            if (req.status === 'COMPLETED') {
+                statusBadgeClass = 'bg-success';
+                statusBadgeText = 'Completed';
+            } else if (req.status === 'CONFIRMED' || req.status === 'RESCHEDULED') {
+                statusBadgeClass = 'bg-blue';
+                statusBadgeText = 'Upcoming';
+            } else if (req.status === 'CANCELLED') {
+                statusBadgeClass = 'bg-danger';
+                statusBadgeText = 'Cancelled';
+            } else if (req.status === 'AWAITING_CONFIRMATION') {
+                statusBadgeClass = 'bg-pending';
+                statusBadgeText = 'Awaiting Confirmation';
+            }
 
             const actionObj = {
                 institute: institute,
@@ -606,14 +621,15 @@ async function loadAllInterviewRequests() {
 
         requests.forEach(req => {
             const statusClass = {
-                'PENDING': 'bg-pending', 'CONFIRMED': 'bg-success',
+                'PENDING': 'bg-pending', 'CONFIRMED': 'bg-blue',
                 'RESCHEDULED': 'bg-blue', 'CANCELLED': 'bg-danger',
-                'AWAITING_CONFIRMATION': 'bg-warning'
+                'AWAITING_CONFIRMATION': 'bg-warning', 'COMPLETED': 'bg-success'
             }[req.status] || 'bg-pending';
             const statusLabel = {
                 'PENDING': 'Pending', 'CONFIRMED': 'Confirmed',
                 'RESCHEDULED': 'Rescheduled', 'CANCELLED': 'Cancelled',
-                'AWAITING_CONFIRMATION': 'Awaiting Confirmation'
+                'AWAITING_CONFIRMATION': 'Awaiting Confirmation',
+                'COMPLETED': 'Completed'
             }[req.status] || req.status;
 
             const expertiseTags = (req.expertise || []).map(e => `<span class="req-tag">${e}</span>`).join('');

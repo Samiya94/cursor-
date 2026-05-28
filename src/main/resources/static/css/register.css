@@ -267,7 +267,7 @@ nav {
 
 /* input with icon */
 .input-icon-wrap { position:relative; }
-.input-icon-wrap > i.fa-lock {
+.input-icon-wrap > i:first-child {
   position:absolute; left:12px; top:50%; transform:translateY(-50%);
   font-size:13px; color:var(--muted); pointer-events:none; z-index:1;
 }
@@ -458,6 +458,45 @@ nav {
 .toast i { font-size:16px; }
 .toast.success i { color:#4ADE80; }
 .toast.error i { color:#F87171; }
+
+/* ── SUCCESS MODAL ── */
+.modal-overlay {
+  position: fixed; top:0; left:0; right:0; bottom:0;
+  background: rgba(15,23,42,0.6);
+  display: flex; align-items:center; justify-content:center;
+  z-index: 10000;
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s ease;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.show { opacity: 1; pointer-events: auto; }
+.success-modal {
+  background: var(--card);
+  width: 90%; max-width: 420px;
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(20px) scale(0.95);
+  transition: transform .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.modal-overlay.show .success-modal { transform: translateY(0) scale(1); }
+.success-modal .modal-icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: #DCFCE7; display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+}
+.success-modal .modal-icon i { font-size: 32px; color: #16A34A; }
+.success-modal h3 { font-size: 20px; font-weight: 800; color: var(--dark); margin-bottom: 8px; }
+.success-modal p { font-size: 14px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
+.success-modal .btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--primary); color: #fff;
+  padding: 12px 24px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 700; width: 100%; border: none;
+  cursor: pointer; transition: var(--transition); text-decoration: none;
+}
+.success-modal .btn-primary:hover { background: #1e40af; }
 
 /* ── RESPONSIVE ── */
 @media(max-width:700px) {

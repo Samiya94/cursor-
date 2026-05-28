@@ -34,6 +34,7 @@ public class StudentServiceImpl implements StudentService {
     private final DepartmentRepository departmentRepository;
     private final InstituteService instituteService;
     private final PasswordEncoder passwordEncoder;
+    private final com.interviewPlatform.repositories.StudentApplicationRepository applicationRepository;
 
     @Override
     @Transactional
@@ -165,7 +166,12 @@ public class StudentServiceImpl implements StudentService {
                 resumeUrl,
                 student.getProjectName(),
                 student.getProjectBrief(),
-                student.getProjectGithub()
+                student.getProjectGithub(),
+                applicationRepository.findByStudentId(student.getId()).stream()
+                    .filter(a -> a.getStatus() == Status.APPROVED && 
+                                 a.getInterviewRequest() != null && 
+                                 a.getInterviewRequest().getStatus() == Status.COMPLETED)
+                    .count()
         );
     }
 
