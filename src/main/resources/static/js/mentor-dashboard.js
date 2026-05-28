@@ -257,7 +257,8 @@ function mentorSwitchTab(tabEl, panelId) {
 
 function mentorPerfBadge(perf) {
     if (!perf) return '—';
-    const p = perf.toUpperCase();
+    // Remove any non-alphabetic characters (like emojis) and trim before mapping
+    const p = perf.replace(/[^a-zA-Z]/g, '').trim().toUpperCase();
     const map = {
         'EXCELLENT': { bg: '#DCFCE7', color: '#15803D', icon: 'fa-star',         label: 'Excellent' },
         'GOOD':      { bg: '#CFFAFE', color: '#0E7490', icon: 'fa-thumbs-up',    label: 'Good' },

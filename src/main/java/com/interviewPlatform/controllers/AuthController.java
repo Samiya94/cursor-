@@ -36,13 +36,13 @@ public class AuthController {
 
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody RegisterRequest request){
+    public ResponseEntity<String> register(@jakarta.validation.Valid @RequestBody RegisterRequest request){
         userService.registerUser(request);
         return ResponseEntity.ok("User registered successfully");
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@jakarta.validation.Valid @RequestBody LoginRequest request) {
         try {
             AuthResponse response = userService.verify(request);
             return ResponseEntity.ok(response);

@@ -117,11 +117,11 @@ public class AuthServiceImpl implements AuthService{
                 String fileName = System.currentTimeMillis() + "_" +
                         request.profilePhoto().getOriginalFilename();
 
-                Path path = Paths.get("uploads/" + fileName);
+                Path path = Paths.get("uploads/profiles/" + fileName);
                 Files.createDirectories(path.getParent());
                 Files.write(path, request.profilePhoto().getBytes());
 
-                interviewer.setProfilePhotoUrl("/uploads/" + fileName);
+                interviewer.setProfilePhotoUrl("/uploads/profiles/" + fileName);
             }
         } catch (Exception e) {
             throw new RuntimeException("File upload failed");

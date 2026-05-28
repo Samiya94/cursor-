@@ -138,8 +138,8 @@ function checkStrength(inputId, barId, textId){
   const val=document.getElementById(inputId).value;
   const bar=document.getElementById(barId);
   const txt=document.getElementById(textId);
-  let score=0;
-  if(val.length>=8)score++;
+    let score=0;
+  if(val.length>=6)score++;
   if(/[A-Z]/.test(val))score++;
   if(/[0-9]/.test(val))score++;
   if(/[^A-Za-z0-9]/.test(val))score++;
@@ -244,9 +244,22 @@ async function handleSubmit(e, role){
     confirmPassword = document.getElementById('int-confirm-password').value;
   }
 
+  if(password.length < 6){
+    showToast('Password must be at least 6 characters long.','error');
+    return;
+  }
+
   if(password !== confirmPassword){
     showToast('Passwords do not match.','error');
     return;
+  }
+
+  // Disable submit button
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
   }
 
   try {
@@ -270,6 +283,14 @@ async function handleSubmit(e, role){
       if(response.ok){
         showSuccessModal("Institute Registered!", "Your institute has been registered successfully. You can now log in.");
         form.reset();
+      } else {
+        const errorText = await response.text();
+        showToast(errorText || 'Registration failed.','error');
+      }
+      
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
       }
 
     }
@@ -338,13 +359,21 @@ async function handleSubmit(e, role){
       } else {
         const errorText = await response.text();
         showToast(errorText || 'Interviewer registration failed.','error');
-        return;
+      }
+      
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
       }
     }
 
   } catch (error) {
     console.error(error);
     showToast('Server error.','error');
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+    }
   }
 }
 

@@ -1580,7 +1580,7 @@ function instFmtDateTime(dt) {
 
 function instPerfBadge(perf) {
   if (!perf) return '—'; // no interview yet — just show a dash, not a badge
-  const p = perf.toUpperCase();
+  const p = perf.replace(/[^a-zA-Z]/g, '').trim().toUpperCase();
   const map = {
     'EXCELLENT': { bg: '#DCFCE7', color: '#15803D', icon: 'fa-star',         label: 'Excellent' },
     'GOOD':      { bg: '#CFFAFE', color: '#0E7490', icon: 'fa-thumbs-up',    label: 'Good' },

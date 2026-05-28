@@ -113,7 +113,7 @@ function checkStrength() {
   const fill = document.getElementById('strengthFill');
   const txt  = document.getElementById('strengthText');
   let score  = 0;
-  if (val.length >= 8)         score++;
+  if (val.length >= 6)         score++;
   if (/[A-Z]/.test(val))      score++;
   if (/[0-9]/.test(val))      score++;
   if (/[^A-Za-z0-9]/.test(val)) score++;
@@ -162,8 +162,8 @@ async function handleSubmit(e) {
   const confirm     = document.getElementById('regConfirm').value;
   const terms       = document.getElementById('terms').checked;
 
-  if (password.length < 8) {
-  return showError("Password must be at least 8 characters");
+  if (password.length < 6) {
+  return showError("Password must be at least 6 characters");
 }
 
 if (password !== confirm) {
@@ -177,7 +177,7 @@ if (password !== confirm) {
   valid = validateField('phone',       phone.length >= 10)                && valid;
   valid = validateField('deptSelect',  deptId !== '')                   && valid;
   valid = validateField('designation', designation !== '')                && valid;
-  valid = validateField('regPassword', password.length >= 8)              && valid;
+  valid = validateField('regPassword', password.length >= 6)              && valid;
   valid = validateField('regConfirm',  password === confirm)              && valid;
 
   if (!valid) { showError('Please fill in all required fields correctly.'); return; }
@@ -196,6 +196,13 @@ if (password !== confirm) {
     instituteId: instId,
     token: regToken
   };
+
+  const submitBtn = document.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Registering...';
+  }
 
 try {
   console.log("Payload:", payload);
@@ -236,6 +243,11 @@ try {
   } catch (err) {
     console.error(err);
     showError("Registration failed. Try again.");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+    }
   }
 }
 

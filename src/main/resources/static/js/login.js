@@ -95,6 +95,13 @@ async function handleLogin(event) {
     return;
   }
 
+  const loginBtn = document.querySelector('.login-btn');
+  const originalBtnText = loginBtn ? loginBtn.innerHTML : '';
+  if (loginBtn) {
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Logging in...';
+  }
+
   try {
     const response = await fetch("/login", {
       method: "POST",
@@ -131,6 +138,11 @@ async function handleLogin(event) {
   } catch (error) {
     console.error(error);
     showError("Server error");
+  } finally {
+    if (loginBtn) {
+      loginBtn.disabled = false;
+      loginBtn.innerHTML = originalBtnText;
+    }
   }
 }
 

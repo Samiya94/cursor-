@@ -37,13 +37,13 @@ public class RegistrationController {
     private final DepartmentRepository departmentRepository;
 
     @PostMapping("/institute")
-    public ResponseEntity<?> registerInstitute(@RequestBody InstituteRegisterRequest request) {
+    public ResponseEntity<?> registerInstitute(@jakarta.validation.Valid @RequestBody InstituteRegisterRequest request) {
         authService.registerInstitute(request);
         return ResponseEntity.ok("Institute Registered Successfully");
     }
 
     @PostMapping("/interviewer")
-    public ResponseEntity<?> registerInterviewer(@ModelAttribute InterviewerRegisterRequest request) {
+    public ResponseEntity<?> registerInterviewer(@jakarta.validation.Valid @ModelAttribute InterviewerRegisterRequest request) {
         try {
             authService.registerInterviewer(request);
             return ResponseEntity.ok("Interviewer Registered Successfully");
@@ -56,7 +56,7 @@ public class RegistrationController {
     }
 
     @PostMapping("/mentor")
-    public ResponseEntity<?> registerMentor(@RequestBody MentorRegisterRequest request) {
+    public ResponseEntity<?> registerMentor(@jakarta.validation.Valid @RequestBody MentorRegisterRequest request) {
         try {
             mentorService.registerMentor(request);
             return ResponseEntity.ok("Mentor registered successfully");
@@ -69,7 +69,7 @@ public class RegistrationController {
     }
 
     @PostMapping("/student")
-    public ResponseEntity<String> registerStudent(@RequestBody StudentRegisterRequestDTO request) {
+    public ResponseEntity<String> registerStudent(@jakarta.validation.Valid @RequestBody StudentRegisterRequestDTO request) {
         studentService.registerStudent(request);
         return ResponseEntity.ok("Student registered successfully");
     }

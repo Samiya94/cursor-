@@ -71,7 +71,10 @@ async function loadInterviewerProfile() {
     if (bioArea) bioArea.value = iv.bio || '';
     fillSkills(iv.skills || []);
     if (iv.profilePhotoUrl) {
-      const url = iv.profilePhotoUrl.startsWith('http') ? iv.profilePhotoUrl : '/uploads/' + iv.profilePhotoUrl;
+      let url = iv.profilePhotoUrl;
+      if (!url.startsWith('http') && !url.startsWith('/')) {
+        url = '/uploads/' + url;
+      }
       document.getElementById('profilePicLg').innerHTML = `<img src="${url}" alt="Profile">`;
       document.getElementById('headerAvatar').innerHTML = `<img src="${url}" alt="Profile" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
     } else {

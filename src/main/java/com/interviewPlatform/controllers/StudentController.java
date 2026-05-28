@@ -40,14 +40,14 @@ public class StudentController {
     @PutMapping("/me")
     public ResponseEntity<StudentProfileResponseDTO> updateProfile(
             Authentication authentication,
-            @RequestBody StudentProfileUpdateRequestDTO request) {
+            @jakarta.validation.Valid @RequestBody StudentProfileUpdateRequestDTO request) {
         return ResponseEntity.ok(studentService.updateMyProfile(authentication.getName(), request));
     }
 
     @PutMapping("/me/password")
     public ResponseEntity<String> changePassword(
             Authentication authentication,
-            @RequestBody ChangePasswordRequestDTO request) {
+            @jakarta.validation.Valid @RequestBody ChangePasswordRequestDTO request) {
         studentService.changePassword(authentication.getName(), request);
         return ResponseEntity.ok("Password updated successfully");
     }

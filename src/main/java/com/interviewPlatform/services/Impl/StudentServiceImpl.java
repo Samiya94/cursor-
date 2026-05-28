@@ -124,8 +124,8 @@ public class StudentServiceImpl implements StudentService {
         Student student = getStudentByEmail(email);
         User user = student.getUser();
 
-        if (request.newPassword() == null || request.newPassword().length() < 8) {
-            throw new RuntimeException("New password must be at least 8 characters");
+        if (request.newPassword() == null || request.newPassword().length() < 6) {
+            throw new RuntimeException("New password must be at least 6 characters");
         }
         if (!request.newPassword().equals(request.confirmPassword())) {
             throw new RuntimeException("Passwords do not match");

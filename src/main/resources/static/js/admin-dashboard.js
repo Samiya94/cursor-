@@ -128,7 +128,7 @@ function initBaseCharts() {
                 labels: ['Confirmed', 'Pending', 'Completed'],
                 datasets: [{
                     data: [0, 0, 0],
-                    backgroundColor: ['#16A34A', '#EAB308', '#DC2626'],
+                    backgroundColor: ['#3B82F6', '#EAB308', '#10B981'],
                     borderWidth: 0
                 }]
             },
@@ -1839,15 +1839,12 @@ async function loadSettingsInstitutes() {
 ═══════════════════════════════════════ */
 async function loadVideoRecords() {
     try {
-        const res = await secureFetch('/api/interview-requests/all');
+        const res = await secureFetch('/api/admin/video-records');
         if (!res || !res.ok) return;
-        const requests = await res.json();
+        const records = await res.json();
 
         const tbody = document.getElementById('recordTableBody');
         if (!tbody) return;
-
-        // Build confirmed/rescheduled interviews as "records"
-        const records = requests.filter(r => r.status === 'CONFIRMED' || r.status === 'RESCHEDULED');
 
         if (!records.length) {
             tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:16px;">No interview records yet.</td></tr>';
@@ -1862,23 +1859,28 @@ async function loadVideoRecords() {
             const timeStr = r.scheduledDate
                 ? new Date(r.scheduledDate).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })
                 : '';
-            const status = r.status === 'CONFIRMED' ? 'pending review' : 'reviewed';
-            const badgeClass = status === 'reviewed' ? 'bg-success' : 'bg-pending';
-            const badgeLabel = status === 'reviewed' ? 'Reviewed' : 'Pending Review';
-            const interviewer = r.assignedInterviewerName || r.interviewerName || '—';
+            
+            const badgeClass = r.status === 'reviewed' ? 'bg-success' : 'bg-pending';
+            const badgeLabel = r.status === 'reviewed' ? 'Reviewed' : 'Pending Review';
+            const scoreHtml = r.score != null ? `<span style="font-weight:700;color:var(--dark);">${r.score}/10</span>` : '—';
             const inst = r.instituteName || '—';
             const dept = r.departmentName || '—';
-            return `<tr data-status="${status}" data-institute="${inst}" data-interviewer="${interviewer}" data-date="${r.scheduledDate || ''}">
+            const student = r.studentName || '—';
+            const stdClass = r.studentClass || '—';
+            const interviewer = r.interviewerName || '—';
+
+            return `<tr data-status="${r.status}" data-institute="${inst}" data-interviewer="${interviewer}" data-date="${r.scheduledDate || ''}">
                 <td>${inst}</td>
                 <td>${dept}</td>
-                <td>—</td>
-                <td>—</td>
+                <td><b>${student}</b></td>
+                <td>${stdClass}</td>
                 <td>${interviewer}</td>
                 <td style="white-space:nowrap;">${dateStr}${timeStr ? ' · ' + timeStr : ''}</td>
-                <td>—</td>
+                <td>${scoreHtml}</td>
                 <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
-                <td><button class="btn btn-p btn-sm" onclick="openVideoModal({student:'—',institute:'${inst.replace(/'/g,"\\'")}',dept:'${dept.replace(/'/g,"\\'")}',year:'—',interviewer:'${interviewer.replace(/'/g,"\\'")}',date:'${dateStr}',time:'${timeStr}',duration:'—',status:'${status}'})">
-                    <i class="fa-solid fa-play"></i> ${status === 'reviewed' ? 'View' : 'Review'}</button></td>
+                <td><button class="btn btn-p btn-sm" onclick="openVideoModal({student:'${student.replace(/'/g,"\\'")}',institute:'${inst.replace(/'/g,"\\'")}',dept:'${dept.replace(/'/g,"\\'")}',year:'${stdClass.replace(/'/g,"\\'")}',interviewer:'${interviewer.replace(/'/g,"\\'")}',date:'${dateStr}',time:'${timeStr}',duration:'—',status:'${r.status}',url:'${r.videoUrl}'})">
+                    <i class="fa-solid fa-play"></i> Watch
+                </button></td>
             </tr>`;
         }).join('');
 
@@ -1935,42 +1937,36 @@ async function loadReportData(tab) {
     reportDataLoaded[tab] = true;
 
     try {
+        const res = await secureFetch('/api/admin/reports-data');
+        if (!res || !res.ok) return;
+        const data = await res.json();
+
         if (tab === 'interviewer') {
-            const [statsRes, ivRes] = await Promise.all([
-                secureFetch('/api/admin/stats'),
-                secureFetch('/api/admin/interviewers/active')
-            ]);
-            const stats = statsRes && statsRes.ok ? await statsRes.json() : {};
-            const ivs = ivRes && ivRes.ok ? await ivRes.json() : [];
+            const ivData = data.interviewer;
+            
+            setEl('rptCompletionRate', ivData.completionRate + '%');
+            setEl('rptAvgRating', ivData.avgRating.toFixed(1));
+            setEl('rptAvgSession', ivData.avgSession);
+            setEl('rptRecommendRate', ivData.recommendRate + '%');
 
-            // Stats cards — derived from real data
-            const total = stats.totalRequests || 0;
-            const confirmed = stats.confirmedRequests || 0;
-            const rate = total > 0 ? Math.round((confirmed / total) * 100) + '%' : '—';
-            setEl('rptCompletionRate', rate);
-            setEl('rptAvgRating', '—');
-            setEl('rptAvgSession', '—');
-            setEl('rptRecommendRate', '—');
-
-            // Top interviewers table
             const tbody = document.getElementById('topInterviewersBody');
             if (tbody) {
-                if (!ivs.length) {
+                if (!ivData.topInterviewers.length) {
                     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px;">No interviewers yet.</td></tr>';
                 } else {
-                    tbody.innerHTML = ivs.slice(0, 10).map(iv => {
-                        const name = iv.fullName || '—';
-                        return `<tr>
-                            <td><b>${name}</b></td>
-                            <td>${iv.domain || '—'}</td>
-                            <td>—</td><td>—</td><td>—</td>
-                            <td><span style="color:#EAB308;font-weight:700;">★ —</span></td>
-                        </tr>`;
-                    }).join('');
+                    tbody.innerHTML = ivData.topInterviewers.map(iv => `
+                        <tr>
+                            <td><b>${iv.name}</b></td>
+                            <td>${iv.domain}</td>
+                            <td>${iv.interviews}</td>
+                            <td><span style="font-weight:600;">${iv.avgScore.toFixed(1)}/10</span></td>
+                            <td>${iv.completionPct}%</td>
+                            <td><span style="color:#EAB308;font-weight:700;">★ ${iv.rating.toFixed(1)}</span></td>
+                        </tr>`).join('');
                 }
             }
 
-            // Domain chart from interview requests
+            // Domain chart
             const reqRes = await secureFetch('/api/interview-requests/all');
             if (reqRes && reqRes.ok) {
                 const reqs = await reqRes.json();
@@ -2000,36 +1996,42 @@ async function loadReportData(tab) {
             ]);
             const stats = statsRes && statsRes.ok ? await statsRes.json() : {};
             const institutes = instRes && instRes.ok ? await instRes.json() : [];
+            const instData = data.institute;
 
             setEl('rptActiveInstitutes', stats.totalInstitutes ?? '—');
             setEl('rptTotalInterviews', stats.confirmedRequests ?? '—');
             setEl('rptStudentsInterviewed', stats.totalStudents ?? '—');
-            setEl('rptInstAvgScore', '—');
+            setEl('rptInstAvgScore', instData.avgScore.toFixed(1) + ' / 10');
 
             const tbody = document.getElementById('instituteSummaryBody');
             if (tbody) {
-                if (!institutes.length) {
+                if (!instData.summary.length) {
                     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px;">No institutes yet.</td></tr>';
                 } else {
-                    tbody.innerHTML = institutes.map(inst => {
-                        const name = inst.instituteName || inst.name || '—';
-                        const joined = inst.createdAt ? new Date(inst.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '—';
-                        return `<tr>
-                            <td><b>${name}</b></td>
-                            <td>—</td><td>—</td>
-                            <td>${inst.studentCount ?? '—'}</td>
-                            <td>—</td>
+                    tbody.innerHTML = instData.summary.map(inst => `
+                        <tr>
+                            <td><b>${inst.name}</b></td>
+                            <td>${inst.departments}</td>
+                            <td>${inst.sessions}</td>
+                            <td>${inst.students}</td>
+                            <td><span style="font-weight:600;">${inst.avgScore.toFixed(1)}/10</span></td>
                             <td><span class="badge bg-success">Active</span></td>
-                        </tr>`;
-                    }).join('');
+                        </tr>`).join('');
 
-                    // Charts
-                    const names = institutes.map(i => (i.instituteName || i.name || '').substring(0, 12));
-                    const counts = institutes.map(i => i.studentCount || 0);
+                    const names = instData.summary.map(i => i.name.substring(0, 12));
+                    const students = instData.summary.map(i => i.students);
+                    const scores = instData.summary.map(i => i.avgScore);
+
                     const sc = document.getElementById('instStudentsChart');
-                    if (sc) new Chart(sc, { type: 'bar', data: { labels: names, datasets: [{ data: counts, backgroundColor: '#0D9488', borderRadius: 6 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
+                    if (sc) {
+                        if (sc._chartInstance) sc._chartInstance.destroy();
+                        sc._chartInstance = new Chart(sc, { type: 'bar', data: { labels: names, datasets: [{ data: students, backgroundColor: '#0D9488', borderRadius: 6 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
+                    }
                     const ss = document.getElementById('instScoreChart');
-                    if (ss) new Chart(ss, { type: 'bar', data: { labels: names, datasets: [{ data: names.map(() => 0), backgroundColor: '#1E3A8A', borderRadius: 6 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10 } } } });
+                    if (ss) {
+                        if (ss._chartInstance) ss._chartInstance.destroy();
+                        ss._chartInstance = new Chart(ss, { type: 'bar', data: { labels: names, datasets: [{ data: scores, backgroundColor: '#1E3A8A', borderRadius: 6 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10 } } } });
+                    }
                 }
             }
         }
@@ -2037,14 +2039,80 @@ async function loadReportData(tab) {
         if (tab === 'student') {
             const statsRes = await secureFetch('/api/admin/stats');
             const stats = statsRes && statsRes.ok ? await statsRes.json() : {};
+            const stData = data.student;
 
             setEl('rptTotalStudents', stats.totalStudents ?? '—');
-            setEl('rptStudentAvgScore', '—');
-            setEl('rptHighScorers', '—');
-            setEl('rptAvgImprovement', '—');
+            setEl('rptStudentAvgScore', (data.institute.avgScore || 0).toFixed(1) + ' / 10');
+            setEl('rptHighScorers', stData.highScorers);
+            setEl('rptAvgImprovement', stData.avgImprovement);
 
             const tbody = document.getElementById('studentPerformanceBody');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px;">Student score data not yet available.</td></tr>';
+            if (tbody) {
+                if (!stData.performance.length) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px;">Student score data not yet available.</td></tr>';
+                } else {
+                    tbody.innerHTML = stData.performance.map(st => `
+                        <tr>
+                            <td><b>${st.name}</b></td>
+                            <td>${st.institute}</td>
+                            <td>${st.dept}</td>
+                            <td>${st.interviews}</td>
+                            <td><span style="font-weight:600;">${st.avgScore.toFixed(1)}/10</span></td>
+                            <td>${st.best.toFixed(1)}/10</td>
+                            <td><i class="fa-solid fa-arrow-trend-${st.trend === 'up' ? 'up' : 'down'}" style="color:${st.trend === 'up' ? 'var(--success)' : 'var(--muted)'};"></i></td>
+                        </tr>`).join('');
+                }
+            }
+            
+            const distCanvas = document.getElementById('studentScoreDistChart');
+            if (distCanvas) {
+                if (distCanvas._chartInstance) distCanvas._chartInstance.destroy();
+                distCanvas._chartInstance = new Chart(distCanvas, {
+                    type: 'doughnut',
+                    data: { labels: ['0-4', '5-6', '7-8', '9-10'], datasets: [{ data: stData.scoreDist, backgroundColor: ['#EF4444', '#F59E0B', '#3B82F6', '#10B981'] }] },
+                    options: { responsive: true, plugins: { legend: { position: 'right' } }, cutout: '70%' }
+                });
+            }
         }
     } catch (e) { console.error('Report data error:', e); }
+}
+
+function openVideoModal(data) {
+    const titleEl = document.getElementById('videoModalTitle');
+    const playerEl = document.getElementById('videoPlayer');
+    const detailsEl = document.getElementById('videoDetails');
+    const noVideoMsg = document.getElementById('noVideoMsg');
+
+    if (titleEl) titleEl.textContent = `Interview Recording - ${data.student}`;
+    
+    if (detailsEl) {
+        detailsEl.innerHTML = `
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
+                <div><b>Student:</b> ${data.student} (${data.year})</div>
+                <div><b>Interviewer:</b> ${data.interviewer}</div>
+                <div><b>Institute:</b> ${data.institute}</div>
+                <div><b>Department:</b> ${data.dept}</div>
+                <div><b>Date:</b> ${data.date} ${data.time}</div>
+                <div><b>Status:</b> ${data.status}</div>
+            </div>
+        `;
+    }
+
+    if (playerEl) {
+        if (data.url && data.url !== 'null' && data.url !== 'undefined') {
+            let finalUrl = data.url;
+            if (!finalUrl.startsWith('/') && !finalUrl.startsWith('http')) {
+                finalUrl = '/uploads/' + finalUrl;
+            }
+            playerEl.src = finalUrl;
+            playerEl.style.display = 'block';
+            if (noVideoMsg) noVideoMsg.style.display = 'none';
+        } else {
+            playerEl.src = '';
+            playerEl.style.display = 'none';
+            if (noVideoMsg) noVideoMsg.style.display = 'block';
+        }
+    }
+
+    openOverlay('videoModal');
 }

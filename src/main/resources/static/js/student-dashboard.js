@@ -46,11 +46,11 @@ window.addEventListener('DOMContentLoaded', async function() {
   await loadDashboardStats();
   initStudentUI();
   initNotifications();   // load stored notifs, render panel + badge
-  renderSkillMasteryProgress();
   renderUpcomingInterviewCard();
   renderInterviewTimeline();
   await loadFeedbackReports();
   renderFeedbackReports();
+  renderSkillMasteryProgress();
 
   await loadMyApplicationsFromAPI();            // My Interviews tab
   await loadAvailableInterviewsFromAPI();       // Dashboard slot + Apply/Browse tab
@@ -352,42 +352,36 @@ function renderInterviewTimeline() {
 }
 
 function computeSkillMasteryPercents() {
-  var items = (MY_INTERVIEWS || []);
-  var total = items.length || 0;
-  if (!total) {
+  if (!FEEDBACK_REPORTS || FEEDBACK_REPORTS.length === 0) {
     return { tech: null, problem: null, comm: null, conf: null, domain: null };
   }
 
-  var techKeys = ['java', 'spring', 'react', 'python', 'node', 'mysql', 'backend', 'frontend', 'full stack', 'typescript', 'javascript'];
-  var problemKeys = ['dsa', 'data structure', 'data structures', 'algorithm', 'algorithms', 'logic', 'problem', 'reasoning', 'system design'];
-  var commKeys = ['communication', 'presentation', 'speaking', 'behavioral', 'hr', 'soft skill'];
+  var techTotal = 0, problemTotal = 0, commTotal = 0, confTotal = 0, domainTotal = 0;
+  var count = 0;
 
-  var techCount = 0;
-  var problemCount = 0;
-  var commCount = 0;
-  var approvedCount = 0;
-  var domainCount = 0;
-
-  items.forEach(function(iv) {
-    if (iv.status === 'APPROVED') approvedCount++;
-    var exp = (iv.expertise || '').toLowerCase();
-    if (exp) domainCount++;
-
-    var isTech = techKeys.some(function(k) { return exp.includes(k); });
-    var isProb = problemKeys.some(function(k) { return exp.includes(k); });
-    var isComm = commKeys.some(function(k) { return exp.includes(k); });
-    if (isTech) techCount++;
-    if (isProb) problemCount++;
-    if (isComm) commCount++;
+  FEEDBACK_REPORTS.forEach(function(r) {
+    if (r.evaluation) {
+      techTotal += (r.evaluation.technicalScore || 0);
+      problemTotal += (r.evaluation.approachScore || 0); // Using approachScore for Problem Solving
+      commTotal += (r.evaluation.communicationScore || 0);
+      confTotal += (r.evaluation.confidenceScore || 0);
+      domainTotal += (r.evaluation.domainScore || 0);
+      count++;
+    }
   });
 
-  var techPct = Math.round((techCount / total) * 100);
-  var problemPct = Math.round((problemCount / total) * 100);
-  var commPct = Math.round((commCount / total) * 100);
-  var confPct = Math.round((approvedCount / total) * 100);
-  var domainPct = Math.round((domainCount / total) * 100);
+  if (count === 0) {
+    return { tech: null, problem: null, comm: null, conf: null, domain: null };
+  }
 
-  return { tech: techPct, problem: problemPct, comm: commPct, conf: confPct, domain: domainPct };
+  // Scores are out of 10, so multiply by 10 for percentage
+  return {
+    tech: Math.round((techTotal / count) * 10),
+    problem: Math.round((problemTotal / count) * 10),
+    comm: Math.round((commTotal / count) * 10),
+    conf: Math.round((confTotal / count) * 10),
+    domain: Math.round((domainTotal / count) * 10)
+  };
 }
 
 function renderSkillMasteryProgress() {
@@ -406,6 +400,7 @@ function renderSkillMasteryProgress() {
   };
 
   set('sm-tech-pct', 'sm-tech-fill', pct.tech);
+  set('sm-domain-pct', 'sm-domain-fill', pct.domain);
   set('sm-problem-pct', 'sm-problem-fill', pct.problem);
   set('sm-comm-pct', 'sm-comm-fill', pct.comm);
   set('sm-conf-pct', 'sm-conf-fill', pct.conf);

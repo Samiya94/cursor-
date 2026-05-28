@@ -50,7 +50,7 @@ function checkStrength() {
     const fill = document.getElementById('strengthFill');
     const txt  = document.getElementById('strengthText');
     let score  = 0;
-    if (val.length >= 8)           score++;
+    if (val.length >= 6)           score++;
     if (/[A-Z]/.test(val))        score++;
     if (/[0-9]/.test(val))        score++;
     if (/[^A-Za-z0-9]/.test(val)) score++;
@@ -144,17 +144,17 @@ async function handleSubmit(e) {
 
     // Client-side validation
     let ok = true;
-    ok = markField('firstName',          firstName.length > 0)                      && ok;
-    ok = markField('lastName',           lastName.length > 0)                       && ok;
-    ok = markField('regEmail',           /\S+@\S+\.\S+/.test(email))                && ok;
-    ok = markField('phone',              /^\d{10}$/.test(phone))                    && ok;
-    ok = markField('studentYear',        studentYear !== '')                        && ok;
-    ok = markField('studentDegree',      document.getElementById('studentDegree').value !== '') && ok;
+    if (!markField('firstName',          firstName.length > 0))                      ok = false;
+    if (!markField('lastName',           lastName.length > 0))                       ok = false;
+    if (!markField('regEmail',           /^\S+@\S+\.\S+$/.test(email)))              ok = false;
+    if (!markField('phone',              /^\d{10}$/.test(phone)))                    ok = false;
+    if (!markField('studentYear',        studentYear !== ''))                        ok = false;
+    if (!markField('studentDegree',      document.getElementById('studentDegree').value !== '')) ok = false;
     if (document.getElementById('studentDegree').value === 'Other') {
-        ok = markField('degreeOther', degreeValue.length > 0) && ok;
+        if (!markField('degreeOther', degreeValue.length > 0)) ok = false;
     }
-    ok = markField('regPassword',        password.length >= 8)                      && ok;
-    ok = markField('regConfirmPassword', password === confirmPassword)               && ok;
+    if (!markField('regPassword',        password.length >= 6))                      ok = false;
+    if (!markField('regConfirmPassword', password === confirmPassword && password.length >= 6)) ok = false;
 
     if (!ok)    { showError('Please fill in all required fields correctly.'); return; }
     if (!terms) { showError('Please accept the Terms & Conditions to continue.'); return; }

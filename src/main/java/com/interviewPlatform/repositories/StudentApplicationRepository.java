@@ -15,4 +15,5 @@ public interface StudentApplicationRepository extends JpaRepository<StudentAppli
     boolean existsByStudentIdAndInterviewRequestId(Long studentId, Long requestId);
     long countByInterviewRequestId(Long requestId);
     List<StudentApplication> findByInterviewRequestIdAndStatus(Long requestId, Status status);
+    List<StudentApplication> findByVideoUrlIsNotNull();
 }
